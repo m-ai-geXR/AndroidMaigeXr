@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Compatible Material theme for Compose -->
+    <style name="Theme.XRAiAssistant" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">#006A6B</item>
+        <item name="colorPrimaryVariant">#004D4E</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        
+        <!-- Secondary brand color -->
+        <item name="colorSecondary">#4A6363</item>
+        <item name="colorSecondaryVariant">#2E4747</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        
+        <!-- Background colors -->
+        <item name="android:colorBackground">#FAFDFC</item>
+        <item name="colorSurface">#FAFDFC</item>
+        <item name="colorOnSurface">#191C1C</item>
+        
+        <!-- Error colors -->
+        <item name="colorError">#BA1A1A</item>
+        <item name="colorOnError">#FFFFFF</item>
+    </style>
+</resources>
