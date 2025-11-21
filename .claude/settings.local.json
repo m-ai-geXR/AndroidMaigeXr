@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.together.xyz)",
+      "WebFetch(domain:docs.together.ai)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

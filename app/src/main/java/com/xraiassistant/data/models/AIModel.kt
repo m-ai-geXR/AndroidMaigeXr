@@ -24,12 +24,12 @@ enum class AICapability {
  * Predefined AI models matching iOS implementation
  */
 object AIModels {
-    val DEEPSEEK_R1_70B = AIModel(
-        id = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
-        displayName = "DeepSeek R1 70B",
-        description = "Advanced reasoning & coding",
+    val DEEPSEEK_R1 = AIModel(
+        id = "deepseek-ai/DeepSeek-R1",
+        displayName = "DeepSeek R1",
+        description = "Advanced reasoning & coding (serverless)",
         provider = "Together.ai",
-        pricing = "FREE",
+        pricing = "Serverless pricing",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -75,12 +75,28 @@ object AIModels {
         )
     )
     
-    val QWEN_2_5_CODER_32B = AIModel(
-        id = "Qwen/Qwen2.5-Coder-32B-Instruct",
-        displayName = "Qwen 2.5 Coder 32B",
-        description = "Advanced coding & XR",
+    // REPLACED: Qwen 2.5 Coder 32B is NOT serverless (requires dedicated endpoint)
+    // Using serverless alternative: Qwen3 Coder 480B
+    val QWEN_3_CODER_480B = AIModel(
+        id = "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
+        displayName = "Qwen3 Coder 480B",
+        description = "Advanced serverless coding model",
         provider = "Together.ai",
-        pricing = "$0.80/1M",
+        pricing = "Serverless pricing",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
+    // Alternative: Arcee Coder (serverless)
+    val ARCEE_CODER = AIModel(
+        id = "arcee-ai/coder-large",
+        displayName = "Arcee Coder Large",
+        description = "Serverless code generation specialist",
+        provider = "Together.ai",
+        pricing = "Serverless pricing",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -161,11 +177,12 @@ object AIModels {
     )
 
     val ALL_MODELS = listOf(
-        DEEPSEEK_R1_70B,
-        LLAMA_3_3_70B,
+        DEEPSEEK_R1,              // Serverless reasoning model
+        LLAMA_3_3_70B,            // Serverless, recommended for chat
         LLAMA_3_8B_LITE,
-        QWEN_2_5_7B_TURBO,
-        QWEN_2_5_CODER_32B,
+        QWEN_2_5_7B_TURBO,        // Serverless Turbo model
+        QWEN_3_CODER_480B,        // Serverless coding model (replaces 32B)
+        ARCEE_CODER,              // Serverless coding specialist
         GPT_4O,
         CLAUDE_SONNET_4_5,        // Latest Claude model (recommended)
         CLAUDE_OPUS_4_1,          // Most powerful Claude

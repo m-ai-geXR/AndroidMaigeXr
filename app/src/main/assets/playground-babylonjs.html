@@ -1068,7 +1068,7 @@ const scene = createScene();`;
         }
         
         function cleanBabylonJSCode(code) {
-            console.log('🧹 Cleaning Babylon.js code - converting Color3 static properties to constructors');
+            console.log('🧹 Cleaning Babylon.js code - fixing Color3 static properties and API mistakes');
             let cleanedCode = code;
 
             // Map of Color3 static properties to RGB constructor values
@@ -1156,6 +1156,14 @@ const scene = createScene();`;
                 }
             }
 
+            // Fix common API mistakes: attachControls → attachControl (Babylon.js uses singular)
+            const attachControlsRegex = /\.attachControls\(/g;
+            const attachControlsMatches = (cleanedCode.match(attachControlsRegex) || []).length;
+            if (attachControlsMatches > 0) {
+                cleanedCode = cleanedCode.replace(attachControlsRegex, '.attachControl(');
+                console.log(`  ✅ Fixed ${attachControlsMatches} instances of .attachControls() → .attachControl()`);
+            }
+
             console.log('🧹 Babylon.js code cleaning complete');
             return cleanedCode;
         }
@@ -1206,24 +1214,38 @@ const scene = createScene();`;
                 // Execute the code in the global context with proper error handling
                 try {
                     // Create a safer execution context
-                    const executeCode = new Function('canvas', 'engine', 'BABYLON', 
+                    const executeCode = new Function('canvas', 'engine', 'BABYLON',
                         `
                         try {
                             ${code}
+
+                            // Check if createScene function was defined and call it
+                            if (typeof createScene === 'function') {
+                                console.log('✅ createScene function detected, calling it...');
+                                const createdScene = createScene();
+                                if (createdScene) {
+                                    console.log('✅ createScene() successfully returned a scene object');
+                                    return createdScene;
+                                } else {
+                                    console.error('❌ createScene() returned null or undefined');
+                                }
+                            }
+
+                            // Check for scene variable (direct scene creation pattern)
                             if (typeof scene !== 'undefined') {
-                                console.log('Scene variable found:', !!scene);
+                                console.log('✅ Scene variable found:', !!scene);
                                 return scene;
                             } else {
-                                console.error('No scene variable found in executed code');
+                                console.error('❌ No scene variable or createScene function found in executed code');
                                 return null;
                             }
                         } catch (execError) {
-                            console.error('Code execution error:', execError);
+                            console.error('❌ Code execution error:', execError);
                             throw execError;
                         }
                         `
                     );
-                    
+
                     // Execute with proper context
                     scene = executeCode(canvasElement, engine, BABYLON);
                     
