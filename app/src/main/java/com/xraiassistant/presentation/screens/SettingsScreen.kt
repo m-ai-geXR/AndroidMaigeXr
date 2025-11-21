@@ -34,9 +34,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Settings Screen - Exact recreation of iOS ContentView settings implementation
- * 
+ *
  * Features identical to iOS:
- * - API Configuration Section (Together.ai, OpenAI, Anthropic, CodeSandbox)
+ * - API Configuration Section (Together.ai, OpenAI, Anthropic, Google Gemini, CodeSandbox)
  * - Model & Library Settings Section with provider grouping
  * - Temperature and Top-P sliders with intelligent descriptions
  * - Parameter summary view with current mode display
@@ -57,6 +57,7 @@ fun SettingsScreen(
     var togetherApiKey by remember { mutableStateOf("") }
     var openaiApiKey by remember { mutableStateOf("") }
     var anthropicApiKey by remember { mutableStateOf("") }
+    var googleApiKey by remember { mutableStateOf("") }
     var codesandboxApiKey by remember { mutableStateOf("") }
     var selectedModel by remember { mutableStateOf("") }
     var selectedLibrary by remember { mutableStateOf("") }
@@ -77,6 +78,7 @@ fun SettingsScreen(
         togetherApiKey = viewModel.getRawAPIKey("Together.ai")
         openaiApiKey = viewModel.getRawAPIKey("OpenAI")
         anthropicApiKey = viewModel.getRawAPIKey("Anthropic")
+        googleApiKey = viewModel.getRawAPIKey("Google")
         codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox")
         selectedModel = viewModel.selectedModel
         selectedLibrary = viewModel.currentLibraryId
@@ -116,6 +118,7 @@ fun SettingsScreen(
                                 viewModel.setAPIKey("Together.ai", togetherApiKey)
                                 viewModel.setAPIKey("OpenAI", openaiApiKey)
                                 viewModel.setAPIKey("Anthropic", anthropicApiKey)
+                                viewModel.setAPIKey("Google", googleApiKey)
                                 viewModel.setAPIKey("CodeSandbox", codesandboxApiKey)
 
                                 // Update model settings
@@ -164,6 +167,8 @@ fun SettingsScreen(
                 onOpenaiApiKeyChange = { openaiApiKey = it },
                 anthropicApiKey = anthropicApiKey,
                 onAnthropicApiKeyChange = { anthropicApiKey = it },
+                googleApiKey = googleApiKey,
+                onGoogleApiKeyChange = { googleApiKey = it },
                 codesandboxApiKey = codesandboxApiKey,
                 onCodesandboxApiKeyChange = { codesandboxApiKey = it },
                 viewModel = viewModel
@@ -234,6 +239,8 @@ private fun ApiConfigurationSection(
     onOpenaiApiKeyChange: (String) -> Unit,
     anthropicApiKey: String,
     onAnthropicApiKeyChange: (String) -> Unit,
+    googleApiKey: String,
+    onGoogleApiKeyChange: (String) -> Unit,
     codesandboxApiKey: String,
     onCodesandboxApiKeyChange: (String) -> Unit,
     viewModel: ChatViewModel
@@ -272,7 +279,17 @@ private fun ApiConfigurationSection(
                 onApiKeyChange = onAnthropicApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Anthropic")
             )
-            
+
+            // Google Gemini API Key
+            ProviderAPIKeyView(
+                provider = "Google",
+                description = "Get your API key from aistudio.google.com/apikey",
+                color = Color(0xFFEA4335), // Google Red
+                apiKey = googleApiKey,
+                onApiKeyChange = onGoogleApiKeyChange,
+                isConfigured = viewModel.isProviderConfigured("Google")
+            )
+
             // CodeSandbox API Key (Optional)
             CodeSandboxAPIKeyView(
                 apiKey = codesandboxApiKey,

@@ -4,6 +4,7 @@ import android.util.Log
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.xraiassistant.data.remote.AnthropicService
+import com.xraiassistant.data.remote.GeminiService
 import com.xraiassistant.data.remote.OpenAIService
 import com.xraiassistant.data.remote.TogetherAIService
 import dagger.Module
@@ -29,6 +30,7 @@ import javax.net.ssl.X509TrustManager
  * - Together.ai: https://api.together.xyz
  * - OpenAI: https://api.openai.com
  * - Anthropic: https://api.anthropic.com
+ * - Google: https://generativelanguage.googleapis.com
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -46,6 +48,10 @@ object NetworkModule {
     @Qualifier
     @Retention(AnnotationRetention.BINARY)
     annotation class Anthropic
+
+    @Qualifier
+    @Retention(AnnotationRetention.BINARY)
+    annotation class Google
 
     /**
      * Moshi for JSON serialization
@@ -194,4 +200,29 @@ object NetworkModule {
     fun provideAnthropicService(
         @Anthropic retrofit: Retrofit
     ): AnthropicService = retrofit.create(AnthropicService::class.java)
+
+    /**
+     * Retrofit for Google Gemini
+     * Base URL: https://generativelanguage.googleapis.com
+     */
+    @Provides
+    @Singleton
+    @Google
+    fun provideGeminiRetrofit(
+        okHttpClient: OkHttpClient,
+        moshi: Moshi
+    ): Retrofit = Retrofit.Builder()
+        .baseUrl("https://generativelanguage.googleapis.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
+        .build()
+
+    /**
+     * Google Gemini Service
+     */
+    @Provides
+    @Singleton
+    fun provideGeminiService(
+        @Google retrofit: Retrofit
+    ): GeminiService = retrofit.create(GeminiService::class.java)
 }

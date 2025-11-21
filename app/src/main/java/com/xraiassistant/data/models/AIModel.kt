@@ -176,6 +176,90 @@ object AIModels {
         )
     )
 
+    // ============= GOOGLE GEMINI MODELS (2025) =============
+
+    val GEMINI_2_0_FLASH_EXP = AIModel(
+        id = "gemini-2.0-flash-exp",
+        displayName = "Gemini 2.0 Flash (Experimental)",
+        description = "Latest experimental model - Fast & multimodal",
+        provider = "Google",
+        pricing = "Free (experimental)",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
+    val GEMINI_1_5_PRO = AIModel(
+        id = "gemini-1.5-pro",
+        displayName = "Gemini 1.5 Pro",
+        description = "Advanced reasoning & 2M context window",
+        provider = "Google",
+        pricing = "$3.50/$10.50 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GEMINI_1_5_FLASH = AIModel(
+        id = "gemini-1.5-flash",
+        displayName = "Gemini 1.5 Flash",
+        description = "Fast & cost-effective - 1M context",
+        provider = "Google",
+        pricing = "$0.075/$0.30 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
+    val GEMINI_1_5_FLASH_8B = AIModel(
+        id = "gemini-1.5-flash-8b",
+        displayName = "Gemini 1.5 Flash 8B",
+        description = "Ultra-fast lightweight model",
+        provider = "Google",
+        pricing = "$0.0375/$0.15 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
+    // ============= GOOGLE GEMINI 3 MODELS (2025) =============
+
+    val GEMINI_3_PRO = AIModel(
+        id = "gemini-3-pro-preview",
+        displayName = "Gemini 3 Pro (Preview)",
+        description = "Latest model - 1M context, advanced reasoning & agentic workflows",
+        provider = "Google",
+        pricing = "$2/$12 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GEMINI_3_PRO_IMAGE = AIModel(
+        id = "gemini-3-pro-image-preview",
+        displayName = "Gemini 3 Pro Image (Preview)",
+        description = "Image generation with reasoning - 65K context",
+        provider = "Google",
+        pricing = "$2 text / $0.134 image per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
     val ALL_MODELS = listOf(
         DEEPSEEK_R1,              // Serverless reasoning model
         LLAMA_3_3_70B,            // Serverless, recommended for chat
@@ -186,7 +270,13 @@ object AIModels {
         GPT_4O,
         CLAUDE_SONNET_4_5,        // Latest Claude model (recommended)
         CLAUDE_OPUS_4_1,          // Most powerful Claude
-        CLAUDE_HAIKU_4_5          // Fastest/cheapest Claude
+        CLAUDE_HAIKU_4_5,         // Fastest/cheapest Claude
+        GEMINI_3_PRO,             // Latest Gemini 3 with advanced reasoning
+        GEMINI_3_PRO_IMAGE,       // Gemini 3 with image generation
+        GEMINI_2_0_FLASH_EXP,     // Latest Gemini experimental
+        GEMINI_1_5_PRO,           // Best Gemini for complex tasks
+        GEMINI_1_5_FLASH,         // Fast Gemini
+        GEMINI_1_5_FLASH_8B       // Fastest/cheapest Gemini
     )
     
     val MODELS_BY_PROVIDER = ALL_MODELS.groupBy { it.provider }

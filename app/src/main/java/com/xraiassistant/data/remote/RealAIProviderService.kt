@@ -27,6 +27,7 @@ class RealAIProviderService @Inject constructor(
     private val togetherAIService: TogetherAIService,
     private val openAIService: OpenAIService,
     private val anthropicService: AnthropicService,
+    private val geminiService: GeminiService,
     private val moshi: Moshi
 ) {
 
@@ -44,6 +45,7 @@ class RealAIProviderService @Inject constructor(
      * - "Together.ai" → Together.ai API
      * - "OpenAI" → OpenAI API
      * - "Anthropic" → Anthropic API
+     * - "Google" → Google Gemini API
      *
      * @return Flow<String> emitting response chunks in real-time
      */
@@ -72,6 +74,10 @@ class RealAIProviderService @Inject constructor(
             }
             "Anthropic" -> {
                 streamAnthropic(apiKey, model, prompt, systemPrompt, temperature, topP)
+                    .collect { chunk -> emit(chunk) }
+            }
+            "Google" -> {
+                streamGemini(apiKey, model, prompt, systemPrompt, temperature, topP)
                     .collect { chunk -> emit(chunk) }
             }
             else -> {
@@ -413,6 +419,171 @@ class RealAIProviderService @Inject constructor(
             responseBody.close()
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Stream response from Google Gemini with automatic retry logic
+     */
+    private suspend fun streamGemini(
+        apiKey: String,
+        model: String,
+        prompt: String,
+        systemPrompt: String,
+        temperature: Double,
+        topP: Double
+    ): Flow<String> = flow {
+        // Build the Gemini request
+        val contentParts = listOf(GeminiRequest.Part(text = prompt))
+        val content = GeminiRequest.GeminiContent(parts = contentParts, role = "user")
+
+        val systemInstruction = if (systemPrompt.isNotEmpty()) {
+            GeminiRequest.GeminiContent(
+                parts = listOf(GeminiRequest.Part(text = systemPrompt)),
+                role = null
+            )
+        } else null
+
+        // Enable advanced reasoning for Gemini 3 models
+        val thinkingLevel = if (model.startsWith("gemini-3-")) "high" else null
+
+        val generationConfig = GeminiRequest.GenerationConfig(
+            temperature = temperature,
+            topP = topP,
+            maxOutputTokens = 8192,
+            thinkingLevel = thinkingLevel
+        )
+
+        val request = GeminiRequest(
+            contents = listOf(content),
+            generationConfig = generationConfig,
+            systemInstruction = systemInstruction
+        )
+
+        var lastException: Exception? = null
+        var retryCount = 0
+
+        while (retryCount <= MAX_RETRIES) {
+            try {
+                Log.d(TAG, "📡 Calling Google Gemini API... (attempt ${retryCount + 1}/${MAX_RETRIES + 1})")
+
+                val response = geminiService.streamGenerateContent(
+                    model = model,
+                    apiKey = apiKey,
+                    request = request
+                )
+
+                // Handle successful response
+                if (response.isSuccessful) {
+                    Log.d(TAG, "✅ Gemini API response received, streaming chunks...")
+                    parseGeminiServerSentEvents(response.body()!!).collect { chunk ->
+                        emit(chunk)
+                    }
+                    return@flow // Success - exit retry loop
+                }
+
+                // Handle error responses
+                val errorBody = response.errorBody()?.string()
+                val errorCode = response.code()
+
+                Log.e(TAG, "❌ Gemini API error: $errorCode - $errorBody")
+
+                // Check if this is a retryable error
+                if (isRetryableError(errorCode) && retryCount < MAX_RETRIES) {
+                    val retryAfterSeconds = response.headers()["retry-after"]?.toIntOrNull() ?: 0
+                    val delayMs = calculateRetryDelay(retryCount, retryAfterSeconds)
+
+                    Log.w(TAG, "⏳ Service temporarily unavailable. Retrying in ${delayMs}ms...")
+                    lastException = Exception("Gemini API error $errorCode: Service temporarily unavailable")
+
+                    delay(delayMs)
+                    retryCount++
+                    continue
+                }
+
+                // Non-retryable error or max retries reached
+                throw Exception("Gemini API error: $errorCode - $errorBody")
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error calling Gemini API (attempt ${retryCount + 1})", e)
+
+                // Check if this is a network error that should be retried
+                val isRetryableNetworkError = when (e) {
+                    is java.net.SocketTimeoutException,
+                    is java.net.SocketException,
+                    is java.io.IOException -> retryCount < MAX_RETRIES
+                    else -> false
+                }
+
+                if (isRetryableNetworkError) {
+                    val delayMs = calculateRetryDelay(retryCount, 0)
+                    Log.w(TAG, "⏳ Network error. Retrying in ${delayMs}ms...")
+                    lastException = e
+                    delay(delayMs)
+                    retryCount++
+                    continue
+                }
+
+                // Provide user-friendly error message for non-retryable errors
+                when (e) {
+                    is javax.net.ssl.SSLHandshakeException -> {
+                        throw Exception("SSL connection failed. This may be due to emulator certificate issues. Error: ${e.message}")
+                    }
+                    is java.net.UnknownHostException -> {
+                        throw Exception("Cannot reach generativelanguage.googleapis.com. Please check your internet connection.")
+                    }
+                    else -> throw Exception("Network error: ${e.message}")
+                }
+            }
+        }
+
+        // Max retries exceeded
+        throw Exception("Gemini service unavailable after $MAX_RETRIES retries. Please try again later.", lastException)
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Parse Gemini Server-Sent Events (SSE) stream
+     *
+     * Gemini uses SSE format similar to OpenAI but with different JSON structure
+     */
+    private fun parseGeminiServerSentEvents(body: ResponseBody): Flow<String> = flow {
+        val geminiResponseAdapter = moshi.adapter(GeminiResponse::class.java)
+
+        body.source().use { source ->
+            while (!source.exhausted()) {
+                val line = source.readUtf8Line() ?: break
+
+                // Look for JSON data lines (Gemini sends JSON objects, sometimes with "data: " prefix)
+                if (line.startsWith("data: ")) {
+                    val jsonData = line.substring(6).trim()
+                    if (jsonData == "[DONE]") break
+
+                    try {
+                        val response = geminiResponseAdapter.fromJson(jsonData)
+                        val text = response?.candidates?.firstOrNull()
+                            ?.content?.parts?.firstOrNull()?.text
+
+                        if (text != null) {
+                            emit(text)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to parse Gemini SSE chunk: $jsonData", e)
+                    }
+                } else if (line.startsWith("{")) {
+                    // Sometimes Gemini sends JSON without "data: " prefix
+                    try {
+                        val response = geminiResponseAdapter.fromJson(line)
+                        val text = response?.candidates?.firstOrNull()
+                            ?.content?.parts?.firstOrNull()?.text
+
+                        if (text != null) {
+                            emit(text)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to parse Gemini JSON chunk: $line", e)
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Non-streaming version (collects all chunks into a single string)
