@@ -527,94 +527,141 @@ private fun ModelSettingsSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModelSelectionView(
     selectedModel: String,
     onModelChange: (String) -> Unit,
     viewModel: ChatViewModel
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    
+    var showDialog by remember { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = "AI Model",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
-        
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
+
+        // Button to open model selection dialog
+        OutlinedButton(
+            onClick = { showDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
         ) {
-            OutlinedTextField(
-                value = viewModel.getModelDisplayName(selectedModel),
-                onValueChange = { },
-                readOnly = true,
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Group models by provider
-                viewModel.modelsByProvider.forEach { (provider, models) ->
+                Text(
+                    text = viewModel.getModelDisplayName(selectedModel),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontSize = 16.sp
+                )
+                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select model")
+            }
+        }
+
+        // Dialog for model selection - Simplified compact design
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = {
                     Text(
-                        text = provider,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        "Select AI Model",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
-                    
-                    models.forEach { model ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 500.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        viewModel.modelsByProvider.forEach { (provider, models) ->
+                            // Compact provider header
+                            Text(
+                                text = provider,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                            )
+
+                            models.forEach { model ->
+                                // Compact single-line model selection
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        onModelChange(model.id)
+                                        showDialog = false
+                                    },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (model.id == selectedModel)
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = model.displayName,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        if (model.pricing.isNotEmpty()) {
-                                            Card(
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                                )
-                                            ) {
-                                                Text(
-                                                    text = model.pricing,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        // Model name with selected indicator
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            if (model.id == selectedModel) {
+                                                Icon(
+                                                    Icons.Default.CheckCircle,
+                                                    contentDescription = "Selected",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(18.dp)
                                                 )
                                             }
+                                            Text(
+                                                text = model.displayName,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = if (model.id == selectedModel) FontWeight.Bold else FontWeight.Normal,
+                                                maxLines = 1
+                                            )
+                                        }
+
+                                        // Compact pricing tag
+                                        if (model.pricing.isNotEmpty()) {
+                                            Text(
+                                                text = model.pricing,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1
+                                            )
                                         }
                                     }
-                                    Text(
-                                        text = model.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
                                 }
-                            },
-                            onClick = {
-                                onModelChange(model.id)
-                                expanded = false
                             }
-                        )
+
+                            // Subtle divider between providers
+                            if (provider != viewModel.modelsByProvider.keys.last()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("Close")
                     }
                 }
-            }
+            )
         }
         
         // Show current provider info
@@ -662,84 +709,125 @@ private fun ModelSelectionView(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibrarySelectionView(
     selectedLibrary: String,
     onLibraryChange: (String) -> Unit,
     viewModel: ChatViewModel
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
     val availableLibraries = viewModel.getAvailableLibraries()
     val currentLibrary = viewModel.getCurrentLibrary()
-    
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = "3D Library",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
-        
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
+
+        // Button to open library selection dialog
+        OutlinedButton(
+            onClick = { showDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
         ) {
-            OutlinedTextField(
-                value = currentLibrary.displayName,
-                onValueChange = { },
-                readOnly = true,
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                availableLibraries.forEach { library ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
+                Text(
+                    text = currentLibrary.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontSize = 16.sp
+                )
+                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select library")
+            }
+        }
+
+        // Dialog for library selection - Simplified compact design
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                title = {
+                    Text(
+                        "Select 3D Library",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        availableLibraries.forEach { library ->
+                            // Compact single-line library selection
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    onLibraryChange(library.id)
+                                    showDialog = false
+                                },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (library.id == selectedLibrary)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = library.displayName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Card(
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                        )
+                                    // Library name with selected indicator
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.weight(1f)
                                     ) {
+                                        if (library.id == selectedLibrary) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = "Selected",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                         Text(
-                                            text = library.version,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                            text = library.displayName,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = if (library.id == selectedLibrary) FontWeight.Bold else FontWeight.Normal,
+                                            maxLines = 1
                                         )
                                     }
+
+                                    // Compact version tag
+                                    Text(
+                                        text = library.version,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
                                 }
-                                Text(
-                                    text = library.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
-                        },
-                        onClick = {
-                            onLibraryChange(library.id)
-                            expanded = false
                         }
-                    )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("Close")
+                    }
                 }
-            }
+            )
         }
         
         // Show current library info

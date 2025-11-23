@@ -2,6 +2,7 @@ package com.xraiassistant.data.remote
 
 import android.util.Log
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import com.xraiassistant.data.models.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -442,14 +443,10 @@ class RealAIProviderService @Inject constructor(
             )
         } else null
 
-        // Enable advanced reasoning for Gemini 3 models
-        val thinkingLevel = if (model.startsWith("gemini-3-")) "high" else null
-
         val generationConfig = GeminiRequest.GenerationConfig(
             temperature = temperature,
             topP = topP,
-            maxOutputTokens = 8192,
-            thinkingLevel = thinkingLevel
+            maxOutputTokens = 8192
         )
 
         val request = GeminiRequest(
@@ -485,6 +482,19 @@ class RealAIProviderService @Inject constructor(
                 val errorCode = response.code()
 
                 Log.e(TAG, "❌ Gemini API error: $errorCode - $errorBody")
+
+                // Handle quota/rate limit errors (429) with user-friendly messages
+                if (errorCode == 429) {
+                    val errorMessage = when {
+                        errorBody?.contains("quota", ignoreCase = true) == true ->
+                            "Google API quota exceeded. Please check your API usage at https://ai.dev/usage or try a different Gemini model (e.g., Gemini 1.5 Flash or Gemini 1.5 Pro)."
+                        errorBody?.contains("rate limit", ignoreCase = true) == true ->
+                            "Rate limit exceeded. Please wait a few moments and try again, or select a different model."
+                        else ->
+                            "Too many requests. Please wait and try again with a different model."
+                    }
+                    throw Exception(errorMessage)
+                }
 
                 // Check if this is a retryable error
                 if (isRetryableError(errorCode) && retryCount < MAX_RETRIES) {
@@ -540,48 +550,57 @@ class RealAIProviderService @Inject constructor(
     }.flowOn(Dispatchers.IO)
 
     /**
-     * Parse Gemini Server-Sent Events (SSE) stream
+     * Parse Gemini streaming response
      *
-     * Gemini uses SSE format similar to OpenAI but with different JSON structure
+     * CRITICAL: Gemini returns the ENTIRE response as ONE JSON array: [{...}, {...}, ...]
+     * This matches the iOS implementation approach (GoogleAIProvider.swift lines 129-159)
+     *
+     * iOS approach:
+     * 1. Read ALL bytes into fullResponse string
+     * 2. Parse entire response as JSON array
+     * 3. Iterate through array elements and extract text
+     *
+     * We do the same in Android with Moshi.
      */
     private fun parseGeminiServerSentEvents(body: ResponseBody): Flow<String> = flow {
-        val geminiResponseAdapter = moshi.adapter(GeminiResponse::class.java)
+        Log.d(TAG, "✅ Gemini API response received, parsing as JSON array...")
 
-        body.source().use { source ->
-            while (!source.exhausted()) {
-                val line = source.readUtf8Line() ?: break
+        try {
+            // Step 1: Read ALL bytes into a single string (matching iOS lines 129-132)
+            val fullResponse = body.string()
+            Log.d(TAG, "📊 Received ${fullResponse.length} total bytes")
+            Log.d(TAG, "📄 Response preview (first 200 chars): ${fullResponse.take(200)}")
 
-                // Look for JSON data lines (Gemini sends JSON objects, sometimes with "data: " prefix)
-                if (line.startsWith("data: ")) {
-                    val jsonData = line.substring(6).trim()
-                    if (jsonData == "[DONE]") break
+            // Step 2: Parse as JSON array (matching iOS line 138)
+            val moshi = Moshi.Builder().build()
+            val listType = Types.newParameterizedType(List::class.java, GeminiResponse::class.java)
+            val adapter = moshi.adapter<List<GeminiResponse>>(listType)
 
-                    try {
-                        val response = geminiResponseAdapter.fromJson(jsonData)
-                        val text = response?.candidates?.firstOrNull()
-                            ?.content?.parts?.firstOrNull()?.text
+            val jsonArray = adapter.fromJson(fullResponse)
 
-                        if (text != null) {
-                            emit(text)
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to parse Gemini SSE chunk: $jsonData", e)
-                    }
-                } else if (line.startsWith("{")) {
-                    // Sometimes Gemini sends JSON without "data: " prefix
-                    try {
-                        val response = geminiResponseAdapter.fromJson(line)
-                        val text = response?.candidates?.firstOrNull()
-                            ?.content?.parts?.firstOrNull()?.text
+            if (jsonArray != null) {
+                Log.d(TAG, "✅ Parsed JSON array with ${jsonArray.size} chunks")
 
-                        if (text != null) {
-                            emit(text)
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to parse Gemini JSON chunk: $line", e)
+                // Step 3: Process each chunk and extract text (matching iOS lines 143-154)
+                var totalTextYielded = 0
+                jsonArray.forEachIndexed { index, chunk ->
+                    chunk.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text?.let { text ->
+                        Log.d(TAG, "📦 Chunk ${index + 1}: Yielding ${text.length} chars")
+                        totalTextYielded += text.length
+                        emit(text)
                     }
                 }
+
+                Log.d(TAG, "🏁 Gemini stream complete ($totalTextYielded total chars yielded)")
+            } else {
+                Log.e(TAG, "❌ Failed to parse response as JSON array")
+                Log.e(TAG, "📄 Response preview (first 500 chars): ${fullResponse.take(500)}")
             }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Gemini parsing error: ${e.message}")
+            e.printStackTrace()
+            throw e
         }
     }
 

@@ -172,8 +172,7 @@ data class GeminiRequest(
     data class GenerationConfig(
         @Json(name = "temperature") val temperature: Double? = null,
         @Json(name = "topP") val topP: Double? = null,
-        @Json(name = "maxOutputTokens") val maxOutputTokens: Int? = null,
-        @Json(name = "thinking_level") val thinkingLevel: String? = null  // Gemini 3: "low" or "high"
+        @Json(name = "maxOutputTokens") val maxOutputTokens: Int? = null
     )
 }
 

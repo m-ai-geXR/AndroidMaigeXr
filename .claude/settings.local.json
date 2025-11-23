@@ -4,7 +4,9 @@
       "WebFetch(domain:api.together.xyz)",
       "WebFetch(domain:docs.together.ai)",
       "Bash(./gradlew assembleDebug:*)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "WebSearch",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

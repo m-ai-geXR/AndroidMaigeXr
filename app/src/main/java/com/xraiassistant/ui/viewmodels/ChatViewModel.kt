@@ -341,24 +341,208 @@ class ChatViewModel @Inject constructor(
 
         // CRITICAL FIX: Strip DeepSeek R1 reasoning tags before code extraction
         // DeepSeek R1 uses <think>...</think> tags for chain-of-thought reasoning
-        val cleanedResponse = response.replace("<think>[\\s\\S]*?</think>".toRegex(), "").trim()
+        var cleanedResponse = response.replace("<think>[\\s\\S]*?</think>".toRegex(), "").trim()
 
         if (cleanedResponse != response) {
             println("✅ Stripped <think> reasoning tags from AI response")
             println("📏 Cleaned response length: ${cleanedResponse.length} characters")
         }
 
-        // Multiple code extraction patterns (in order of preference)
+        // CRITICAL FIX: Decode unicode escapes (Gemini returns \u003e instead of >)
+        val beforeUnicode = cleanedResponse
+        cleanedResponse = cleanedResponse
+            .replace("\\u003e", ">")
+            .replace("\\u003c", "<")
+            .replace("\\u0026", "&")
+            .replace("\\u0027", "'")
+            .replace("\\u0022", "\"")
 
-        // Pattern 1: [INSERT_CODE]```...```[/INSERT_CODE]
+        if (beforeUnicode != cleanedResponse) {
+            println("✅ Decoded unicode escapes in response")
+            println("🔍 First 300 chars after decoding: ${cleanedResponse.take(300)}")
+        }
+
+        // Multiple code extraction patterns (in order of preference)
+        // CRITICAL FIX: Gemini returns INSERT_CODE with ```/INSERT_CODE closing marker
+
+        // Pattern 0: INSERT_CODE```...```/INSERT_CODE (Gemini actual format with /INSERT_CODE closing)
+        val geminiWithSlashPattern = "INSERT_CODE```(?:javascript|typescript|html)?\\s*([\\s\\S]*?)```/INSERT_CODE".toRegex()
+        var codeMatch = geminiWithSlashPattern.find(cleanedResponse)
+
+        if (codeMatch != null) {
+            val extractedCode = codeMatch.groupValues[1].trim()
+            println("✅ Code extracted via GEMINI-SLASH pattern (${extractedCode.length} chars)")
+            injectCode(extractedCode, library)
+            return
+        }
+
+        // Pattern 1: INSERT_CODE```...``` (Gemini format with closing backticks but no /INSERT_CODE yet)
+        val geminiNoBracketsPattern = "INSERT_CODE```(?:javascript|typescript|html)?\\s*([\\s\\S]*?)```(?!/INSERT_CODE)".toRegex()
+        codeMatch = geminiNoBracketsPattern.find(cleanedResponse)
+
+        if (codeMatch != null) {
+            val extractedCode = codeMatch.groupValues[1].trim()
+            println("✅ Code extracted via GEMINI-NO-BRACKETS pattern (${extractedCode.length} chars)")
+            if (extractedCode.length > 100) {  // Higher threshold to avoid incomplete code
+                injectCode(extractedCode, library)
+                return
+            } else {
+                println("⚠️ Code too short (${extractedCode.length} chars), trying next pattern")
+            }
+        }
+
+        // Pattern 2: INSERT_CODE```... (Gemini streams code mixed with explanation)
+        // CRITICAL FIX: Extract everything, then clean up explanation text manually
+        if (cleanedResponse.contains("INSERT_CODE```")) {
+            println("🔍 Found INSERT_CODE marker, attempting extraction...")
+
+            // Find the start of the code block
+            val codeStartIndex = cleanedResponse.indexOf("INSERT_CODE```")
+            if (codeStartIndex != -1) {
+                // Extract from INSERT_CODE to end
+                val afterMarker = cleanedResponse.substring(codeStartIndex + "INSERT_CODE```".length)
+
+                // Skip the language identifier (javascript, typescript, html)
+                val codeStart = if (afterMarker.startsWith("javascript") ||
+                                   afterMarker.startsWith("typescript") ||
+                                   afterMarker.startsWith("html")) {
+                    afterMarker.indexOf("\n") + 1
+                } else {
+                    0
+                }
+
+                val potentialCode = afterMarker.substring(codeStart)
+                println("🔍 Potential code length: ${potentialCode.length} chars")
+                println("🔍 Potential code sample: ${potentialCode.take(300)}")
+                println("🔍 Potential code END sample: ...${potentialCode.takeLast(300)}")
+
+                // Debug: Check what markers exist in the response
+                val hasBacktickClose = potentialCode.contains("```/INSERT_CODE")
+                val hasSlashClose = potentialCode.contains("/INSERT_CODE")
+                val hasRunScene = potentialCode.contains("[RUN_SCENE]")
+                val hasMarkdownHeader = potentialCode.contains("\n###") || potentialCode.contains("### ")
+
+                println("🔍 Markers present: ```/INSERT=$hasBacktickClose, /INSERT=$hasSlashClose, RUN_SCENE=$hasRunScene, ###=$hasMarkdownHeader")
+
+                // CRITICAL FIX: Search for closing markers more carefully
+                var endIndex = -1
+
+                // PRIORITY 1: Look for ```/INSERT_CODE (proper closing with backticks)
+                val marker1 = potentialCode.indexOf("```/INSERT_CODE")
+                println("🔍 Searching for ```/INSERT_CODE: $marker1")
+                if (marker1 >= 0) {
+                    endIndex = marker1
+                    println("✅ Found ```/INSERT_CODE at position $marker1 (USING THIS)")
+                }
+
+                // PRIORITY 2: Look for /INSERT_CODE without backticks
+                if (endIndex == -1) {
+                    val marker2 = potentialCode.indexOf("/INSERT_CODE")
+                    println("🔍 Searching for /INSERT_CODE: $marker2")
+                    if (marker2 >= 0) {
+                        endIndex = marker2
+                        println("✅ Found /INSERT_CODE at position $marker2 (USING THIS)")
+                    }
+                }
+
+                // PRIORITY 3: Look for [RUN_SCENE] command
+                if (endIndex == -1) {
+                    val marker3 = potentialCode.indexOf("[RUN_SCENE]")
+                    println("🔍 Searching for [RUN_SCENE]: $marker3")
+                    if (marker3 >= 0) {
+                        endIndex = marker3
+                        println("✅ Found [RUN_SCENE] at position $marker3 (USING THIS)")
+                    }
+                }
+
+                // PRIORITY 4: Look for ### headers (try both with and without newline)
+                if (endIndex == -1) {
+                    val marker4a = potentialCode.indexOf("\n###")
+                    val marker4b = potentialCode.indexOf("### ")
+                    val marker4 = when {
+                        marker4a >= 0 && marker4b >= 0 -> minOf(marker4a, marker4b)
+                        marker4a >= 0 -> marker4a
+                        marker4b >= 0 -> marker4b
+                        else -> -1
+                    }
+                    println("🔍 Searching for ### header: $marker4")
+                    if (marker4 >= 0) {
+                        endIndex = marker4
+                        println("✅ Found ### header at position $marker4 (USING THIS)")
+                    }
+                }
+
+                // PRIORITY 5 (LAST RESORT): Look for numbered markdown lists
+                if (endIndex == -1) {
+                    val explanationPattern = "\\n\\d+\\.\\s+\\*\\*".toRegex()
+                    val explanationMatch = explanationPattern.find(potentialCode)
+                    println("🔍 Searching for numbered list pattern: ${explanationMatch?.range?.first}")
+                    if (explanationMatch != null) {
+                        endIndex = explanationMatch.range.first
+                        println("⚠️ Found numbered list at position ${explanationMatch.range.first} (LAST RESORT)")
+                    }
+                }
+
+                // If still no marker found, use entire potential code
+                if (endIndex == -1) {
+                    endIndex = potentialCode.length
+                    println("⚠️ No end markers found, using entire potential code (${endIndex} chars)")
+                }
+
+                val extractedCode = potentialCode.substring(0, endIndex).trim()
+
+                println("✅ Code extracted via GEMINI manual parsing (${extractedCode.length} chars)")
+                println("📝 Code preview (first 200 chars): ${extractedCode.take(200)}")
+                println("📝 Code preview (last 200 chars): ...${extractedCode.takeLast(200)}")
+
+                if (extractedCode.length > 100) {
+                    injectCode(extractedCode, library)
+                    return
+                } else {
+                    println("⚠️ Code too short (${extractedCode.length} chars), trying next pattern")
+                }
+            }
+        }
+
+        // Pattern 2: [INSERT_CODE]```...```[/INSERT_CODE] (with brackets and closing tag)
         val primaryPattern = "\\[INSERT_CODE\\]```(?:javascript|typescript|html)?\\s*([\\s\\S]*?)```\\[/INSERT_CODE\\]".toRegex()
-        var codeMatch = primaryPattern.find(cleanedResponse)
+        codeMatch = primaryPattern.find(cleanedResponse)
 
         if (codeMatch != null) {
             val extractedCode = codeMatch.groupValues[1].trim()
             println("✅ Code extracted via PRIMARY pattern (${extractedCode.length} chars)")
             injectCode(extractedCode, library)
             return
+        }
+
+        // Pattern 3: [INSERT_CODE]```...``` (with brackets, Gemini format with closing backticks)
+        val geminiWithBracketsPattern = "\\[INSERT_CODE\\]```(?:javascript|typescript|html)?\\s*([\\s\\S]*?)```".toRegex()
+        codeMatch = geminiWithBracketsPattern.find(cleanedResponse)
+
+        if (codeMatch != null) {
+            val extractedCode = codeMatch.groupValues[1].trim()
+            println("✅ Code extracted via GEMINI-BRACKETS pattern (${extractedCode.length} chars)")
+            if (extractedCode.length > 20) {
+                injectCode(extractedCode, library)
+                return
+            } else {
+                println("⚠️ Code too short (${extractedCode.length} chars), trying next pattern")
+            }
+        }
+
+        // Pattern 4: [INSERT_CODE]```... (with brackets, no closing ``` yet - incomplete stream)
+        val geminiIncompletePattern = "\\[INSERT_CODE\\]```(?:javascript|typescript|html)?\\s*([\\s\\S]+?)(?:```|$)".toRegex()
+        codeMatch = geminiIncompletePattern.find(cleanedResponse)
+
+        if (codeMatch != null) {
+            val extractedCode = codeMatch.groupValues[1].trim()
+            println("✅ Code extracted via GEMINI-BRACKETS-INCOMPLETE pattern (${extractedCode.length} chars)")
+            if (extractedCode.length > 20) {
+                injectCode(extractedCode, library)
+                return
+            } else {
+                println("⚠️ Code too short (${extractedCode.length} chars), waiting for more content")
+            }
         }
 
         // Pattern 2: ```javascript or ```typescript or ```html blocks
@@ -396,9 +580,13 @@ class ChatViewModel @Inject constructor(
         // If we get here, no code was found
         println("⚠️ No code blocks found in AI response using any pattern")
         println("🔍 Searched for patterns:")
-        println("   1. [INSERT_CODE]```...```[/INSERT_CODE]")
-        println("   2. ```javascript|typescript|html...```")
-        println("   3. ```...```")
+        println("   0. INSERT_CODE```...```/INSERT_CODE (Gemini with /INSERT_CODE)")
+        println("   1. INSERT_CODE```...``` (Gemini - no /INSERT_CODE)")
+        println("   2. INSERT_CODE```... (Gemini - incomplete)")
+        println("   3. [INSERT_CODE]```...```[/INSERT_CODE] (with brackets)")
+        println("   4. [INSERT_CODE]```...``` (with brackets)")
+        println("   5. ```javascript|typescript|html...```")
+        println("   6. ```...```")
         println("🔍 Cleaned response preview (first 500 chars):")
         println(cleanedResponse.take(500))
 
