@@ -406,280 +406,93 @@ private fun ChatInputField(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModelSelector(
     chatViewModel: ChatViewModel,
     selectedModel: String
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
+    var showModal by remember { mutableStateOf(false) }
+
+    // Model selector button
+    Card(
+        onClick = { showModal = true },
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(6.dp)
     ) {
-        // Model selector button
-        Card(
-            modifier = Modifier.menuAnchor(),
-            onClick = { expanded = true },
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
-            ),
-            shape = RoundedCornerShape(6.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = chatViewModel.getModelDisplayName(selectedModel),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF2196F3),
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = Color(0xFF2196F3),
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            Text(
+                text = chatViewModel.getModelDisplayName(selectedModel),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF2196F3),
+                fontSize = 12.sp
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = Color(0xFF2196F3),
+                modifier = Modifier.size(14.dp)
+            )
         }
-        
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            // Show models organized by provider
-            chatViewModel.modelsByProvider.forEach { (provider, models) ->
-                // Provider header
-                Text(
-                    text = provider,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-                
-                models.forEach { model ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = model.displayName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        if (model.pricing.isNotEmpty()) {
-                                            Card(
-                                                colors = CardDefaults.cardColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                                ),
-                                                shape = RoundedCornerShape(4.dp)
-                                            ) {
-                                                Text(
-                                                    text = model.pricing,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                                )
-                                            }
-                                        }
-                                        
-                                        if (selectedModel == model.id) {
-                                            Icon(
-                                                Icons.Default.Check,
-                                                contentDescription = "Selected",
-                                                tint = Color(0xFF2196F3),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                        
-                                        if (!chatViewModel.isProviderConfigured(provider)) {
-                                            Icon(
-                                                Icons.Default.Warning,
-                                                contentDescription = "Not configured",
-                                                tint = Color(0xFFFF9800),
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                                Text(
-                                    text = "${model.description} - ${model.pricing}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        onClick = {
-                            chatViewModel.selectedModel = model.id
-                            expanded = false
-                        }
-                    )
-                }
-            }
-            
-            // Legacy models if available
-            if (chatViewModel.availableModels.isNotEmpty()) {
-                Text(
-                    text = "Legacy",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-                
-                chatViewModel.availableModels.forEach { model ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = chatViewModel.getModelDisplayName(model),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    if (selectedModel == model) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            tint = Color(0xFF2196F3),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = chatViewModel.getModelDescription(model),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        onClick = {
-                            chatViewModel.selectedModel = model
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
+    }
+
+    // Show modal when button is clicked
+    if (showModal) {
+        ModelSelectorModal(
+            chatViewModel = chatViewModel,
+            selectedModel = selectedModel,
+            onDismiss = { showModal = false }
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibrarySelector(
     chatViewModel: ChatViewModel,
     currentLibrary: Library3D?
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showModal by remember { mutableStateOf(false) }
     val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
-    val availableLibraries = chatViewModel.getAvailableLibraries()
-    
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
+
+    // Library selector button
+    Card(
+        onClick = { showModal = true },
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(6.dp)
     ) {
-        // Library selector button
-        Card(
-            modifier = Modifier.menuAnchor(),
-            onClick = { expanded = true },
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
-            ),
-            shape = RoundedCornerShape(6.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = library.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF4CAF50),
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = Color(0xFF4CAF50),
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            Text(
+                text = library.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF4CAF50),
+                fontSize = 12.sp
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = Color(0xFF4CAF50),
+                modifier = Modifier.size(14.dp)
+            )
         }
-        
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            availableLibraries.forEach { availableLibrary ->
-                DropdownMenuItem(
-                    text = {
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = availableLibrary.displayName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Card(
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                        ),
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = availableLibrary.version,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                        )
-                                    }
-                                    
-                                    if (library.id == availableLibrary.id) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            tint = Color(0xFF4CAF50),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                text = availableLibrary.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    onClick = {
-                        chatViewModel.selectLibrary(availableLibrary.id)
-                        expanded = false
-                    }
-                )
-            }
-        }
+    }
+
+    // Show modal when button is clicked
+    if (showModal) {
+        LibrarySelectorModal(
+            chatViewModel = chatViewModel,
+            currentLibrary = currentLibrary,
+            onDismiss = { showModal = false }
+        )
     }
 }

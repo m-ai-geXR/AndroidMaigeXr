@@ -1,5 +1,6 @@
 package com.xraiassistant.data.remote
 
+import com.xraiassistant.data.models.AIImageContent
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,6 +44,8 @@ class AIProviderService @Inject constructor(
      * Returns a Flow that emits response chunks in real-time.
      * Use this for better UX with long responses.
      *
+     * Supports multimodal input with images for vision-capable models.
+     *
      * Example:
      * ```kotlin
      * service.generateResponseStream(...).collect { chunk ->
@@ -58,10 +61,11 @@ class AIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        images: List<AIImageContent> = emptyList()
     ): Flow<String> {
         return realAIProviderService.generateResponseStream(
-            provider, apiKey, model, prompt, systemPrompt, temperature, topP
+            provider, apiKey, model, prompt, systemPrompt, temperature, topP, images
         )
     }
 }

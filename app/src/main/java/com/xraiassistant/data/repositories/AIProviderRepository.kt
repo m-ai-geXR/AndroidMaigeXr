@@ -2,6 +2,7 @@ package com.xraiassistant.data.repositories
 
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.local.SettingsDataStore
+import com.xraiassistant.data.models.AIImageContent
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -65,7 +66,8 @@ class AIProviderRepository @Inject constructor(
         model: String,
         temperature: Double,
         topP: Double,
-        systemPrompt: String
+        systemPrompt: String,
+        images: List<AIImageContent> = emptyList()
     ): kotlinx.coroutines.flow.Flow<String> {
         val provider = getProviderForModel(model)
         val apiKey = getAPIKeyForProvider(provider)
@@ -81,7 +83,8 @@ class AIProviderRepository @Inject constructor(
             prompt = prompt,
             systemPrompt = systemPrompt,
             temperature = temperature,
-            topP = topP
+            topP = topP,
+            images = images
         )
     }
     

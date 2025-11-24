@@ -225,12 +225,16 @@ class ChatViewModel @Inject constructor(
                 // Collect streaming response
                 val fullResponse = StringBuilder()
 
+                // Get images from state
+                val imagesToSend = _selectedImages.value
+
                 aiProviderRepository.generateResponseStream(
                     prompt = enhancedPrompt,
                     model = _selectedModel.value,
                     temperature = _temperature.value.toDouble(),
                     topP = _topP.value.toDouble(),
-                    systemPrompt = _systemPrompt.value
+                    systemPrompt = _systemPrompt.value,
+                    images = imagesToSend
                 ).collect { chunk ->
                     // Append chunk to full response
                     fullResponse.append(chunk)

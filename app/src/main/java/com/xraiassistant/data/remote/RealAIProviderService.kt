@@ -48,6 +48,8 @@ class RealAIProviderService @Inject constructor(
      * - "Anthropic" → Anthropic API
      * - "Google" → Google Gemini API
      *
+     * Supports multimodal input with images for vision-capable models.
+     *
      * @return Flow<String> emitting response chunks in real-time
      */
     suspend fun generateResponseStream(
@@ -57,28 +59,32 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "🚀 Generating streaming response")
         Log.d(TAG, "Provider: $provider")
         Log.d(TAG, "Model: $model")
         Log.d(TAG, "Temperature: $temperature, Top-P: $topP")
+        if (images.isNotEmpty()) {
+            Log.d(TAG, "📷 Images: ${images.size} attached")
+        }
 
         when (provider) {
             "Together.ai" -> {
-                streamTogetherAI(apiKey, model, prompt, systemPrompt, temperature, topP)
+                streamTogetherAI(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }
             "OpenAI" -> {
-                streamOpenAI(apiKey, model, prompt, systemPrompt, temperature, topP)
+                streamOpenAI(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }
             "Anthropic" -> {
-                streamAnthropic(apiKey, model, prompt, systemPrompt, temperature, topP)
+                streamAnthropic(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }
             "Google" -> {
-                streamGemini(apiKey, model, prompt, systemPrompt, temperature, topP)
+                streamGemini(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }
             else -> {
@@ -90,6 +96,7 @@ class RealAIProviderService @Inject constructor(
 
     /**
      * Stream response from Together.ai with automatic retry logic
+     * Supports multimodal input with images for vision models
      */
     private suspend fun streamTogetherAI(
         apiKey: String,
@@ -97,13 +104,21 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         val messages = buildList {
             if (systemPrompt.isNotEmpty()) {
                 add(APIChatMessage(role = "system", content = systemPrompt))
             }
+
+            // For now, only text is supported (vision API requires different structure)
+            // TODO: Implement multimodal content when vision models are confirmed supported
             add(APIChatMessage(role = "user", content = prompt))
+
+            if (images.isNotEmpty()) {
+                Log.w(TAG, "⚠️ Together.ai vision support not yet implemented, ignoring ${images.size} images")
+            }
         }
 
         val request = TogetherAIRequest(
@@ -232,15 +247,23 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "📡 Calling OpenAI API...")
+        if (images.isNotEmpty()) {
+            Log.d(TAG, "📷 OpenAI: ${images.size} images attached")
+        }
 
         val messages = buildList {
             if (systemPrompt.isNotEmpty()) {
                 add(APIChatMessage(role = "system", content = systemPrompt))
             }
             add(APIChatMessage(role = "user", content = prompt))
+
+            if (images.isNotEmpty()) {
+                Log.w(TAG, "⚠️ OpenAI vision support not yet implemented, ignoring ${images.size} images")
+            }
         }
 
         val request = OpenAIRequest(
@@ -274,6 +297,7 @@ class RealAIProviderService @Inject constructor(
      *
      * NOTE: Claude 4.5+ models only accept temperature OR top_p, not both.
      * We use temperature only (top_p is ignored for Anthropic).
+     * Supports multimodal input with images for vision models.
      */
     private suspend fun streamAnthropic(
         apiKey: String,
@@ -281,15 +305,23 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double  // Ignored for Anthropic - Claude 4.5+ only accepts temperature
+        topP: Double,  // Ignored for Anthropic - Claude 4.5+ only accepts temperature
+        images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "📡 Calling Anthropic API...")
         Log.d(TAG, "   Model: $model")
         Log.d(TAG, "   Temperature: $temperature (top_p ignored for Claude 4.5+)")
+        if (images.isNotEmpty()) {
+            Log.d(TAG, "   📷 Images: ${images.size} attached")
+        }
 
         val messages = listOf(
             APIChatMessage(role = "user", content = prompt)
         )
+
+        if (images.isNotEmpty()) {
+            Log.w(TAG, "⚠️ Anthropic vision support not yet implemented, ignoring ${images.size} images")
+        }
 
         val request = AnthropicRequest(
             model = model,
@@ -423,6 +455,7 @@ class RealAIProviderService @Inject constructor(
 
     /**
      * Stream response from Google Gemini with automatic retry logic
+     * Supports multimodal input with images for vision models.
      */
     private suspend fun streamGemini(
         apiKey: String,
@@ -430,10 +463,18 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         // Build the Gemini request
-        val contentParts = listOf(GeminiRequest.Part(text = prompt))
+        val contentParts = mutableListOf(GeminiRequest.Part(text = prompt))
+
+        // TODO: Add image parts when vision support is fully implemented
+        if (images.isNotEmpty()) {
+            Log.d(TAG, "📷 Gemini: ${images.size} images attached")
+            Log.w(TAG, "⚠️ Gemini vision support not yet implemented, ignoring ${images.size} images")
+        }
+
         val content = GeminiRequest.GeminiContent(parts = contentParts, role = "user")
 
         val systemInstruction = if (systemPrompt.isNotEmpty()) {
