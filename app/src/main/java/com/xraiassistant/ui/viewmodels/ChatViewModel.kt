@@ -210,7 +210,7 @@ class ChatViewModel @Inject constructor(
 
                 // Get current library for context
                 val library = _currentLibrary.value
-                val enhancedPrompt = buildPrompt(content, currentCode, library)
+                val enhancedPrompt = buildPrompt(content, currentCode, library, parentId)
 
                 // Create placeholder AI message that will be updated with streaming chunks
                 val placeholderMessage = ChatMessage.aiMessage(
@@ -1038,8 +1038,13 @@ class ChatViewModel @Inject constructor(
     /**
      * Build enhanced prompt with library context
      */
-    private fun buildPrompt(userMessage: String, currentCode: String, library: Library3D?): String {
-        val libraryContext = library?.let { 
+    private fun buildPrompt(
+        userMessage: String,
+        currentCode: String,
+        library: Library3D?,
+        parentId: String? = null
+    ): String {
+        val libraryContext = library?.let {
             "Current 3D Library: ${it.displayName} (${it.version})\n" +
             "Language: ${it.codeLanguage}\n"
         } ?: ""
@@ -1048,7 +1053,43 @@ class ChatViewModel @Inject constructor(
             "Current code in editor:\n```\n$currentCode\n```\n\n"
         } else ""
 
-        return "$libraryContext$codeContext$userMessage"
+        // Build thread context if this is a reply
+        val threadContext = if (parentId != null) {
+            buildThreadContext(parentId)
+        } else ""
+
+        return "$libraryContext$codeContext$threadContext$userMessage"
+    }
+
+    /**
+     * Build thread context for AI - includes parent message and all replies
+     * This gives the AI full context of the conversation thread
+     */
+    private fun buildThreadContext(parentId: String): String {
+        val messages = _messages.value
+        val parentMessage = messages.firstOrNull { it.id == parentId } ?: return ""
+
+        val threadBuilder = StringBuilder()
+        threadBuilder.append("--- Thread Context ---\n")
+        threadBuilder.append("Original message:\n")
+        threadBuilder.append("${if (parentMessage.isUser) "User" else "Assistant"}: ${parentMessage.content}\n\n")
+
+        // Get all replies in this thread (chronological order)
+        val replies = messages.filter { it.threadParentId == parentId }
+            .sortedBy { it.timestamp }
+
+        if (replies.isNotEmpty()) {
+            threadBuilder.append("Previous replies in this thread:\n")
+            replies.forEach { reply ->
+                threadBuilder.append("${if (reply.isUser) "User" else "Assistant"}: ${reply.content}\n")
+            }
+            threadBuilder.append("\n")
+        }
+
+        threadBuilder.append("--- End Thread Context ---\n")
+        threadBuilder.append("Your reply:\n")
+
+        return threadBuilder.toString()
     }
 
     /**

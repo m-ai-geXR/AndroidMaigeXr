@@ -68,6 +68,11 @@ fun ChatScreen(
         )
         
         // Messages list
+        val expandedThreads by chatViewModel.expandedThreads.collectAsStateWithLifecycle()
+        val topLevelMessages = remember(messages) {
+            messages.filter { it.isTopLevel }
+        }
+
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -76,9 +81,17 @@ fun ChatScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(messages) { message ->
-                ChatMessageCard(
+            items(topLevelMessages) { message ->
+                ThreadedMessageView(
                     message = message,
+                    allMessages = messages,
+                    isExpanded = expandedThreads.contains(message.id),
+                    onReply = { messageId ->
+                        chatViewModel.setReplyTo(messageId)
+                    },
+                    onToggleThread = { messageId ->
+                        chatViewModel.toggleThread(messageId)
+                    },
                     onRunScene = { code, libraryId ->
                         // Run the code from this message
                         chatViewModel.runCodeFromMessage(code, libraryId)
@@ -94,7 +107,7 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            
+
             if (isLoading) {
                 item {
                     LoadingIndicator()
@@ -110,7 +123,17 @@ fun ChatScreen(
                 selectedModel = selectedModel
             )
         }
-        
+
+        // Reply Indicator
+        val replyToMessageId by chatViewModel.replyToMessageId.collectAsStateWithLifecycle()
+        replyToMessageId?.let { replyId ->
+            ReplyIndicator(
+                replyToMessageId = replyId,
+                messages = messages,
+                onCancel = { chatViewModel.clearReplyTo() }
+            )
+        }
+
         // Chat input
         ChatInputField(
             value = chatInput,
