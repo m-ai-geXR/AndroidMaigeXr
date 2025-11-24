@@ -12,13 +12,14 @@ import com.xraiassistant.data.local.entities.MessageEntity
  * Stores chat conversations and messages with full history support
  *
  * @version 1 - Initial database schema
+ * @version 2 - Added threading support (threadParentId, isWelcomeMessage)
  */
 @Database(
     entities = [
         ConversationEntity::class,
         MessageEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false // Set to false for development - enable with schemaLocation in production
 )
 abstract class AppDatabase : RoomDatabase() {

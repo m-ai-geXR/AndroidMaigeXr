@@ -61,7 +61,9 @@ class ConversationRepository @Inject constructor(
                 isUser = message.isUser,
                 timestamp = message.timestamp.time,
                 model = message.model,
-                libraryId = message.libraryId
+                libraryId = message.libraryId,
+                threadParentId = message.threadParentId,
+                isWelcomeMessage = message.isWelcomeMessage
             )
         }
 
@@ -104,7 +106,9 @@ class ConversationRepository @Inject constructor(
                 isUser = message.isUser,
                 timestamp = message.timestamp.time,
                 model = message.model,
-                libraryId = message.libraryId
+                libraryId = message.libraryId,
+                threadParentId = message.threadParentId,
+                isWelcomeMessage = message.isWelcomeMessage
             )
         }
 

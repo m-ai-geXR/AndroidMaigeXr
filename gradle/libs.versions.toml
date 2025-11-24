@@ -35,6 +35,7 @@ coil = "2.5.0"
 
 # Markdown
 commonmark = "0.21.0"
+compose-richtext = "0.17.0"
 
 # Testing
 junit = "4.13.2"
@@ -104,6 +105,9 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 
 # Markdown - Using CommonMark which is available on Maven Central
 commonmark = { group = "org.commonmark", name = "commonmark", version.ref = "commonmark" }
+# Compose RichText for markdown rendering with syntax highlighting
+compose-richtext-commonmark = { group = "com.halilibo.compose-richtext", name = "richtext-commonmark", version.ref = "compose-richtext" }
+compose-richtext-ui = { group = "com.halilibo.compose-richtext", name = "richtext-ui", version.ref = "compose-richtext" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

@@ -98,6 +98,13 @@ class ChatViewModel @Inject constructor(
     // Track if first AI response has been shown (for loading random demo)
     private var hasShownFirstResponse = false
 
+    // MARK: - Threading Support
+    private val _expandedThreads = MutableStateFlow<Set<String>>(emptySet())
+    val expandedThreads: StateFlow<Set<String>> = _expandedThreads.asStateFlow()
+
+    private val _replyToMessageId = MutableStateFlow<String?>(null)
+    val replyToMessageId: StateFlow<String?> = _replyToMessageId.asStateFlow()
+
     // MARK: - Chat History / Conversation Tracking
     // Track current conversation ID (null for new unsaved conversation)
     private var currentConversationId: String? = null
@@ -174,7 +181,7 @@ class ChatViewModel @Inject constructor(
      *
      * Provides real-time feedback as AI generates response, matching iOS behavior.
      */
-    fun sendMessage(content: String, currentCode: String = "") {
+    fun sendMessage(content: String, currentCode: String = "", threadParentId: String? = null) {
         if (content.isBlank()) return
 
         viewModelScope.launch {
@@ -182,9 +189,20 @@ class ChatViewModel @Inject constructor(
                 _isLoading.value = true
                 _errorMessage.value = null
 
-                // Add user message
-                val userMessage = ChatMessage.userMessage(content)
+                // Determine parent ID: use provided threadParentId or current replyToMessageId
+                val parentId = threadParentId ?: _replyToMessageId.value
+
+                // Add user message with threading support
+                val userMessage = ChatMessage.userMessage(
+                    content = content,
+                    threadParentId = parentId
+                )
                 _messages.value = _messages.value + userMessage
+
+                // Clear reply state after sending
+                if (parentId != null) {
+                    clearReplyTo()
+                }
 
                 // Get current library for context
                 val library = _currentLibrary.value
@@ -194,7 +212,8 @@ class ChatViewModel @Inject constructor(
                 val placeholderMessage = ChatMessage.aiMessage(
                     content = "",
                     model = getModelDisplayName(_selectedModel.value),
-                    libraryId = _currentLibrary.value?.id  // Track which library this message is for
+                    libraryId = _currentLibrary.value?.id,  // Track which library this message is for
+                    threadParentId = parentId  // AI reply goes in same thread
                 )
                 _messages.value = _messages.value + placeholderMessage
                 val messageIndex = _messages.value.lastIndex
@@ -217,7 +236,8 @@ class ChatViewModel @Inject constructor(
                     updatedMessages[messageIndex] = ChatMessage.aiMessage(
                         content = fullResponse.toString(),
                         model = getModelDisplayName(_selectedModel.value),
-                        libraryId = _currentLibrary.value?.id
+                        libraryId = _currentLibrary.value?.id,
+                        threadParentId = parentId
                     )
                     _messages.value = updatedMessages
                 }
@@ -1076,5 +1096,45 @@ class ChatViewModel @Inject constructor(
      */
     fun showSettingsSaved() {
         _uiState.value = _uiState.value.copy(settingsSaved = true)
+    }
+
+    // MARK: - Threading Methods
+
+    /**
+     * Toggle thread expansion for a specific message
+     * Equivalent to iOS onToggleThread callback
+     */
+    fun toggleThread(messageId: String) {
+        _expandedThreads.value = if (_expandedThreads.value.contains(messageId)) {
+            _expandedThreads.value - messageId
+        } else {
+            _expandedThreads.value + messageId
+        }
+    }
+
+    /**
+     * Set which message the user is replying to
+     * Equivalent to iOS onReply callback
+     */
+    fun setReplyTo(messageId: String) {
+        _replyToMessageId.value = messageId
+        // Automatically expand the thread when replying
+        if (!_expandedThreads.value.contains(messageId)) {
+            _expandedThreads.value = _expandedThreads.value + messageId
+        }
+    }
+
+    /**
+     * Clear the reply target
+     */
+    fun clearReplyTo() {
+        _replyToMessageId.value = null
+    }
+
+    /**
+     * Check if a thread is expanded
+     */
+    fun isThreadExpanded(messageId: String): Boolean {
+        return _expandedThreads.value.contains(messageId)
     }
 }

@@ -6,7 +6,8 @@
       "Bash(./gradlew assembleDebug:*)",
       "WebFetch(domain:ai.google.dev)",
       "WebSearch",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(./gradlew clean:*)"
     ],
     "deny": [],
     "ask": []

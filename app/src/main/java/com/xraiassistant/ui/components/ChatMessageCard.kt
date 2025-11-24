@@ -104,17 +104,22 @@ fun ChatMessageCard(
                     }
                     
                     Spacer(modifier = Modifier.height(6.dp))
-                    
-                    // Message content
-                    Text(
-                        text = message.content,
-                        color = if (message.isUser) {
-                            MaterialTheme.colorScheme.onPrimary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+
+                    // Message content with markdown rendering
+                    if (!message.isUser) {
+                        // AI messages: Render with markdown support
+                        MarkdownText(
+                            markdown = message.content,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        // User messages: Plain text
+                        Text(
+                            text = message.content,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
 

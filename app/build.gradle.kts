@@ -123,6 +123,8 @@ dependencies {
 
     // Markdown
     implementation(libs.commonmark)
+    implementation(libs.compose.richtext.commonmark)
+    implementation(libs.compose.richtext.ui)
 
     // Testing
     testImplementation(libs.junit)

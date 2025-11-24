@@ -6,9 +6,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Room entity for storing individual chat messages
+ * Room entity for storing individual chat messages with threading support
  *
  * Foreign key relationship with ConversationEntity ensures data integrity
+ * Threading support allows for nested reply chains
  */
 @Entity(
     tableName = "messages",
@@ -20,7 +21,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE // Delete messages when conversation is deleted
         )
     ],
-    indices = [Index("conversationId")] // Index for faster queries
+    indices = [
+        Index("conversationId"),
+        Index("threadParentId") // Index for efficient thread lookups
+    ]
 )
 data class MessageEntity(
     @PrimaryKey
@@ -30,5 +34,7 @@ data class MessageEntity(
     val isUser: Boolean,
     val timestamp: Long,
     val model: String?,
-    val libraryId: String?
+    val libraryId: String?,
+    val threadParentId: String? = null,  // Reference to parent message for threading
+    val isWelcomeMessage: Boolean = false  // Mark welcome messages
 )
