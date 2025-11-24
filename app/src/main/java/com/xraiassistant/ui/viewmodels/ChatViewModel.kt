@@ -105,6 +105,10 @@ class ChatViewModel @Inject constructor(
     private val _replyToMessageId = MutableStateFlow<String?>(null)
     val replyToMessageId: StateFlow<String?> = _replyToMessageId.asStateFlow()
 
+    // MARK: - Multimodal Support (Images)
+    private val _selectedImages = MutableStateFlow<List<com.xraiassistant.data.models.AIImageContent>>(emptyList())
+    val selectedImages: StateFlow<List<com.xraiassistant.data.models.AIImageContent>> = _selectedImages.asStateFlow()
+
     // MARK: - Chat History / Conversation Tracking
     // Track current conversation ID (null for new unsaved conversation)
     private var currentConversationId: String? = null
@@ -1136,5 +1140,48 @@ class ChatViewModel @Inject constructor(
      */
     fun isThreadExpanded(messageId: String): Boolean {
         return _expandedThreads.value.contains(messageId)
+    }
+
+    // MARK: - Image Management Methods
+
+    /**
+     * Add images to the current selection
+     * Equivalent to iOS image selection handling
+     */
+    fun addImages(images: List<com.xraiassistant.data.models.AIImageContent>) {
+        _selectedImages.value = _selectedImages.value + images
+    }
+
+    /**
+     * Remove an image at the specified index
+     */
+    fun removeImageAt(index: Int) {
+        val currentImages = _selectedImages.value.toMutableList()
+        if (index in currentImages.indices) {
+            currentImages.removeAt(index)
+            _selectedImages.value = currentImages
+        }
+    }
+
+    /**
+     * Clear all selected images
+     */
+    fun clearImages() {
+        _selectedImages.value = emptyList()
+    }
+
+    /**
+     * Check if the current AI model supports vision
+     */
+    fun currentModelSupportsVision(): Boolean {
+        // Check if selected model supports vision
+        val modelId = _selectedModel.value
+        return when {
+            modelId.contains("gpt-4", ignoreCase = true) && modelId.contains("vision", ignoreCase = true) -> true
+            modelId.contains("claude-3", ignoreCase = true) -> true
+            modelId.contains("gemini", ignoreCase = true) && modelId.contains("pro-vision", ignoreCase = true) -> true
+            modelId.contains("llama", ignoreCase = true) && modelId.contains("vision", ignoreCase = true) -> true
+            else -> false
+        }
     }
 }

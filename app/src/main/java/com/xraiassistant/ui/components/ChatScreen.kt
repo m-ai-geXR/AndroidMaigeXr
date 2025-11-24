@@ -119,10 +119,12 @@ fun ChatScreen(
                 if (chatInput.isNotBlank()) {
                     chatViewModel.sendMessage(chatInput.trim())
                     chatInput = ""
+                    chatViewModel.clearImages()  // Clear images after sending
                     keyboardController?.hide()
                 }
             },
             enabled = !isLoading,
+            chatViewModel = chatViewModel,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -297,55 +299,85 @@ private fun ChatInputField(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     enabled: Boolean,
+    chatViewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
+    val selectedImages by chatViewModel.selectedImages.collectAsState()
+
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = modifier
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Bottom
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(stringResource(R.string.chat_input_hint))
-                },
-                enabled = enabled,
-                singleLine = true,  // CRITICAL: Prevents newline, enables Enter to send
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Send
-                ),
-                keyboardActions = KeyboardActions(
-                    onSend = { if (enabled) onSend() }
+            // Image preview row
+            if (selectedImages.isNotEmpty()) {
+                ImagePreviewRow(
+                    images = selectedImages,
+                    onRemoveImage = { index ->
+                        chatViewModel.removeImageAt(index)
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            FloatingActionButton(
-                onClick = onSend,
-                modifier = Modifier.size(48.dp),
-                containerColor = if (value.isBlank() || !enabled) {
-                    MaterialTheme.colorScheme.surfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.primary
-                }
+            }
+
+            // Input row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.Bottom
             ) {
-                Icon(
-                    Icons.Filled.Send,
-                    contentDescription = "Send",
-                    tint = if (value.isBlank() || !enabled) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.onPrimary
-                    }
+                // Image picker button
+                ImagePickerButton(
+                    selectedImages = selectedImages,
+                    onImagesSelected = { images ->
+                        chatViewModel.addImages(images)
+                    },
+                    maxImages = 5
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text(stringResource(R.string.chat_input_hint))
+                    },
+                    enabled = enabled,
+                    singleLine = true,  // CRITICAL: Prevents newline, enables Enter to send
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Send
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSend = { if (enabled) onSend() }
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                FloatingActionButton(
+                    onClick = onSend,
+                    modifier = Modifier.size(48.dp),
+                    containerColor = if (value.isBlank() || !enabled) {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
+                ) {
+                    Icon(
+                        Icons.Filled.Send,
+                        contentDescription = "Send",
+                        tint = if (value.isBlank() || !enabled) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onPrimary
+                        }
+                    )
+                }
             }
         }
     }
