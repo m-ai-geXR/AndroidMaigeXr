@@ -10,7 +10,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class APIChatMessage(
     @Json(name = "role") val role: String,
-    @Json(name = "content") val content: String
+    @Json(name = "content") val content: Any  // Can be String (text-only) or List<Map<String, Any>> (multimodal)
 )
 
 @JsonClass(generateAdapter = true)
@@ -165,7 +165,14 @@ data class GeminiRequest(
 
     @JsonClass(generateAdapter = true)
     data class Part(
-        @Json(name = "text") val text: String
+        @Json(name = "text") val text: String? = null,
+        @Json(name = "inline_data") val inlineData: InlineData? = null
+    )
+
+    @JsonClass(generateAdapter = true)
+    data class InlineData(
+        @Json(name = "mime_type") val mimeType: String,
+        @Json(name = "data") val data: String  // base64-encoded image data
     )
 
     @JsonClass(generateAdapter = true)

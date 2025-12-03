@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**XRAiAssistant Android** is a revolutionary AI-powered Extended Reality development platform for Android that combines Babylon.js, Together AI, and modern Android development into the ultimate mobile XR development environment with advanced AI assistance capabilities.
+**m{ai}geXR Android** is a revolutionary AI-powered Extended Reality development platform for Android that combines Babylon.js, Together AI, and modern Android development into the ultimate mobile XR development environment with advanced AI assistance capabilities.
 
 > **The Ultimate Mobile XR Development Environment for Android**
 > Democratizing 3D and Extended Reality development through conversational AI assistance, professional parameter control, and privacy-first architecture.

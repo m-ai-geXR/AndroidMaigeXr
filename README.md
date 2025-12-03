@@ -1,8 +1,8 @@
-# XRAiAssistant Android
+# m{ai}geXR Android
 
 **AI-powered Extended Reality development platform for Android**
 
-Kotlin/Compose port of the iOS XRAiAssistant application, bringing the same powerful AI-assisted 3D development capabilities to Android devices.
+Kotlin/Compose implementation of m{ai}geXR, bringing powerful AI-assisted 3D development capabilities to Android devices.
 
 ## Features
 
@@ -217,8 +217,8 @@ See LICENSE file for details.
 
 ---
 
-## **XRAiAssistant: The Future of AI-Powered XR Development**
+## **m{ai}geXR: The Future of AI-Powered XR Development**
 
-This Android implementation brings the groundbreaking XRAiAssistant experience to the world's most popular mobile platform. Whether you're learning 3D programming, prototyping XR experiences, or building professional applications, XRAiAssistant makes 3D development as simple as having a conversation.
+This Android implementation brings the groundbreaking m{ai}geXR experience to the world's most popular mobile platform. Whether you're learning 3D programming, prototyping XR experiences, or building professional applications, m{ai}geXR makes 3D development as simple as having a conversation.
 
 **From idea to immersive experience in seconds. That's the power of AI-assisted XR development.** 🚀

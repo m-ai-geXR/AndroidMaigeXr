@@ -107,7 +107,7 @@ class RealAIProviderService @Inject constructor(
         topP: Double,
         images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
-        val messages = buildList {
+        val messages = buildList<APIChatMessage> {
             if (systemPrompt.isNotEmpty()) {
                 add(APIChatMessage(role = "system", content = systemPrompt))
             }
@@ -255,15 +255,30 @@ class RealAIProviderService @Inject constructor(
             Log.d(TAG, "📷 OpenAI: ${images.size} images attached")
         }
 
-        val messages = buildList {
+        // Build OpenAI messages with multimodal support (matching iOS OpenAIProvider.swift lines 138-172)
+        val userMessageContent: Any = if (images.isEmpty()) {
+            // Simple text-only message
+            prompt
+        } else {
+            // Multimodal message (text + images)
+            buildList<Map<String, Any>> {
+                add(mapOf("type" to "text", "text" to prompt))
+                images.forEach { imageContent ->
+                    add(mapOf(
+                        "type" to "image_url",
+                        "image_url" to mapOf(
+                            "url" to "data:${imageContent.mimeType};base64,${imageContent.base64String}"
+                        )
+                    ))
+                }
+            }
+        }
+
+        val messages = buildList<APIChatMessage> {
             if (systemPrompt.isNotEmpty()) {
                 add(APIChatMessage(role = "system", content = systemPrompt))
             }
-            add(APIChatMessage(role = "user", content = prompt))
-
-            if (images.isNotEmpty()) {
-                Log.w(TAG, "⚠️ OpenAI vision support not yet implemented, ignoring ${images.size} images")
-            }
+            add(APIChatMessage(role = "user", content = userMessageContent))
         }
 
         val request = OpenAIRequest(
@@ -315,13 +330,30 @@ class RealAIProviderService @Inject constructor(
             Log.d(TAG, "   📷 Images: ${images.size} attached")
         }
 
-        val messages = listOf(
-            APIChatMessage(role = "user", content = prompt)
-        )
-
-        if (images.isNotEmpty()) {
-            Log.w(TAG, "⚠️ Anthropic vision support not yet implemented, ignoring ${images.size} images")
+        // Build Anthropic message with multimodal support (matching iOS AnthropicProvider.swift lines 250-286)
+        val messageContent: Any = if (images.isEmpty()) {
+            // Simple text-only message
+            prompt
+        } else {
+            // Multimodal message (text + images)
+            buildList<Map<String, Any>> {
+                add(mapOf("type" to "text", "text" to prompt))
+                images.forEach { imageContent ->
+                    add(mapOf(
+                        "type" to "image",
+                        "source" to mapOf(
+                            "type" to "base64",
+                            "media_type" to imageContent.mimeType,
+                            "data" to imageContent.base64String
+                        )
+                    ))
+                }
+            }
         }
+
+        val messages = listOf(
+            APIChatMessage(role = "user", content = messageContent)
+        )
 
         val request = AnthropicRequest(
             model = model,
@@ -466,13 +498,25 @@ class RealAIProviderService @Inject constructor(
         topP: Double,
         images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
-        // Build the Gemini request
-        val contentParts = mutableListOf(GeminiRequest.Part(text = prompt))
+        // Build the Gemini request with multimodal support (matching iOS implementation)
+        val contentParts = mutableListOf<GeminiRequest.Part>()
 
-        // TODO: Add image parts when vision support is fully implemented
+        // Add text part
+        contentParts.add(GeminiRequest.Part(text = prompt))
+
+        // Add image parts if present (matching iOS GoogleAIProvider.swift lines 190-195)
         if (images.isNotEmpty()) {
             Log.d(TAG, "📷 Gemini: ${images.size} images attached")
-            Log.w(TAG, "⚠️ Gemini vision support not yet implemented, ignoring ${images.size} images")
+            images.forEach { imageContent ->
+                contentParts.add(
+                    GeminiRequest.Part(
+                        inlineData = GeminiRequest.InlineData(
+                            mimeType = imageContent.mimeType,
+                            data = imageContent.base64String
+                        )
+                    )
+                )
+            }
         }
 
         val content = GeminiRequest.GeminiContent(parts = contentParts, role = "user")
