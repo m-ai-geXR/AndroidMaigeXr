@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,6 +50,8 @@ fun SceneScreen(
     val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
     val currentLibrary by chatViewModel.currentLibrary.collectAsStateWithLifecycle()
+    val sandboxUrl by chatViewModel.sandboxUrl.collectAsStateWithLifecycle()
+    val isBuildingCode by chatViewModel.isBuildingCode.collectAsStateWithLifecycle()
     val isCodeInjecting = uiState.isInjectingCode
 
     var webView by remember { mutableStateOf<WebView?>(null) }
@@ -83,13 +86,20 @@ fun SceneScreen(
 
             lastInjectedCode = lastGeneratedCode
 
-            // Start injection with retry - longer initial delay for Monaco to fully initialize
-            coroutineScope.launch {
-                // Give Monaco more time: 5s for initial load, 1s if already confirmed ready
-                val initialDelay = if (monacoReady) 1000L else 5000L
-                println("⏰ Waiting ${initialDelay}ms before injection attempt...")
-                delay(initialDelay)
-                injectCodeWithRetry(webView!!, lastGeneratedCode, maxRetries = 5)
+            // IMPORTANT: Use CodeSandbox for React Three Fiber, direct injection for others
+            if (currentLibrary?.id == "reactThreeFiber") {
+                println("🏗️ [SceneScreen] React Three Fiber detected - using CodeSandbox build")
+                chatViewModel.buildWithCodeSandbox(lastGeneratedCode, currentLibrary?.id)
+            } else {
+                println("📝 [SceneScreen] Using direct injection for ${currentLibrary?.displayName}")
+                // Start injection with retry - longer initial delay for Monaco to fully initialize
+                coroutineScope.launch {
+                    // Give Monaco more time: 5s for initial load, 1s if already confirmed ready
+                    val initialDelay = if (monacoReady) 1000L else 5000L
+                    println("⏰ Waiting ${initialDelay}ms before injection attempt...")
+                    delay(initialDelay)
+                    injectCodeWithRetry(webView!!, lastGeneratedCode, maxRetries = 5)
+                }
             }
         } else {
             if (lastGeneratedCode.isEmpty()) {
@@ -152,6 +162,7 @@ fun SceneScreen(
                 println("❌ WebView error: $error")
             },
             lastGeneratedCode = lastGeneratedCode,
+            sandboxUrl = sandboxUrl,
             modifier = Modifier.fillMaxSize()
         )
         
@@ -159,13 +170,49 @@ fun SceneScreen(
         if (hasGeneratedCode && !webViewLoaded) {
             CodeInjectionOverlay()
         }
-        
+
+        // Loading overlay for CodeSandbox build
+        if (isBuildingCode) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .widthIn(max = 400.dp),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "Building with CodeSandbox...",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Creating sandbox with React, Three.js, and dependencies...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+
         // Error overlay if WebView fails
         webViewError?.let { error ->
             ErrorOverlay(
                 error = error,
                 onDismiss = { webViewError = null },
-                onRetry = { 
+                onRetry = {
                     webViewError = null
                     webView?.reload()
                 }
@@ -211,7 +258,7 @@ private fun SceneToolbar(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            
+
             // Right side - Controls
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -236,7 +283,7 @@ private fun SceneToolbar(
                         )
                     }
                 }
-                
+
                 // Layout selector
                 Box {
                     IconButton(
@@ -312,6 +359,7 @@ private fun PlaygroundWebView(
     onWebViewLoaded: () -> Unit,
     onWebViewError: (String) -> Unit,
     lastGeneratedCode: String,
+    sandboxUrl: String?,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -386,7 +434,20 @@ private fun PlaygroundWebView(
                     allowFileAccessFromFileURLs = true
                     allowUniversalAccessFromFileURLs = true
                     databaseEnabled = true
+
+                    // Enable mixed content for CodeSandbox embeds
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
+                    // Performance optimizations for heavy content like CodeSandbox
+                    cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                    setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH)
+
+                    // Enable Web Workers and SharedArrayBuffer for CodeSandbox
+                    javaScriptCanOpenWindowsAutomatically = true
                 }
+
+                // Enable hardware acceleration for better performance
+                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
 
                 // Add JavaScript interface for bidirectional communication (iOS WKScriptMessageHandler equivalent)
                 addJavascriptInterface(
@@ -430,9 +491,33 @@ private fun PlaygroundWebView(
             }
         },
         update = { webView ->
-            // Reload WebView when library changes
-            if (currentLibrary?.id != lastLoadedLibrary && currentLibrary != null) {
+            // PRIORITY 1: Load CodeSandbox URL if available (for React Three Fiber builds)
+            if (sandboxUrl != null && lastLoadedLibrary != "codesandbox") {
+                println("🔗 Loading CodeSandbox preview: $sandboxUrl")
+                println("📦 This is a server-bundled React Three Fiber sandbox")
+
+                // Load asynchronously to avoid blocking main thread (ANR prevention)
+                webView.post {
+                    try {
+                        webView.loadUrl(sandboxUrl!!)
+                        lastLoadedLibrary = "codesandbox"
+                        println("✅ CodeSandbox URL loaded successfully")
+                    } catch (e: Exception) {
+                        println("❌ Failed to load CodeSandbox URL: ${e.message}")
+                        onWebViewError("Failed to load CodeSandbox: ${e.message}")
+                    }
+                }
+            }
+            // PRIORITY 2: Reload WebView when library changes (fallback to local HTML)
+            // Also handle switching from CodeSandbox to local libraries
+            else if (currentLibrary?.id != lastLoadedLibrary && currentLibrary != null && sandboxUrl == null) {
                 println("🔄 Library changed from $lastLoadedLibrary to ${currentLibrary.id}, reloading WebView...")
+
+                // If switching from CodeSandbox, force reload
+                val forceReload = lastLoadedLibrary == "codesandbox"
+                if (forceReload) {
+                    println("🔄 Switching from CodeSandbox to local playground - forcing reload")
+                }
 
                 try {
                     val playgroundTemplate = currentLibrary.playgroundTemplate

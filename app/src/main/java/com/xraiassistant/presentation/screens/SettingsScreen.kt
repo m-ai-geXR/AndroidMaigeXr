@@ -78,7 +78,7 @@ fun SettingsScreen(
         togetherApiKey = viewModel.getRawAPIKey("Together.ai")
         openaiApiKey = viewModel.getRawAPIKey("OpenAI")
         anthropicApiKey = viewModel.getRawAPIKey("Anthropic")
-        googleApiKey = viewModel.getRawAPIKey("Google")
+        googleApiKey = viewModel.getRawAPIKey("Google AI")
         codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox")
         selectedModel = viewModel.selectedModel
         selectedLibrary = viewModel.currentLibraryId
@@ -118,7 +118,7 @@ fun SettingsScreen(
                                 viewModel.setAPIKey("Together.ai", togetherApiKey)
                                 viewModel.setAPIKey("OpenAI", openaiApiKey)
                                 viewModel.setAPIKey("Anthropic", anthropicApiKey)
-                                viewModel.setAPIKey("Google", googleApiKey)
+                                viewModel.setAPIKey("Google AI", googleApiKey)
                                 viewModel.setAPIKey("CodeSandbox", codesandboxApiKey)
 
                                 // Update model settings
@@ -282,12 +282,12 @@ private fun ApiConfigurationSection(
 
             // Google Gemini API Key
             ProviderAPIKeyView(
-                provider = "Google",
+                provider = "Google AI",
                 description = "Get your API key from aistudio.google.com/apikey",
                 color = Color(0xFFEA4335), // Google Red
                 apiKey = googleApiKey,
                 onApiKeyChange = onGoogleApiKeyChange,
-                isConfigured = viewModel.isProviderConfigured("Google")
+                isConfigured = viewModel.isProviderConfigured("Google AI")
             )
 
             // CodeSandbox API Key (Optional)

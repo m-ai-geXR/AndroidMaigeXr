@@ -1925,9 +1925,11 @@
             console.log('Creating A-Frame fallback scene');
             const container = document.getElementById('aframe-container');
             container.innerHTML = `
-                <a-scene embedded background="color: #333">
-                    <a-light type="ambient" color="#404040"></a-light>
-                    <a-box position="0 1 -3" color="#00ff00"></a-box>
+                <a-scene embedded background="color: #87CEEB">
+                    <a-light type="ambient" color="#fff" intensity="0.6"></a-light>
+                    <a-light type="directional" color="#fff" intensity="0.5" position="1 1 1"></a-light>
+                    <a-box position="0 1 -3" color="#00ff00" shadow></a-box>
+                    <a-plane position="0 0 -4" rotation="-90 0 0" width="10" height="10" color="#7BC8A4" shadow></a-plane>
                     <a-camera look-controls wasd-controls position="0 1.6 0">
                         <a-cursor color="#fff"></a-cursor>
                     </a-camera>

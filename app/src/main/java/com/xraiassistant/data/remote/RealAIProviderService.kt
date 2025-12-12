@@ -46,7 +46,7 @@ class RealAIProviderService @Inject constructor(
      * - "Together.ai" → Together.ai API
      * - "OpenAI" → OpenAI API
      * - "Anthropic" → Anthropic API
-     * - "Google" → Google Gemini API
+     * - "Google AI" → Google Gemini API
      *
      * Supports multimodal input with images for vision-capable models.
      *
@@ -83,7 +83,7 @@ class RealAIProviderService @Inject constructor(
                 streamAnthropic(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }
-            "Google" -> {
+            "Google AI" -> {
                 streamGemini(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }

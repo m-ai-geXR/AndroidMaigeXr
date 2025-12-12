@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.xraiassistant.data.models.AIModel
 import com.xraiassistant.data.models.AIModels
 import com.xraiassistant.data.models.ChatMessage
+import com.xraiassistant.data.models.CodeSandboxDefineRequest
+import com.xraiassistant.data.models.CodeSandboxTemplates
+import com.xraiassistant.data.remote.CodeSandboxService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
 import com.xraiassistant.data.repositories.Library3DRepository
@@ -12,6 +15,7 @@ import com.xraiassistant.data.repositories.SettingsRepository
 import com.xraiassistant.domain.models.Library3D
 import com.xraiassistant.ui.screens.AppView
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,7 +44,8 @@ class ChatViewModel @Inject constructor(
     private val aiProviderRepository: AIProviderRepository,
     private val library3DRepository: Library3DRepository,
     private val settingsRepository: SettingsRepository,
-    private val conversationRepository: ConversationRepository  // NEW: For chat history
+    private val conversationRepository: ConversationRepository,  // For chat history
+    private val codeSandboxService: CodeSandboxService  // For building React Three Fiber code
 ) : ViewModel() {
 
     // MARK: - UI State
@@ -64,7 +69,7 @@ class ChatViewModel @Inject constructor(
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     // MARK: - AI Configuration
-    private val _selectedModel = MutableStateFlow(AIModels.DEEPSEEK_R1.id)
+    private val _selectedModel = MutableStateFlow(AIModels.DEEPSEEK_R1_70B.id)
     var selectedModel: String
         get() = _selectedModel.value
         set(value) { _selectedModel.value = value }
@@ -94,6 +99,13 @@ class ChatViewModel @Inject constructor(
     // MARK: - Generated Code
     private val _lastGeneratedCode = MutableStateFlow("")
     val lastGeneratedCode: StateFlow<String> = _lastGeneratedCode.asStateFlow()
+
+    // MARK: - CodeSandbox URL (for React Three Fiber builds)
+    private val _sandboxUrl = MutableStateFlow<String?>(null)
+    val sandboxUrl: StateFlow<String?> = _sandboxUrl.asStateFlow()
+
+    private val _isBuildingCode = MutableStateFlow(false)
+    val isBuildingCode: StateFlow<Boolean> = _isBuildingCode.asStateFlow()
 
     // Track if first AI response has been shown (for loading random demo)
     private var hasShownFirstResponse = false
@@ -655,6 +667,8 @@ class ChatViewModel @Inject constructor(
      * Run code from a chat message
      * Public method for "Run Scene" button functionality
      * Equivalent to iOS onRun callback in ThreadedMessageView
+     *
+     * UPDATED: Uses CodeSandbox API for React Three Fiber, Babel for other libraries
      */
     fun runCodeFromMessage(code: String, libraryId: String?) {
         println("🎯 Running code from message (${code.length} chars) with library: ${libraryId ?: "current"}")
@@ -666,18 +680,102 @@ class ChatViewModel @Inject constructor(
                 // Switch to the target library
                 println("🔄 Switching from ${_currentLibrary.value?.displayName} to ${library.displayName}")
                 _currentLibrary.value = library
+
+                // Clear CodeSandbox URL when switching away from React Three Fiber
+                if (library.id != "reactThreeFiber") {
+                    _sandboxUrl.value = null
+                    println("🧹 Cleared CodeSandbox URL when switching to ${library.displayName}")
+                }
             }
             library
         } else {
             _currentLibrary.value
         }
 
-        // Inject the code
-        injectCode(code, targetLibrary)
+        // IMPORTANT: Use CodeSandbox for React Three Fiber, regular injection for others
+        if (targetLibrary?.id == "reactThreeFiber") {
+            println("🏗️ React Three Fiber detected - using CodeSandbox build")
+            buildWithCodeSandbox(code, libraryId)
+        } else {
+            // For other libraries (BabylonJS, Three.js, A-Frame), use direct injection
+            println("📝 Using direct injection for ${targetLibrary?.displayName}")
+            injectCode(code, targetLibrary)
+            // Automatically trigger run scene
+            println("✅ Code injected, triggering scene run")
+            onRunScene?.invoke()
+        }
+    }
 
-        // Automatically trigger run scene
-        println("✅ Code injected, triggering scene run")
-        onRunScene?.invoke()
+    /**
+     * Build code with CodeSandbox API
+     *
+     * Creates a CodeSandbox sandbox for React Three Fiber code and returns the preview URL.
+     * This replaces client-side Babel transpilation with server-side bundling.
+     *
+     * @param code The React Three Fiber component code
+     * @param libraryId The library ID (defaults to current library)
+     * @return CodeSandbox preview URL (e.g., https://codesandbox.io/s/abc123)
+     */
+    fun buildWithCodeSandbox(code: String, libraryId: String? = null) {
+        viewModelScope.launch {
+            try {
+                _isBuildingCode.value = true
+                _statusMessage.value = "🏗️ Building with CodeSandbox..."
+                println("🏗️ Building code with CodeSandbox (${code.length} chars)")
+
+                // Determine which library to use
+                val library = libraryId?.let { library3DRepository.getLibraryById(it) }
+                    ?: _currentLibrary.value
+
+                // Create sandbox files based on library type
+                val files = when (library?.id) {
+                    "reactThreeFiber" -> CodeSandboxTemplates.createReactThreeFiberSandbox(code)
+                    "threejs" -> CodeSandboxTemplates.createThreeJSSandbox(code)
+                    "aframe" -> CodeSandboxTemplates.createAFrameSandbox(code)
+                    else -> {
+                        println("⚠️ Library ${library?.id} not supported for CodeSandbox, defaulting to React Three Fiber")
+                        CodeSandboxTemplates.createReactThreeFiberSandbox(code)
+                    }
+                }
+
+                // Create the request
+                val request = CodeSandboxDefineRequest(files)
+
+                // Call CodeSandbox API
+                println("📡 Calling CodeSandbox Define API...")
+                val response = codeSandboxService.createSandbox(request = request)
+
+                // Construct preview URL - use /embed/ for lighter WebView-compatible version
+                val sandboxId = response.sandboxId ?: response.id
+                if (sandboxId != null) {
+                    // Use embed URL which is optimized for iframes and WebViews
+                    val previewUrl = "https://codesandbox.io/embed/$sandboxId?view=preview&hidenavigation=1"
+                    _sandboxUrl.value = previewUrl
+                    _lastGeneratedCode.value = code
+
+                    println("✅ CodeSandbox created successfully!")
+                    println("🔗 Sandbox URL: $previewUrl")
+                    _statusMessage.value = "✅ Build complete! Loading preview..."
+
+                    // Keep loading indicator visible for a few more seconds while WebView loads
+                    // This prevents ANR by showing user that something is happening
+                    viewModelScope.launch {
+                        delay(3000) // Give WebView time to start loading
+                        _isBuildingCode.value = false
+                        _statusMessage.value = null
+                    }
+                } else {
+                    throw Exception("CodeSandbox API returned no sandbox ID")
+                }
+
+            } catch (e: Exception) {
+                println("❌ CodeSandbox build failed: ${e.message}")
+                e.printStackTrace()
+                _errorMessage.value = "Build failed: ${e.message}"
+                _statusMessage.value = null
+                _isBuildingCode.value = false
+            }
+        }
     }
 
     /**
@@ -692,6 +790,13 @@ class ChatViewModel @Inject constructor(
             if (library != null && library.id != _currentLibrary.value?.id) {
                 // Switch to the target library
                 println("🔄 Switching to ${library.displayName} for demo")
+
+                // Clear CodeSandbox URL when switching away from React Three Fiber
+                if (library.id != "reactThreeFiber" && _sandboxUrl.value != null) {
+                    _sandboxUrl.value = null
+                    println("🧹 [loadRandomDemoExample] Cleared CodeSandbox URL when switching to ${library.displayName}")
+                }
+
                 _currentLibrary.value = library
             }
             library
@@ -765,6 +870,13 @@ class ChatViewModel @Inject constructor(
     fun selectLibrary(libraryId: String) {
         viewModelScope.launch {
             val library = library3DRepository.getLibraryById(libraryId)
+
+            // Clear CodeSandbox URL when switching away from React Three Fiber
+            if (libraryId != "reactThreeFiber" && _sandboxUrl.value != null) {
+                _sandboxUrl.value = null
+                println("🧹 [selectLibrary] Cleared CodeSandbox URL when switching to ${library?.displayName}")
+            }
+
             _currentLibrary.value = library
 
             library?.let {

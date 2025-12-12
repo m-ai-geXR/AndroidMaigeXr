@@ -4,6 +4,7 @@ import android.util.Log
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.xraiassistant.data.remote.AnthropicService
+import com.xraiassistant.data.remote.CodeSandboxService
 import com.xraiassistant.data.remote.GeminiService
 import com.xraiassistant.data.remote.OpenAIService
 import com.xraiassistant.data.remote.TogetherAIService
@@ -52,6 +53,10 @@ object NetworkModule {
     @Qualifier
     @Retention(AnnotationRetention.BINARY)
     annotation class Google
+
+    @Qualifier
+    @Retention(AnnotationRetention.BINARY)
+    annotation class CodeSandbox
 
     /**
      * Moshi for JSON serialization
@@ -225,4 +230,29 @@ object NetworkModule {
     fun provideGeminiService(
         @Google retrofit: Retrofit
     ): GeminiService = retrofit.create(GeminiService::class.java)
+
+    /**
+     * Retrofit for CodeSandbox
+     * Base URL: https://codesandbox.io/api/v1/
+     */
+    @Provides
+    @Singleton
+    @CodeSandbox
+    fun provideCodeSandboxRetrofit(
+        okHttpClient: OkHttpClient,
+        moshi: Moshi
+    ): Retrofit = Retrofit.Builder()
+        .baseUrl("https://codesandbox.io/api/v1/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
+        .build()
+
+    /**
+     * CodeSandbox Service
+     */
+    @Provides
+    @Singleton
+    fun provideCodeSandboxService(
+        @CodeSandbox retrofit: Retrofit
+    ): CodeSandboxService = retrofit.create(CodeSandboxService::class.java)
 }

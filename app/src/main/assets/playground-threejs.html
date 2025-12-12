@@ -1323,12 +1323,9 @@ console.log("✅ Default scene creation complete!");`;
                 // Clear existing objects but preserve lighting
                 clearScene();
 
-                // CRITICAL: Clean user code to remove JSX/HTML tags (React Three Fiber syntax)
-                // Remove any JSX tags like <mesh>, <box>, <Canvas>, etc.
-                // IMPORTANT: Only match tags that start with a capital letter or lowercase letter (not comparison operators)
-                // This prevents removing code like "i < 10" or "x > 5"
-                code = code.replace(/<([A-Z][a-zA-Z0-9]*|[a-z][a-zA-Z0-9]*)[^>]*>/g, '');
-                code = code.replace(/<\/([A-Z][a-zA-Z0-9]*|[a-z][a-zA-Z0-9]*)>/g, '');
+                // CRITICAL: Clean user code - MINIMAL CLEANING ONLY
+                // Three.js doesn't use JSX, so we don't need JSX removal
+                // Aggressive regex patterns can break valid JavaScript code
 
                 // Remove import statements (ES modules don't work here)
                 code = code.replace(/import\s+.*?from\s+['"].*?['"]\s*;?\s*/g, '');
@@ -1336,14 +1333,7 @@ console.log("✅ Default scene creation complete!");`;
                 // Remove export statements
                 code = code.replace(/export\s+(default\s+)?/g, '');
 
-                // Clean user code to remove conflicting animation loops
-                // Remove standalone animate() function definitions that call composer.render()
-                code = code.replace(/function\s+animate\s*\(\s*\)\s*\{[^}]*requestAnimationFrame\s*\(\s*animate\s*\)[^}]*composer\.render\s*\(\s*\)[^}]*\}\s*animate\s*\(\s*\)\s*;?/g, '');
-
-                // Remove arrow function animate loops
-                code = code.replace(/const\s+animate\s*=\s*\(\s*\)\s*=>\s*\{[^}]*requestAnimationFrame\s*\(\s*animate\s*\)[^}]*composer\.render\s*\(\s*\)[^}]*\}\s*;?\s*animate\s*\(\s*\)\s*;?/g, '');
-
-                console.log('🧹 Cleaned user code: removed JSX/imports and animation loops');
+                console.log('🧹 Cleaned user code: removed imports/exports only');
 
                 // Execute the code in global context
                 const executeCode = new Function('THREE', 'scene', 'camera', 'renderer', 'controls', 'canvas',
@@ -2107,7 +2097,8 @@ console.log("✅ Default scene creation complete!");`;
 
             const selector = document.getElementById('cameraSelector');
 
-            if (window.controls && window.controls instanceof window.OrbitControls) {
+            // Safely check for OrbitControls (may not be loaded yet)
+            if (window.controls && typeof window.OrbitControls !== 'undefined' && window.controls instanceof window.OrbitControls) {
                 selector.value = 'OrbitControls';
                 console.log('Detected OrbitControls');
             } else if (camera instanceof THREE.PerspectiveCamera) {

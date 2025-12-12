@@ -289,7 +289,10 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-    
+
+    <!-- Babel Standalone for JSX Transpilation (Hybrid System - Phase 1) -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+
     <script>
         // Track library loading progress
         window.libraryLoadingProgress = {
@@ -556,8 +559,11 @@
                 // Since React Three Fiber and Drei don't provide UMD builds,
                 // we'll load basic functionality and create mock globals
                 console.log('⚠️ XCODE DEBUG: React Three Fiber and Drei require ES modules - creating fallback globals');
-                await createReactThreeFiberGlobals();
-                await createDreiGlobals();
+                // CRITICAL FIX: Do NOT call these - they overwrite the working sync versions!
+                // The sync versions (createReactThreeFiberGlobalsSync/createDreiGlobalsSync) are better
+                // because they properly render children components
+                // await createReactThreeFiberGlobals();
+                // await createDreiGlobals();
                 
                 console.log('✅ XCODE DEBUG: All libraries loading completed');
                 librariesReady = true;
@@ -687,19 +693,18 @@
             // Create a simplified React Three Fiber implementation
             window.ReactThreeFiber = {
                 Canvas: function(props) {
-                    try {
-                        console.log('🎨 XCODE DEBUG: Canvas component called with props:', props);
-                        console.log('🔍 XCODE DEBUG: Canvas children:', props.children);
-                        console.log('🔍 XCODE DEBUG: React hooks available:', {
-                            useRef: typeof window.React.useRef,
-                            useState: typeof window.React.useState,
-                            useEffect: typeof window.React.useEffect
-                        });
-                    
+                    // CRITICAL FIX: Handle undefined props BEFORE any hooks
+                    if (!props) props = {};
+
+                    console.log('🎨 XCODE DEBUG: Canvas component called with props:', props);
+                    console.log('🔍 XCODE DEBUG: Canvas children:', props.children);
+
+                    // CRITICAL: Hooks must ALWAYS be called unconditionally (Rules of Hooks)
                     const canvasRef = window.React.useRef();
                     const [sceneReady, setSceneReady] = window.React.useState(false);
-                    
+
                     window.React.useEffect(() => {
+                        try {
                         if (!canvasRef.current) {
                             console.warn('⚠️ XCODE DEBUG: Canvas ref not ready');
                             return;
@@ -735,13 +740,14 @@
                         
                         // Store references globally for child components
                         window.currentScene = scene;
-                        window.currentCamera = camera; 
+                        window.currentCamera = camera;
                         window.currentRenderer = renderer;
-                        
+
                         console.log('✅ XCODE DEBUG: Three.js scene created and stored globally');
-                        console.log('🔍 XCODE DEBUG: Scene:', scene);
-                        console.log('🔍 XCODE DEBUG: Camera position:', camera.position);
-                        console.log('🔍 XCODE DEBUG: Renderer:', renderer);
+                        // CRITICAL FIX: Don't log objects with circular references - causes JSON stringify errors
+                        console.log('🔍 XCODE DEBUG: Scene type:', scene.type);
+                        console.log('🔍 XCODE DEBUG: Camera position:', `[${camera.position.x}, ${camera.position.y}, ${camera.position.z}]`);
+                        console.log('🔍 XCODE DEBUG: Renderer type:', renderer.constructor.name);
                         
                         // Call onCreated callback if provided
                         if (props.onCreated) {
@@ -764,16 +770,20 @@
                         animate();
                         
                         console.log('🚀 XCODE DEBUG: Animation loop started');
-                        
+
                         // Cleanup
                         return () => {
                             renderer.dispose();
                         };
+
+                        } catch (error) {
+                            console.error('❌ XCODE DEBUG: useEffect setup error:', error);
+                        }
                     }, []);
-                    
+
                     // Render the canvas and children
                     console.log('🔄 XCODE DEBUG: Canvas component rendering JSX...');
-                    const result = window.React.createElement('div', {
+                    return window.React.createElement('div', {
                         style: { width: '100%', height: '100%', position: 'relative', ...props.style }
                     },
                         window.React.createElement('canvas', {
@@ -783,23 +793,6 @@
                         // Render children only when scene is ready
                         sceneReady ? props.children : null
                     );
-                    console.log('✅ XCODE DEBUG: Canvas JSX created successfully');
-                    return result;
-                    
-                    } catch (error) {
-                        console.error('❌ XCODE DEBUG: Canvas component error:', error);
-                        return window.React.createElement('div', {
-                            style: { 
-                                width: '100%', 
-                                height: '100%', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                color: 'white',
-                                backgroundColor: '#1a1a2e'
-                            }
-                        }, 'Canvas Error: ' + error.message);
-                    }
                 },
                 
                 useFrame: function(callback) {
@@ -1551,6 +1544,7 @@
         let buildService = null;
         let consoleElement = null;
         let currentBundle = null;
+        let currentReactRoot = null; // Track the current React root for proper cleanup
         
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -1955,9 +1949,170 @@
                     setTimeout(() => checkAndRun(attempts + 1), 500);
                 }
             }
-            
-            function executeCode() {
+
+            // ═══════════════════════════════════════════════════════════════
+            // HYBRID TRANSPILATION SYSTEM
+            // Phase 1: Babel Standalone (Client-Side) - ACTIVE
+            // Phase 2: Build Service (Server-Side) - Future Integration Ready
+            // ═══════════════════════════════════════════════════════════════
+
+            /**
+             * Analyzes code complexity to determine which transpilation method to use
+             * @param {string} code - The code to analyze
+             * @returns {Object} Analysis results
+             */
+            function analyzeCodeComplexity(code) {
+                const analysis = {
+                    hasJSX: code.includes('<') && code.includes('>'),
+                    hasImports: /import\s+.*\s+from/.test(code),
+                    hasTypeScript: /:\s*(?:string|number|boolean|any)\s*[=;})]/.test(code),
+                    hasMultipleFiles: false, // Future: detect multi-file projects
+                    hasNpmPackages: false,  // Future: detect npm imports
+                    lineCount: code.split('\n').length,
+                    complexity: 'simple' // simple, moderate, complex
+                };
+
+                // Determine complexity level
+                if (analysis.lineCount > 500 || analysis.hasMultipleFiles || analysis.hasNpmPackages) {
+                    analysis.complexity = 'complex';
+                } else if (analysis.lineCount > 100 || analysis.hasTypeScript) {
+                    analysis.complexity = 'moderate';
+                }
+
+                return analysis;
+            }
+
+            /**
+             * Transpiles JSX code using Babel Standalone (Phase 1: Client-Side)
+             * @param {string} code - The code to transpile
+             * @returns {string} Transpiled JavaScript code
+             */
+            function transpileJSXWithBabel(code) {
+                console.log('🔧 BABEL: Starting client-side JSX transpilation...');
+
+                if (typeof Babel === 'undefined') {
+                    console.error('❌ BABEL: Babel library not loaded!');
+                    throw new Error('Babel library not available for JSX transpilation');
+                }
+
                 try {
+                    const startTime = performance.now();
+
+                    // Transpile JSX to React.createElement calls
+                    const result = Babel.transform(code, {
+                        presets: ['react'],
+                        filename: 'user-code.jsx'
+                    });
+
+                    const endTime = performance.now();
+                    const duration = (endTime - startTime).toFixed(2);
+
+                    console.log(`✅ BABEL: Transpilation successful in ${duration}ms`);
+                    console.log(`📊 BABEL: Input: ${code.length} chars → Output: ${result.code.length} chars`);
+
+                    return result.code;
+                } catch (error) {
+                    console.error('❌ BABEL: Transpilation failed:', error);
+                    console.error('   Error message:', error.message);
+                    throw new Error(`JSX transpilation failed: ${error.message}`);
+                }
+            }
+
+            /**
+             * Transpiles code using external build service (Phase 2: Server-Side)
+             * NOT YET IMPLEMENTED - Returns error to fall back to Babel
+             * @param {string} code - The code to transpile
+             * @returns {Promise<string>} Transpiled code
+             */
+            async function transpileWithBuildService(code) {
+                console.log('🌐 BUILD SERVICE: Attempting server-side transpilation...');
+
+                // TODO: Implement build service integration
+                // This is where you'll add the external build service call
+
+                const buildServiceEndpoint = window.BUILD_SERVICE_URL || null;
+
+                if (!buildServiceEndpoint) {
+                    console.warn('⚠️ BUILD SERVICE: Not configured, falling back to Babel');
+                    throw new Error('Build service not configured');
+                }
+
+                try {
+                    console.log(`🌐 BUILD SERVICE: Sending request to ${buildServiceEndpoint}`);
+
+                    const response = await fetch(buildServiceEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ code }),
+                        signal: AbortSignal.timeout(5000) // 5 second timeout
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Build service returned ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('✅ BUILD SERVICE: Transpilation successful');
+
+                    return result.transpiledCode;
+                } catch (error) {
+                    console.error('❌ BUILD SERVICE: Failed:', error.message);
+                    throw error; // Re-throw to trigger fallback
+                }
+            }
+
+            /**
+             * HYBRID TRANSPILATION: Intelligently chooses transpilation method
+             * @param {string} code - The code to transpile
+             * @returns {Promise<string>} Transpiled code
+             */
+            async function transpileCode(code) {
+                const analysis = analyzeCodeComplexity(code);
+
+                console.log('🔍 HYBRID TRANSPILER: Code analysis:', {
+                    complexity: analysis.complexity,
+                    hasJSX: analysis.hasJSX,
+                    lines: analysis.lineCount
+                });
+
+                // Strategy: Try build service for complex code, use Babel for simple/moderate
+                if (analysis.complexity === 'complex' && window.BUILD_SERVICE_URL) {
+                    console.log('📡 HYBRID TRANSPILER: Routing to build service (complex code)');
+
+                    try {
+                        return await transpileWithBuildService(code);
+                    } catch (error) {
+                        console.warn('⚠️ HYBRID TRANSPILER: Build service failed, falling back to Babel');
+                        // Fall through to Babel
+                    }
+                }
+
+                // Use Babel for simple/moderate code or as fallback
+                console.log('🔧 HYBRID TRANSPILER: Routing to Babel (client-side)');
+                return transpileJSXWithBabel(code);
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // END HYBRID TRANSPILATION SYSTEM
+            // ═══════════════════════════════════════════════════════════════
+
+            async function executeCode() {
+                try {
+                    // CRITICAL FIX: Properly unmount existing React root before creating new one
+                    console.log('🔄 XCODE DEBUG: Preparing to execute new code...');
+
+                    if (window.currentReactRoot) {
+                        console.log('🔄 XCODE DEBUG: Unmounting previous React root...');
+                        try {
+                            window.currentReactRoot.unmount();
+                            window.currentReactRoot = null;
+                        } catch (error) {
+                            console.warn('⚠️ XCODE DEBUG: Error unmounting previous root:', error);
+                        }
+                    }
+
                     // Clear the root element
                     const root = document.getElementById('root');
                     root.innerHTML = '';
@@ -1976,31 +2131,136 @@
                         .replace(/import\s+\*\s+as\s+THREE\s+from\s+['"]three['"];?\s*/g, 'const THREE = window.THREE;\n')
                         .replace(/import\s+THREE\s+from\s+['"]three['"];?\s*/g, 'const THREE = window.THREE;\n');
                     
-                    // 🔧 CRITICAL FIX: Remove TypeScript type annotations 
-                    console.log('🔧 XCODE DEBUG: Removing TypeScript syntax...');
+                    // 🔧 COMPREHENSIVE TypeScript Removal (Enhanced for Object Types)
+                    console.log('🔧 TYPESCRIPT CLEANUP: Removing all TypeScript syntax...');
+
+                    // Step 1: Remove interface and type declarations (must be first)
                     transformedCode = transformedCode
-                        .replace(/:\s*[A-Z][A-Za-z0-9\[\]<>\.]*(\s*\[\])?/g, '') // Remove type annotations like : THREE.Mesh[]
-                        .replace(/useRef<[^>]+>/g, 'useRef') // Remove generic types from useRef<Type>
-                        .replace(/useState<[^>]+>/g, 'useState') // Remove generic types from useState<Type>
-                        .replace(/useCallback<[^>]+>/g, 'useCallback') // Remove generic types from useCallback<Type>
-                        .replace(/useMemo<[^>]+>/g, 'useMemo') // Remove generic types from useMemo<Type>
-                        .replace(/as\s+[A-Z][A-Za-z0-9\[\]<>\.]*(\s*\[\])?/g, '') // Remove 'as Type' casting
-                        .replace(/interface\s+\w+\s*\{[^}]*\}/g, '') // Remove interface declarations
-                        .replace(/type\s+\w+\s*=\s*[^;]+;/g, ''); // Remove type aliases
-                    
-                    // 🔧 CRITICAL FIX: Check if code contains JSX - if so, provide working alternative
-                    if (transformedCode.includes('<') && transformedCode.includes('>')) {
-                        console.log('🎯 XCODE DEBUG: JSX detected, providing working React.createElement version...');
-                        transformedCode = getWorkingRainbowCode();
+                        .replace(/interface\s+\w+\s*(\<[^>]*\>)?\s*\{[^}]*\}/g, '') // Remove interface declarations
+                        .replace(/type\s+\w+\s*(\<[^>]*\>)?\s*=\s*[^;]+;/g, ''); // Remove type aliases
+
+                    // Step 2: Remove generic type parameters from function calls
+                    transformedCode = transformedCode
+                        .replace(/useRef<[^>]+>/g, 'useRef') // useRef<Type> → useRef
+                        .replace(/useState<[^>]+>/g, 'useState') // useState<Type> → useState
+                        .replace(/useCallback<[^>]+>/g, 'useCallback') // useCallback<Type> → useCallback
+                        .replace(/useMemo<[^>]+>/g, 'useMemo') // useMemo<Type> → useMemo
+                        .replace(/useEffect<[^>]+>/g, 'useEffect') // useEffect<Type> → useEffect
+                        .replace(/React\.FC<[^>]+>/g, 'React.FC'); // React.FC<Props> → React.FC
+
+                    // Step 3: Remove function parameter type annotations (CRITICAL for object types)
+                    // Handles: ({ distance }: { distance: number }) → ({ distance })
+                    // Matches ": {" followed by anything until "}" that's not another "{"
+                    transformedCode = transformedCode
+                        .replace(/:\s*\{[^{}]*\}/g, ''); // Remove object type annotations like ": { distance: number }"
+
+                    // Step 4: Remove array type annotations
+                    transformedCode = transformedCode
+                        .replace(/:\s*Array<[^>]+>/g, '') // Remove Array<Type>
+                        .replace(/:\s*\w+\[\]/g, ''); // Remove Type[]
+
+                    // Step 5: Remove simple type annotations (string, number, boolean, etc.)
+                    // This catches ": number", ": string", ": boolean", ": any", etc.
+                    transformedCode = transformedCode
+                        .replace(/:\s*(string|number|boolean|any|void|null|undefined|never|unknown)\s*([,\)=\{])/g, '$2'); // Preserve the delimiter
+
+                    // Step 6: Remove capital-letter type annotations (THREE.Mesh, React.FC, etc.)
+                    transformedCode = transformedCode
+                        .replace(/:\s*[A-Z][A-Za-z0-9\.<>]*(\[\])?/g, ''); // Remove : THREE.Mesh, : React.FC, etc.
+
+                    // Step 7: Remove 'as Type' casting
+                    transformedCode = transformedCode
+                        .replace(/\s+as\s+\w+/g, '') // Remove " as Type"
+                        .replace(/\s+as\s+[A-Z][A-Za-z0-9\.<>]*/g, ''); // Remove " as CapitalType"
+
+                    // Step 8: Remove function return type annotations
+                    // Handles: function foo(): number { → function foo() {
+                    transformedCode = transformedCode
+                        .replace(/\)\s*:\s*[^{=]+\s*\{/g, ') {') // Remove ): ReturnType {
+                        .replace(/\)\s*:\s*[^=>]+\s*=>/g, ') =>'); // Remove ): ReturnType =>
+
+                    console.log('✅ TYPESCRIPT CLEANUP: All TypeScript syntax removed');
+
+                    console.log('✅ XCODE DEBUG: Import and TypeScript transformations complete');
+
+                    // ═══ HYBRID TRANSPILATION: JSX → JavaScript ═══
+                    // This uses Babel Standalone (Phase 1) with fallback to Build Service (Phase 2)
+                    console.log('🚀 HYBRID: Starting JSX transpilation...');
+
+                    let executableCode;
+                    try {
+                        executableCode = await transpileCode(transformedCode);
+                        console.log('✅ HYBRID: Transpilation successful!');
+                    } catch (error) {
+                        console.error('❌ HYBRID: Transpilation failed:', error);
+                        showConsole();
+                        throw error;
                     }
-                    
-                    // Debug the transformed code before execution
-                    console.log('🔍 XCODE DEBUG: Complete transformed code:');
-                    console.log('--- START TRANSFORMED CODE ---');
-                    console.log(transformedCode);
-                    console.log('--- END TRANSFORMED CODE ---');
-                    
-                    console.log('✅ XCODE DEBUG: Code transformed, executing...');
+
+                    // ═══ POST-TRANSPILATION CLEANUP ═══
+                    console.log('🧹 POST-TRANSPILATION: Cleaning up ES6 module syntax...');
+
+                    // Remove ES6 export statements (cannot be used in inline scripts)
+                    const beforeCleanup = executableCode.length;
+
+                    executableCode = executableCode
+                        .replace(/export\s+default\s+\w+\s*;?\s*$/gm, '') // Remove: export default App;
+                        .replace(/export\s+default\s+/g, '') // Remove: export default before inline declarations
+                        .replace(/export\s+\{[^}]+\}\s*;?\s*$/gm, '') // Remove: export { foo, bar };
+                        .replace(/export\s+/g, ''); // Remove remaining export keywords
+
+                    console.log(`✅ POST-TRANSPILATION: Removed ES6 exports (${beforeCleanup} → ${executableCode.length} chars)`);
+
+                    // ═══ ADD APP MOUNTING LOGIC ═══
+                    // Check if code defines an App component (function or const)
+                    const hasAppComponent = /(?:function\s+App|const\s+App\s*=)/.test(executableCode);
+
+                    if (hasAppComponent) {
+                        console.log('🚀 POST-TRANSPILATION: Detected App component, adding mount logic...');
+
+                        // Add mounting logic at the end
+                        executableCode += `\n\n// ═══ AUTO-GENERATED MOUNTING LOGIC ═══
+// Unmount previous React root if it exists
+if (window.currentReactRoot) {
+    console.log('🗑️ Unmounting previous React root...');
+    try {
+        window.currentReactRoot.unmount();
+        console.log('✅ Previous root unmounted successfully');
+    } catch (e) {
+        console.warn('⚠️ Error unmounting previous root:', e);
+    }
+    window.currentReactRoot = null;
+}
+
+// Mount the App component to the DOM
+const rootElement = document.getElementById('root');
+if (rootElement && typeof App !== 'undefined') {
+    console.log('🚀 Mounting App component to DOM...');
+    try {
+        window.currentReactRoot = window.ReactDOM.createRoot(rootElement);
+        window.currentReactRoot.render(React.createElement(App));
+        console.log('✅ App component mounted successfully!');
+    } catch (mountError) {
+        console.error('❌ Failed to mount App:', mountError);
+        throw mountError;
+    }
+} else {
+    if (!rootElement) console.error('❌ Root element not found!');
+    if (typeof App === 'undefined') console.error('❌ App component not defined!');
+}`;
+
+                        console.log('✅ POST-TRANSPILATION: Mount logic added');
+                    } else {
+                        console.warn('⚠️ POST-TRANSPILATION: No App component found, skipping mount logic');
+                    }
+
+                    // Debug the final executable code
+                    console.log('🔍 XCODE DEBUG: Final executable code:');
+                    console.log('--- START EXECUTABLE CODE ---');
+                    console.log(executableCode);
+                    console.log('--- END EXECUTABLE CODE ---');
+
+                    console.log('✅ XCODE DEBUG: Code ready for execution...');
                     
                     // Add window error handler to catch all errors
                     window.addEventListener('error', function(e) {
@@ -2058,11 +2318,11 @@
                                 throw new Error('React Three Fiber library not loaded');
                             }
                             
-                            console.log('🎯 XCODE DEBUG: About to execute transformed code...');
-                            
-                            // Wrap the transformed code in an immediately invoked function to catch more errors
+                            console.log('🎯 XCODE DEBUG: About to execute transpiled code...');
+
+                            // Wrap the transpiled code in an immediately invoked function to catch more errors
                             (function executeUserCode() {
-                                ${transformedCode}
+                                ${executableCode}
                             })();
                             
                             console.log('✅ XCODE DEBUG: Code execution completed successfully');
@@ -2269,13 +2529,14 @@ console.log('🔍 XCODE DEBUG: Root element details:', {
 
 if (rootElement) {
   console.log('🎯 XCODE DEBUG: Creating React root...');
-  
+
   try {
-    const root = createRoot(rootElement);
-    console.log('🎯 XCODE DEBUG: React root created successfully');
-    
+    // CRITICAL FIX: Store React root globally for proper cleanup
+    window.currentReactRoot = createRoot(rootElement);
+    console.log('🎯 XCODE DEBUG: React root created successfully and stored globally');
+
     console.log('🎯 XCODE DEBUG: Rendering App component...');
-    root.render(React.createElement(App));
+    window.currentReactRoot.render(React.createElement(App));
     console.log('✅ XCODE DEBUG: App component render call completed');
     
     // Fallback: if React Three Fiber fails, create direct Three.js scene
@@ -2770,8 +3031,22 @@ root.render(React.createElement(App));`;
                 
                 const root = document.getElementById('root');
                 if (root && window.ReactDOM.createRoot) {
-                    const reactRoot = window.ReactDOM.createRoot(root);
-                    reactRoot.render(window.React.createElement(TestScene));
+                    // CRITICAL FIX: Unmount existing React root before creating new one
+                    if (window.currentReactRoot) {
+                        console.log('🔄 XCODE DEBUG: Unmounting previous React root...');
+                        try {
+                            window.currentReactRoot.unmount();
+                        } catch (error) {
+                            console.warn('⚠️ XCODE DEBUG: Error unmounting previous root:', error);
+                        }
+                    }
+
+                    // Clear the DOM
+                    root.innerHTML = '';
+
+                    // Create and store new React root globally
+                    window.currentReactRoot = window.ReactDOM.createRoot(root);
+                    window.currentReactRoot.render(window.React.createElement(TestScene));
                     console.log('✅ XCODE DEBUG: Test scene rendered successfully with proper lighting');
                 } else {
                     console.error('❌ XCODE DEBUG: Root element or ReactDOM.createRoot not available');

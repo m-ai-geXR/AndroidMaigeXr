@@ -8,7 +8,14 @@
       "WebSearch",
       "Bash(find:*)",
       "Bash(./gradlew clean:*)",
-      "Bash(./gradlew compileDebugKotlin:*)"
+      "Bash(./gradlew compileDebugKotlin:*)",
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(git checkout:*)",
+      "Bash(cmd.exe /c gradlew.bat assembleDebug)",
+      "WebFetch(domain:sandpack.codesandbox.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:codesandbox.io)"
     ],
     "deny": [],
     "ask": []

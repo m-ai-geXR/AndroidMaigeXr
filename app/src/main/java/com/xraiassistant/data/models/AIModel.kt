@@ -24,23 +24,12 @@ enum class AICapability {
  * Predefined AI models matching iOS implementation
  */
 object AIModels {
-    val DEEPSEEK_R1 = AIModel(
-        id = "deepseek-ai/DeepSeek-R1",
-        displayName = "DeepSeek R1",
-        description = "Advanced reasoning & coding (serverless)",
-        provider = "Together.ai",
-        pricing = "Serverless pricing",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
-    
-    val LLAMA_3_3_70B = AIModel(
-        id = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        displayName = "Llama 3.3 70B",
-        description = "Latest Meta large model",
+    // ============= TOGETHER.AI MODELS =============
+
+    val DEEPSEEK_R1_70B = AIModel(
+        id = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
+        displayName = "DeepSeek R1 70B",
+        description = "Advanced reasoning & coding",
         provider = "Together.ai",
         pricing = "FREE",
         capabilities = setOf(
@@ -49,40 +38,52 @@ object AIModels {
             AICapability.STREAMING
         )
     )
-    
+
+    val LLAMA_3_3_70B = AIModel(
+        id = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        displayName = "Llama 3.3 70B",
+        description = "Latest large model",
+        provider = "Together.ai",
+        pricing = "FREE",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
     val LLAMA_3_8B_LITE = AIModel(
-        id = "meta-llama/Llama-3-8b-chat-hf",
+        id = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
         displayName = "Llama 3 8B Lite",
         description = "Cost-effective option",
         provider = "Together.ai",
-        pricing = "$0.10/1M",
+        pricing = "$0.10/1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
         )
     )
-    
+
+    val LLAMA_3_1_8B_TURBO = AIModel(
+        id = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        displayName = "Llama 3.1 8B Turbo",
+        description = "Good balance",
+        provider = "Together.ai",
+        pricing = "$0.18/1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING
+        )
+    )
+
     val QWEN_2_5_7B_TURBO = AIModel(
         id = "Qwen/Qwen2.5-7B-Instruct-Turbo",
         displayName = "Qwen 2.5 7B Turbo",
         description = "Fast coding specialist",
         provider = "Together.ai",
-        pricing = "$0.30/1M",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
-    
-    // REPLACED: Qwen 2.5 Coder 32B is NOT serverless (requires dedicated endpoint)
-    // Using serverless alternative: Qwen3 Coder 480B
-    val QWEN_3_CODER_480B = AIModel(
-        id = "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
-        displayName = "Qwen3 Coder 480B",
-        description = "Advanced serverless coding model",
-        provider = "Together.ai",
-        pricing = "Serverless pricing",
+        pricing = "$0.30/1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -90,26 +91,56 @@ object AIModels {
         )
     )
 
-    // Alternative: Arcee Coder (serverless)
-    val ARCEE_CODER = AIModel(
-        id = "arcee-ai/coder-large",
-        displayName = "Arcee Coder Large",
-        description = "Serverless code generation specialist",
-        provider = "Together.ai",
-        pricing = "Serverless pricing",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
-    
+    // ============= OPENAI MODELS =============
+
     val GPT_4O = AIModel(
         id = "gpt-4o",
         displayName = "GPT-4o",
-        description = "OpenAI's latest model",
+        description = "Most advanced GPT-4 model",
         provider = "OpenAI",
-        pricing = "$5.00/1M",
+        pricing = "$2.50/$10.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GPT_4O_MINI = AIModel(
+        id = "gpt-4o-mini",
+        displayName = "GPT-4o Mini",
+        description = "Fast and affordable smart model",
+        provider = "OpenAI",
+        pricing = "$0.15/$0.60 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GPT_4_TURBO = AIModel(
+        id = "gpt-4-turbo",
+        displayName = "GPT-4 Turbo",
+        description = "Previous flagship model",
+        provider = "OpenAI",
+        pricing = "$10.00/$30.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GPT_3_5_TURBO = AIModel(
+        id = "gpt-3.5-turbo",
+        displayName = "GPT-3.5 Turbo",
+        description = "Fast and cost-effective",
+        provider = "OpenAI",
+        pricing = "$0.50/$1.50 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -118,28 +149,15 @@ object AIModels {
         )
     )
     
-    // ============= ANTHROPIC CLAUDE MODELS (2025) =============
+    // ============= ANTHROPIC CLAUDE MODELS =============
 
+    // Claude 4.5 Series (Latest - 2025)
     val CLAUDE_SONNET_4_5 = AIModel(
         id = "claude-sonnet-4-5-20250929",
         displayName = "Claude Sonnet 4.5",
-        description = "Latest Anthropic model - 200K context, extended thinking",
+        description = "Smartest model for complex agents and coding - 200K context",
         provider = "Anthropic",
-        pricing = "$3/$15 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_OPUS_4_1 = AIModel(
-        id = "claude-opus-4-1-20250805",
-        displayName = "Claude Opus 4.1",
-        description = "Most powerful Claude model - Complex reasoning & analysis",
-        provider = "Anthropic",
-        pricing = "$15/$75 per 1M tokens",
+        pricing = "$3.00/$15.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -151,40 +169,68 @@ object AIModels {
     val CLAUDE_HAIKU_4_5 = AIModel(
         id = "claude-haiku-4-5-20251001",
         displayName = "Claude Haiku 4.5",
-        description = "Fast & cost-effective - Great for quick tasks",
+        description = "Fastest model with near-frontier intelligence - 200K context",
         provider = "Anthropic",
-        pricing = "$1/$5 per 1M tokens",
+        pricing = "$0.25/$1.25 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
-            AICapability.STREAMING
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
         )
     )
 
-    // Legacy model (kept for backward compatibility)
-    @Deprecated("Use CLAUDE_SONNET_4_5 instead", ReplaceWith("CLAUDE_SONNET_4_5"))
-    val CLAUDE_3_5_SONNET = AIModel(
+    // Claude 4.1 Series
+    val CLAUDE_OPUS_4_1 = AIModel(
+        id = "claude-opus-4-1-20250805",
+        displayName = "Claude Opus 4.1",
+        description = "Exceptional model for specialized reasoning tasks - 200K context",
+        provider = "Anthropic",
+        pricing = "$15.00/$75.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // Claude 4 Series (May 2025)
+    val CLAUDE_SONNET_4 = AIModel(
+        id = "claude-sonnet-4-20250514",
+        displayName = "Claude Sonnet 4",
+        description = "Previous Sonnet 4 version - 200K context",
+        provider = "Anthropic",
+        pricing = "$3.00/$15.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val CLAUDE_OPUS_4 = AIModel(
+        id = "claude-opus-4-20250514",
+        displayName = "Claude Opus 4",
+        description = "Previous Opus 4 version - 200K context",
+        provider = "Anthropic",
+        pricing = "$15.00/$75.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // Claude 3.5 Series (Legacy - 2024)
+    val CLAUDE_3_5_SONNET_OCT = AIModel(
         id = "claude-3-5-sonnet-20241022",
-        displayName = "Claude 3.5 Sonnet (Legacy)",
-        description = "Previous generation model",
+        displayName = "Claude 3.5 Sonnet (Oct 2024)",
+        description = "Previous generation high-performance model",
         provider = "Anthropic",
-        pricing = "$3.00/1M",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
-
-    // ============= GOOGLE GEMINI MODELS (2025) =============
-
-    // Gemini 3.0 Models (Latest Generation)
-    val GEMINI_3_0_PRO = AIModel(
-        id = "gemini-3.0-pro",
-        displayName = "Gemini 3.0 Pro",
-        description = "Next-gen flagship model - Advanced reasoning, 2M context",
-        provider = "Google",
-        pricing = "Premium",
+        pricing = "$3.00/$15.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -193,12 +239,12 @@ object AIModels {
         )
     )
 
-    val GEMINI_3_0_FLASH = AIModel(
-        id = "gemini-3.0-flash",
-        displayName = "Gemini 3.0 Flash",
-        description = "Next-gen fast model - 2M context, optimized for speed",
-        provider = "Google",
-        pricing = "Standard",
+    val CLAUDE_3_5_SONNET_JUNE = AIModel(
+        id = "claude-3-5-sonnet-20240620",
+        displayName = "Claude 3.5 Sonnet (June 2024)",
+        description = "Earlier 3.5 Sonnet version",
+        provider = "Anthropic",
+        pricing = "$3.00/$15.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -207,13 +253,87 @@ object AIModels {
         )
     )
 
-    // Gemini 2.5 Models (Current Generation)
+    val CLAUDE_3_5_HAIKU = AIModel(
+        id = "claude-3-5-haiku-20241022",
+        displayName = "Claude 3.5 Haiku",
+        description = "Fast and affordable legacy model",
+        provider = "Anthropic",
+        pricing = "$0.25/$1.25 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // Claude 3 Series (Legacy - Early 2024)
+    val CLAUDE_3_OPUS = AIModel(
+        id = "claude-3-opus-20240229",
+        displayName = "Claude 3 Opus",
+        description = "Original powerful model",
+        provider = "Anthropic",
+        pricing = "$15.00/$75.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val CLAUDE_3_SONNET = AIModel(
+        id = "claude-3-sonnet-20240229",
+        displayName = "Claude 3 Sonnet",
+        description = "Balanced legacy model",
+        provider = "Anthropic",
+        pricing = "$3.00/$15.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val CLAUDE_3_HAIKU = AIModel(
+        id = "claude-3-haiku-20240307",
+        displayName = "Claude 3 Haiku",
+        description = "Fastest legacy model",
+        provider = "Anthropic",
+        pricing = "$0.25/$1.25 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // ============= GOOGLE GEMINI MODELS =============
+
+    // Gemini 3 Series (Newest & Most Powerful)
+    val GEMINI_3_PRO_PREVIEW = AIModel(
+        id = "gemini-3-pro-preview",
+        displayName = "Gemini 3 Pro",
+        description = "Newest and most powerful general-purpose model - top-tier reasoning, writing, planning, coding, multimodal understanding",
+        provider = "Google AI",
+        pricing = "FREE tier available",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // Gemini 2.5 Series (Latest Stable)
     val GEMINI_2_5_PRO = AIModel(
         id = "gemini-2.5-pro",
         displayName = "Gemini 2.5 Pro",
-        description = "State-of-the-art thinking model - 1M context, reasoning over code, math & STEM",
-        provider = "Google",
-        pricing = "Check pricing",
+        description = "High-capability reasoning & coding - strong for complex codebases, algorithmic tasks, data/maths logic",
+        provider = "Google AI",
+        pricing = "FREE tier available",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -225,9 +345,9 @@ object AIModels {
     val GEMINI_2_5_FLASH = AIModel(
         id = "gemini-2.5-flash",
         displayName = "Gemini 2.5 Flash",
-        description = "Best price-performance - 1M context, large-scale processing",
-        provider = "Google",
-        pricing = "Best value",
+        description = "Balanced - lower latency & snappier, supports coding & writing - good for general use and prototyping",
+        provider = "Google AI",
+        pricing = "FREE tier available",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -238,10 +358,10 @@ object AIModels {
 
     val GEMINI_2_5_FLASH_LITE = AIModel(
         id = "gemini-2.5-flash-lite",
-        displayName = "Gemini 2.5 Flash Lite",
-        description = "Fastest flash model - 1M context, optimized for cost-efficiency & high throughput",
-        provider = "Google",
-        pricing = "Most affordable",
+        displayName = "Gemini 2.5 Flash-Lite",
+        description = "Lightweight and fastest - optimized for speed and shorter tasks",
+        provider = "Google AI",
+        pricing = "FREE tier available",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -251,21 +371,37 @@ object AIModels {
     )
 
     val ALL_MODELS = listOf(
-        DEEPSEEK_R1,              // Serverless reasoning model
-        LLAMA_3_3_70B,            // Serverless, recommended for chat
+        // Together.ai models (5 models - matches iOS)
+        DEEPSEEK_R1_70B,
+        LLAMA_3_3_70B,
         LLAMA_3_8B_LITE,
-        QWEN_2_5_7B_TURBO,        // Serverless Turbo model
-        QWEN_3_CODER_480B,        // Serverless coding model (replaces 32B)
-        ARCEE_CODER,              // Serverless coding specialist
+        LLAMA_3_1_8B_TURBO,
+        QWEN_2_5_7B_TURBO,
+
+        // OpenAI models (4 models - matches iOS)
         GPT_4O,
-        CLAUDE_SONNET_4_5,        // Latest Claude model (recommended)
-        CLAUDE_OPUS_4_1,          // Most powerful Claude
-        CLAUDE_HAIKU_4_5,         // Fastest/cheapest Claude
-        GEMINI_3_0_PRO,           // Next-gen Gemini Pro
-        GEMINI_3_0_FLASH,         // Next-gen Gemini Flash
-        GEMINI_2_5_PRO,           // Latest Gemini 2.5 - state-of-the-art thinking
-        GEMINI_2_5_FLASH,         // Best Gemini 2.5 price-performance
-        GEMINI_2_5_FLASH_LITE     // Fastest & most affordable Gemini 2.5
+        GPT_4O_MINI,
+        GPT_4_TURBO,
+        GPT_3_5_TURBO,
+
+        // Anthropic models (12 models - matches iOS)
+        CLAUDE_SONNET_4_5,
+        CLAUDE_HAIKU_4_5,
+        CLAUDE_OPUS_4_1,
+        CLAUDE_SONNET_4,
+        CLAUDE_OPUS_4,
+        CLAUDE_3_5_SONNET_OCT,
+        CLAUDE_3_5_SONNET_JUNE,
+        CLAUDE_3_5_HAIKU,
+        CLAUDE_3_OPUS,
+        CLAUDE_3_SONNET,
+        CLAUDE_3_HAIKU,
+
+        // Google AI models (4 models - matches iOS)
+        GEMINI_3_PRO_PREVIEW,
+        GEMINI_2_5_PRO,
+        GEMINI_2_5_FLASH,
+        GEMINI_2_5_FLASH_LITE
     )
     
     val MODELS_BY_PROVIDER = ALL_MODELS.groupBy { it.provider }

@@ -24,7 +24,7 @@ class AIProviderRepository @Inject constructor(
         private const val PROVIDER_TOGETHER_AI = "Together.ai"
         private const val PROVIDER_OPENAI = "OpenAI"
         private const val PROVIDER_ANTHROPIC = "Anthropic"
-        private const val PROVIDER_GOOGLE = "Google"
+        private const val PROVIDER_GOOGLE = "Google AI"
     }
     
     /**
