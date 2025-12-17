@@ -27,11 +27,11 @@ object AIModels {
     // ============= TOGETHER.AI MODELS =============
 
     val DEEPSEEK_R1_70B = AIModel(
-        id = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
-        displayName = "DeepSeek R1 70B",
+        id = "deepseek-ai/DeepSeek-R1",
+        displayName = "DeepSeek R1",
         description = "Advanced reasoning & coding",
         provider = "Together.ai",
-        pricing = "FREE",
+        pricing = "Serverless",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -40,11 +40,11 @@ object AIModels {
     )
 
     val LLAMA_3_3_70B = AIModel(
-        id = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-        displayName = "Llama 3.3 70B",
+        id = "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        displayName = "Llama 3.3 70B Turbo",
         description = "Latest large model",
         provider = "Together.ai",
-        pricing = "FREE",
+        pricing = "Serverless",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,

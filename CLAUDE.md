@@ -598,65 +598,64 @@ object NetworkModule {
 
 ### **Issue: Together.ai Non-Serverless Model Error (400)**
 
-**Status**: FIXED ✅ (November 20, 2025)
+**Status**: FIXED ✅ (December 16, 2025)
 
 **Problem**: Getting 400 errors when using certain Together.ai models:
 ```
-"message": "Unable to access non-serverless model Qwen/Qwen2.5-Coder-32B-Instruct.
+"message": "Unable to access non-serverless model deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free.
 Please visit https://api.together.ai/models/... to create and start a new dedicated endpoint"
 "code": "model_not_available"
 ```
 
-**Root Cause**: Together.ai has changed their API structure. Some models are "serverless" (instant access, pay-per-use) while others require dedicated endpoints (which need to be manually started). The app was using non-serverless models by default.
+**Root Cause**: Together.ai has changed their API structure. Some models are "serverless" (instant access, pay-per-use) while others require dedicated endpoints (which need to be manually started). The app was using non-serverless models with incorrect model IDs.
 
 **Models Requiring Dedicated Endpoints (❌ NOT Serverless)**:
-- `Qwen/Qwen2.5-Coder-32B-Instruct` (old default - REMOVED)
+- `deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free` (old default - FIXED)
+- `meta-llama/Llama-3.3-70B-Instruct-Turbo-Free` (incorrect suffix - FIXED)
 - Any model not explicitly marked as serverless in Together.ai docs
 
-**Solution**: Replaced non-serverless models with serverless alternatives:
+**Solution**: Replaced non-serverless models with correct serverless model IDs:
 
 ```kotlin
 // BEFORE (BROKEN):
-val QWEN_2_5_CODER_32B = AIModel(
-    id = "Qwen/Qwen2.5-Coder-32B-Instruct",  // ❌ Requires dedicated endpoint
-    displayName = "Qwen 2.5 Coder 32B"
+val DEEPSEEK_R1_70B = AIModel(
+    id = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",  // ❌ Requires dedicated endpoint
+    displayName = "DeepSeek R1 70B"
+)
+
+val LLAMA_3_3_70B = AIModel(
+    id = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",  // ❌ Incorrect suffix
+    displayName = "Llama 3.3 70B"
 )
 
 // AFTER (FIXED):
-val QWEN_3_CODER_480B = AIModel(
-    id = "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",  // ✅ Serverless
-    displayName = "Qwen3 Coder 480B"
-)
-
-val ARCEE_CODER = AIModel(
-    id = "arcee-ai/coder-large",  // ✅ Serverless coding specialist
-    displayName = "Arcee Coder Large"
-)
-
-val DEEPSEEK_R1 = AIModel(
-    id = "deepseek-ai/DeepSeek-R1",  // ✅ Serverless (updated ID)
+val DEEPSEEK_R1_70B = AIModel(
+    id = "deepseek-ai/DeepSeek-R1",  // ✅ Serverless
     displayName = "DeepSeek R1"
+)
+
+val LLAMA_3_3_70B = AIModel(
+    id = "meta-llama/Llama-3.3-70B-Instruct-Turbo",  // ✅ Serverless
+    displayName = "Llama 3.3 70B Turbo"
 )
 ```
 
 **Files Modified**:
-- `app/src/main/java/com/xraiassistant/data/models/AIModel.kt` - Updated model definitions
-- `app/src/main/java/com/xraiassistant/ui/viewmodels/ChatViewModel.kt` - Updated default model reference
-- `app/src/main/java/com/xraiassistant/data/repositories/SettingsRepository.kt` - Updated AppSettings default
+- `app/src/main/java/com/xraiassistant/data/models/AIModel.kt` - Updated model definitions (lines 29-53)
 
 **Current Serverless Models (✅ Work Without Dedicated Endpoints)**:
-- **DeepSeek R1** (`deepseek-ai/DeepSeek-R1`) - Advanced reasoning
+- **DeepSeek R1** (`deepseek-ai/DeepSeek-R1`) - Advanced reasoning & coding
 - **Llama 3.3 70B Turbo** (`meta-llama/Llama-3.3-70B-Instruct-Turbo`) - Recommended for chat
-- **Qwen3 Coder 480B** (`Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8`) - Advanced coding
-- **Arcee Coder Large** (`arcee-ai/coder-large`) - Code generation specialist
+- **Llama 3 8B Lite** (`meta-llama/Meta-Llama-3-8B-Instruct-Lite`) - Cost-effective
+- **Llama 3.1 8B Turbo** (`meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo`) - Good balance
 - **Qwen 2.5 7B Turbo** (`Qwen/Qwen2.5-7B-Instruct-Turbo`) - Fast lightweight model
 
 **Impact**:
 - ✅ All Together.ai models now work instantly without configuration
 - ✅ No more 400 "model_not_available" errors
 - ✅ Users don't need to create dedicated endpoints
-- ✅ Better serverless models with improved performance
-- ✅ Default model changed to `DeepSeek R1` (serverless)
+- ✅ Default model (DeepSeek R1) now uses correct serverless endpoint
+- ✅ Llama 3.3 70B Turbo uses correct model ID
 
 **Reference**: [Together.ai Serverless Models Documentation](https://docs.together.ai/docs/serverless-models)
 
