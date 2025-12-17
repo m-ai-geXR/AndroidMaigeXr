@@ -93,10 +93,83 @@ object AIModels {
 
     // ============= OPENAI MODELS =============
 
+    // GPT-5.2 Series (Latest - December 2025)
+    val GPT_5_2 = AIModel(
+        id = "gpt-5.2",
+        displayName = "GPT-5.2",
+        description = "Best model for coding and agentic tasks - 400K context",
+        provider = "OpenAI",
+        pricing = "$1.75/$14.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GPT_5_2_PRO = AIModel(
+        id = "gpt-5.2-pro",
+        displayName = "GPT-5.2 Pro",
+        description = "Smartest and most trustworthy - highest accuracy - 400K context",
+        provider = "OpenAI",
+        pricing = "Premium tier",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GPT_5_2_CHAT_LATEST = AIModel(
+        id = "gpt-5.2-chat-latest",
+        displayName = "GPT-5.2 Chat (Latest)",
+        description = "Latest ChatGPT model - automatically updates - 128K context",
+        provider = "OpenAI",
+        pricing = "$1.75/$14.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // o-series Reasoning Models (2024-2025)
+    val O1 = AIModel(
+        id = "o1-2024-12-17",
+        displayName = "o1",
+        description = "Advanced reasoning model for complex problems",
+        provider = "OpenAI",
+        pricing = "Premium tier",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val O3_MINI = AIModel(
+        id = "o3-mini-2025-01-31",
+        displayName = "o3-mini",
+        description = "Latest reasoning model with enhanced reasoning abilities",
+        provider = "OpenAI",
+        pricing = "Economy tier",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    // GPT-4o Series (Still Supported)
     val GPT_4O = AIModel(
         id = "gpt-4o",
         displayName = "GPT-4o",
-        description = "Most advanced GPT-4 model",
+        description = "Versatile high-intelligence flagship model - text and image inputs",
         provider = "OpenAI",
         pricing = "$2.50/$10.00 per 1M tokens",
         capabilities = setOf(
@@ -110,37 +183,9 @@ object AIModels {
     val GPT_4O_MINI = AIModel(
         id = "gpt-4o-mini",
         displayName = "GPT-4o Mini",
-        description = "Fast and affordable smart model",
+        description = "Fast and affordable small model for focused tasks",
         provider = "OpenAI",
         pricing = "$0.15/$0.60 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val GPT_4_TURBO = AIModel(
-        id = "gpt-4-turbo",
-        displayName = "GPT-4 Turbo",
-        description = "Previous flagship model",
-        provider = "OpenAI",
-        pricing = "$10.00/$30.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val GPT_3_5_TURBO = AIModel(
-        id = "gpt-3.5-turbo",
-        displayName = "GPT-3.5 Turbo",
-        description = "Fast and cost-effective",
-        provider = "OpenAI",
-        pricing = "$0.50/$1.50 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
@@ -371,20 +416,23 @@ object AIModels {
     )
 
     val ALL_MODELS = listOf(
-        // Together.ai models (5 models - matches iOS)
+        // Together.ai models (5 models)
         DEEPSEEK_R1_70B,
         LLAMA_3_3_70B,
         LLAMA_3_8B_LITE,
         LLAMA_3_1_8B_TURBO,
         QWEN_2_5_7B_TURBO,
 
-        // OpenAI models (4 models - matches iOS)
+        // OpenAI models (8 models - Updated December 2025)
+        GPT_5_2,
+        GPT_5_2_PRO,
+        GPT_5_2_CHAT_LATEST,
+        O1,
+        O3_MINI,
         GPT_4O,
         GPT_4O_MINI,
-        GPT_4_TURBO,
-        GPT_3_5_TURBO,
 
-        // Anthropic models (12 models - matches iOS)
+        // Anthropic models (12 models)
         CLAUDE_SONNET_4_5,
         CLAUDE_HAIKU_4_5,
         CLAUDE_OPUS_4_1,
@@ -397,7 +445,7 @@ object AIModels {
         CLAUDE_3_SONNET,
         CLAUDE_3_HAIKU,
 
-        // Google AI models (4 models - matches iOS)
+        // Google AI models (4 models)
         GEMINI_3_PRO_PREVIEW,
         GEMINI_2_5_PRO,
         GEMINI_2_5_FLASH,

@@ -47,10 +47,24 @@ fun ImagePickerButton(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var showError by remember { mutableStateOf(false) }
 
-    // Photo picker launcher
+    // Modern photo picker launcher
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = maxImages)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            // Load images in background
+            scope.launch {
+                val images = loadImagesFromUris(context, uris)
+                onImagesSelected(selectedImages + images)
+            }
+        }
+    }
+
+    // Fallback to traditional file picker (for emulators/older devices)
+    val fallbackPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
             // Load images in background
@@ -67,9 +81,23 @@ fun ImagePickerButton(
             // Calculate remaining slots
             val remainingSlots = maxImages - selectedImages.size
             if (remainingSlots > 0) {
-                photoPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
+                try {
+                    // Try modern photo picker first
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                } catch (e: android.content.ActivityNotFoundException) {
+                    // Fallback to traditional picker if photo picker not available
+                    try {
+                        fallbackPickerLauncher.launch("image/*")
+                    } catch (e2: Exception) {
+                        showError = true
+                        e2.printStackTrace()
+                    }
+                } catch (e: Exception) {
+                    showError = true
+                    e.printStackTrace()
+                }
             }
         },
         enabled = selectedImages.size < maxImages,
@@ -84,6 +112,15 @@ fun ImagePickerButton(
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             }
         )
+    }
+
+    // Error snackbar
+    if (showError) {
+        LaunchedEffect(showError) {
+            // Auto-dismiss after 3 seconds
+            kotlinx.coroutines.delay(3000)
+            showError = false
+        }
     }
 }
 

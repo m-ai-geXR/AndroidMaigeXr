@@ -15,7 +15,10 @@
       "Bash(cmd.exe /c gradlew.bat assembleDebug)",
       "WebFetch(domain:sandpack.codesandbox.io)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:codesandbox.io)"
+      "WebFetch(domain:codesandbox.io)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:docs.aimlapi.com)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

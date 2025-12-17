@@ -251,19 +251,28 @@ class RealAIProviderService @Inject constructor(
         images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "📡 Calling OpenAI API...")
+        Log.d(TAG, "   Model: $model")
+        Log.d(TAG, "   Prompt length: ${prompt.length} chars")
         if (images.isNotEmpty()) {
             Log.d(TAG, "📷 OpenAI: ${images.size} images attached")
+            images.forEachIndexed { index, img ->
+                Log.d(TAG, "   Image $index: ${img.mimeType}, ${img.data.size / 1024}KB")
+            }
         }
 
         // Build OpenAI messages with multimodal support (matching iOS OpenAIProvider.swift lines 138-172)
         val userMessageContent: Any = if (images.isEmpty()) {
             // Simple text-only message
+            Log.d(TAG, "   Content type: text-only")
             prompt
         } else {
             // Multimodal message (text + images)
+            Log.d(TAG, "   Content type: multimodal (text + ${images.size} images)")
             buildList<Map<String, Any>> {
                 add(mapOf("type" to "text", "text" to prompt))
-                images.forEach { imageContent ->
+                images.forEachIndexed { index, imageContent ->
+                    val base64Length = imageContent.base64String.length
+                    Log.d(TAG, "   Adding image $index: base64 length = $base64Length chars")
                     add(mapOf(
                         "type" to "image_url",
                         "image_url" to mapOf(
@@ -281,6 +290,8 @@ class RealAIProviderService @Inject constructor(
             add(APIChatMessage(role = "user", content = userMessageContent))
         }
 
+        Log.d(TAG, "   Total messages: ${messages.size}")
+
         val request = OpenAIRequest(
             model = model,
             messages = messages,
@@ -289,6 +300,14 @@ class RealAIProviderService @Inject constructor(
             stream = true,
             maxTokens = 4096
         )
+
+        // Log the serialized request for debugging (only first 500 chars to avoid huge logs)
+        try {
+            val requestJson = moshi.adapter(OpenAIRequest::class.java).toJson(request)
+            Log.d(TAG, "   Request JSON (preview): ${requestJson.take(500)}...")
+        } catch (e: Exception) {
+            Log.w(TAG, "   Could not serialize request for logging: ${e.message}")
+        }
 
         val response = openAIService.chatCompletion(
             authorization = "Bearer $apiKey",

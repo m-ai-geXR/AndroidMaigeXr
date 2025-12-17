@@ -57,7 +57,7 @@ data class OpenAIRequest(
     @Json(name = "temperature") val temperature: Double = 0.7,
     @Json(name = "top_p") val topP: Double = 0.9,
     @Json(name = "stream") val stream: Boolean = true,
-    @Json(name = "max_tokens") val maxTokens: Int? = null
+    @Json(name = "max_completion_tokens") val maxTokens: Int? = null  // Updated for GPT-5.2, o1, o3-mini
 )
 
 @JsonClass(generateAdapter = true)
