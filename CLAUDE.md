@@ -642,6 +642,25 @@ val LLAMA_3_3_70B = AIModel(
 
 **Files Modified**:
 - `app/src/main/java/com/xraiassistant/data/models/AIModel.kt` - Updated model definitions (lines 29-53)
+- `app/src/main/java/com/xraiassistant/data/local/SettingsDataStore.kt` - Added automatic migration logic for saved preferences (lines 81-121)
+
+**Migration Logic**: The app now automatically migrates old model IDs to new ones when loading settings:
+
+```kotlin
+// In SettingsDataStore.getSettings()
+private fun migrateModelId(oldId: String): String {
+    return when (oldId) {
+        // DeepSeek R1 migrations
+        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" -> "deepseek-ai/DeepSeek-R1"
+
+        // Llama 3.3 70B migrations
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" -> "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+
+        // If no migration needed, return original
+        else -> oldId
+    }
+}
+```
 
 **Current Serverless Models (✅ Work Without Dedicated Endpoints)**:
 - **DeepSeek R1** (`deepseek-ai/DeepSeek-R1`) - Advanced reasoning & coding
@@ -656,6 +675,7 @@ val LLAMA_3_3_70B = AIModel(
 - ✅ Users don't need to create dedicated endpoints
 - ✅ Default model (DeepSeek R1) now uses correct serverless endpoint
 - ✅ Llama 3.3 70B Turbo uses correct model ID
+- ✅ **Existing users with saved old model IDs are automatically migrated**
 
 **Reference**: [Together.ai Serverless Models Documentation](https://docs.together.ai/docs/serverless-models)
 

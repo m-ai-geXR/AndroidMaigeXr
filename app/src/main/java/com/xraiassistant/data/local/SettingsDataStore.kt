@@ -80,14 +80,44 @@ class SettingsDataStore @Inject constructor(
      */
     suspend fun getSettings(): AppSettings {
         return context.dataStore.data.map { preferences ->
+            val savedModel = preferences[SELECTED_MODEL] ?: AppSettings().selectedModel
+
+            // Migrate old non-serverless model IDs to new serverless ones
+            val migratedModel = migrateModelId(savedModel)
+
+            // If model was migrated, save the new one
+            if (migratedModel != savedModel) {
+                context.dataStore.edit { prefs ->
+                    prefs[SELECTED_MODEL] = migratedModel
+                }
+                println("🔄 Migrated model ID: $savedModel → $migratedModel")
+            }
+
             AppSettings(
-                selectedModel = preferences[SELECTED_MODEL] ?: AppSettings().selectedModel,
+                selectedModel = migratedModel,
                 temperature = preferences[TEMPERATURE] ?: AppSettings().temperature,
                 topP = preferences[TOP_P] ?: AppSettings().topP,
                 systemPrompt = preferences[SYSTEM_PROMPT] ?: AppSettings().systemPrompt,
                 selectedLibraryId = preferences[SELECTED_LIBRARY_ID] ?: AppSettings().selectedLibraryId
             )
         }.first()
+    }
+
+    /**
+     * Migrate old non-serverless Together.ai model IDs to new serverless ones
+     * See CLAUDE.md "Known Issues & Fixes" for details
+     */
+    private fun migrateModelId(oldId: String): String {
+        return when (oldId) {
+            // DeepSeek R1 migrations
+            "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" -> "deepseek-ai/DeepSeek-R1"
+
+            // Llama 3.3 70B migrations
+            "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" -> "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+
+            // If no migration needed, return original
+            else -> oldId
+        }
     }
     
     /**
