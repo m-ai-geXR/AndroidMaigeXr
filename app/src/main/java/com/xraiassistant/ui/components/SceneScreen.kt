@@ -86,9 +86,9 @@ fun SceneScreen(
 
             lastInjectedCode = lastGeneratedCode
 
-            // IMPORTANT: Use CodeSandbox for React Three Fiber, direct injection for others
-            if (currentLibrary?.id == "reactThreeFiber") {
-                println("🏗️ [SceneScreen] React Three Fiber detected - using CodeSandbox build")
+            // IMPORTANT: Use CodeSandbox for React-based libraries (React Three Fiber, Reactylon), direct injection for others
+            if (currentLibrary?.id == "reactThreeFiber" || currentLibrary?.id == "reactylon") {
+                println("🏗️ [SceneScreen] ${currentLibrary?.displayName} detected - using CodeSandbox build")
                 chatViewModel.buildWithCodeSandbox(lastGeneratedCode, currentLibrary?.id)
             } else {
                 println("📝 [SceneScreen] Using direct injection for ${currentLibrary?.displayName}")

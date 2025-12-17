@@ -210,4 +210,112 @@ object CodeSandboxTemplates {
             )
         )
     }
+
+    /**
+     * Creates a Reactylon sandbox with the given code
+     *
+     * @param code The Reactylon component code (should export default App or render directly)
+     * @return Map of files for CodeSandbox
+     */
+    fun createReactylonSandbox(code: String): Map<String, CodeSandboxFile> {
+        return mapOf(
+            "/package.json" to CodeSandboxFile(
+                content = """
+                    {
+                      "name": "maigeXR-reactylon",
+                      "version": "1.0.0",
+                      "description": "AI-generated Reactylon scene",
+                      "main": "index.js",
+                      "dependencies": {
+                        "react": "^18.3.1",
+                        "react-dom": "^18.3.1",
+                        "react-reconciler": "^0.29.2",
+                        "reactylon": "3.0.0",
+                        "@babylonjs/core": "8.0.0",
+                        "@babylonjs/gui": "8.0.0",
+                        "@babylonjs/havok": "1.3.10"
+                      },
+                      "devDependencies": {
+                        "@types/react": "19.0.0",
+                        "@types/react-dom": "19.0.0",
+                        "typescript": "5.4.0"
+                      }
+                    }
+                """.trimIndent()
+            ),
+            "/index.html" to CodeSandboxFile(
+                content = """
+                    <!DOCTYPE html>
+                    <html lang="en">
+                      <head>
+                        <meta charset="UTF-8" />
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                        <title>m{ai}geXR Reactylon Playground</title>
+                        <style>
+                          body { margin: 0; overflow: hidden; }
+                          #root { width: 100vw; height: 100vh; }
+                          canvas { width: 100%; height: 100%; display: block; }
+                        </style>
+                      </head>
+                      <body>
+                        <div id="root"></div>
+                        <script type="module" src="/src/index.tsx"></script>
+                      </body>
+                    </html>
+                """.trimIndent()
+            ),
+            "/src/index.tsx" to CodeSandboxFile(
+                content = """
+                    import React from 'react';
+                    import { createRoot } from 'react-dom/client';
+                    import App from './App';
+
+                    // Fullscreen wrapper to ensure canvas fills entire viewport
+                    const FullscreenWrapper = () => (
+                      <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: '100vw',
+                        height: '100vh',
+                        margin: 0,
+                        padding: 0,
+                        overflow: 'hidden',
+                        pointerEvents: 'none'
+                      }}>
+                        <div style={{ pointerEvents: 'auto', width: '100%', height: '100%' }}>
+                          <App />
+                        </div>
+                      </div>
+                    );
+
+                    const root = createRoot(document.getElementById('root')!);
+                    root.render(<FullscreenWrapper />);
+                """.trimIndent()
+            ),
+            "/src/App.tsx" to CodeSandboxFile(
+                content = code
+            ),
+            "/tsconfig.json" to CodeSandboxFile(
+                content = """
+                    {
+                      "compilerOptions": {
+                        "target": "ES2020",
+                        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+                        "jsx": "react-jsx",
+                        "module": "ESNext",
+                        "moduleResolution": "bundler",
+                        "strict": true,
+                        "esModuleInterop": true,
+                        "skipLibCheck": true,
+                        "forceConsistentCasingInFileNames": true
+                      },
+                      "include": ["src"]
+                    }
+                """.trimIndent()
+            )
+        )
+    }
 }

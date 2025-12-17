@@ -22,7 +22,7 @@ class Library3DRepository @Inject constructor() {
         BabylonJSLibrary(),
         ThreeJSLibrary(),
         ReactThreeFiberLibrary(),
-        ReactylonLibrary(),
+        // ReactylonLibrary(), // DISABLED: CodeSandbox doesn't support React 19 (see CLAUDE.md Known Issues)
         AFrameLibrary()
     )
     

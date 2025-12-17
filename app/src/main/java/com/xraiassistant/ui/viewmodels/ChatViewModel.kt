@@ -681,8 +681,8 @@ class ChatViewModel @Inject constructor(
                 println("🔄 Switching from ${_currentLibrary.value?.displayName} to ${library.displayName}")
                 _currentLibrary.value = library
 
-                // Clear CodeSandbox URL when switching away from React Three Fiber
-                if (library.id != "reactThreeFiber") {
+                // Clear CodeSandbox URL when switching away from React-based libraries
+                if (library.id != "reactThreeFiber" && library.id != "reactylon") {
                     _sandboxUrl.value = null
                     println("🧹 Cleared CodeSandbox URL when switching to ${library.displayName}")
                 }
@@ -692,9 +692,9 @@ class ChatViewModel @Inject constructor(
             _currentLibrary.value
         }
 
-        // IMPORTANT: Use CodeSandbox for React Three Fiber, regular injection for others
-        if (targetLibrary?.id == "reactThreeFiber") {
-            println("🏗️ React Three Fiber detected - using CodeSandbox build")
+        // IMPORTANT: Use CodeSandbox for React-based libraries (React Three Fiber, Reactylon), regular injection for others
+        if (targetLibrary?.id == "reactThreeFiber" || targetLibrary?.id == "reactylon") {
+            println("🏗️ ${targetLibrary.displayName} detected - using CodeSandbox build")
             buildWithCodeSandbox(code, libraryId)
         } else {
             // For other libraries (BabylonJS, Three.js, A-Frame), use direct injection
@@ -709,10 +709,10 @@ class ChatViewModel @Inject constructor(
     /**
      * Build code with CodeSandbox API
      *
-     * Creates a CodeSandbox sandbox for React Three Fiber code and returns the preview URL.
+     * Creates a CodeSandbox sandbox for React-based libraries (React Three Fiber, Reactylon) and returns the preview URL.
      * This replaces client-side Babel transpilation with server-side bundling.
      *
-     * @param code The React Three Fiber component code
+     * @param code The React component code (React Three Fiber or Reactylon)
      * @param libraryId The library ID (defaults to current library)
      * @return CodeSandbox preview URL (e.g., https://codesandbox.io/s/abc123)
      */
@@ -730,6 +730,7 @@ class ChatViewModel @Inject constructor(
                 // Create sandbox files based on library type
                 val files = when (library?.id) {
                     "reactThreeFiber" -> CodeSandboxTemplates.createReactThreeFiberSandbox(code)
+                    "reactylon" -> CodeSandboxTemplates.createReactylonSandbox(code)
                     "threejs" -> CodeSandboxTemplates.createThreeJSSandbox(code)
                     "aframe" -> CodeSandboxTemplates.createAFrameSandbox(code)
                     else -> {

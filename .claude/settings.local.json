@@ -18,7 +18,10 @@
       "WebFetch(domain:codesandbox.io)",
       "WebFetch(domain:platform.openai.com)",
       "WebFetch(domain:docs.aimlapi.com)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:www.reactylon.com)",
+      "WebFetch(domain:developer.stackblitz.com)"
     ],
     "deny": [],
     "ask": []

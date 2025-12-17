@@ -203,7 +203,7 @@ class ChatViewModel @Inject constructor(
 2. **Three.js r171** - Popular lightweight 3D library
 3. **A-Frame v1.7.0** - WebXR VR/AR framework
 4. **React Three Fiber 8.17.10** - Declarative React + Three.js
-5. **Reactylon 3.2.1** - Declarative React + Babylon.js
+5. ~~**Reactylon 3.2.1**~~ - DISABLED (CodeSandbox React 19 incompatibility - see Known Issues)
 
 Each library provides:
 - Custom system prompts optimized for that framework
@@ -710,6 +710,72 @@ data class AnthropicResponse(
 - ✅ All event types can be parsed
 - ✅ UI receives real-time text chunks
 - ✅ No breaking changes to other providers
+
+---
+
+### **Issue: Reactylon CodeSandbox React 19 Incompatibility**
+
+**Status**: BLOCKED 🚫 (December 17, 2025)
+
+**Problem**: Reactylon 3.0.0 requires React 19 for optimal functionality, but CodeSandbox's package registry does not yet support React 19 (released December 2024).
+
+**Error Encountered**:
+```
+Error: Could not fetch dependencies, please try again in a couple seconds
+TypeError: Cannot read properties of null (reading 'match')
+```
+
+**Root Cause**: CodeSandbox's dependency resolution system cannot fetch React 19.0.0 packages, resulting in build failures when attempting to create Reactylon sandboxes.
+
+**Attempted Solutions**:
+1. ✅ Implemented complete CodeSandbox integration for Reactylon (same pattern as React Three Fiber)
+2. ✅ Added all required dependencies: `@babylonjs/core`, `@babylonjs/gui`, `@babylonjs/havok`, `react-reconciler`
+3. ✅ Tested multiple BabylonJS versions (5.x, 6.x, 8.x) for compatibility
+4. ✅ Tried exact pinned versions vs semver ranges
+5. ❌ CodeSandbox cannot resolve React 19.x packages (deal breaker)
+6. ❌ StackBlitz investigated but POST API doesn't return project IDs (incompatible with iframe embedding architecture)
+
+**Current Implementation**:
+- ✅ Full Reactylon CodeSandbox template exists in `CodeSandboxModels.kt` (lines 220-318)
+- ✅ ChatViewModel handles Reactylon build routing (lines 685, 696, 712, 733)
+- ✅ SceneScreen routes Reactylon to CodeSandbox (line 90)
+- 🚫 **Reactylon DISABLED in library options** (Library3DRepository.kt:25)
+
+**Template Configuration** (React 18.3.1 - not working with React 19 requirement):
+```kotlin
+fun createReactylonSandbox(code: String): Map<String, CodeSandboxFile> {
+    // dependencies:
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-reconciler": "^0.29.2",
+    "reactylon": "3.0.0",
+    "@babylonjs/core": "8.0.0",
+    "@babylonjs/gui": "8.0.0",
+    "@babylonjs/havok": "1.3.10"
+}
+```
+
+**Files Modified**:
+- `app/src/main/java/com/xraiassistant/data/models/CodeSandboxModels.kt` - Reactylon template (lines 220-318)
+- `app/src/main/java/com/xraiassistant/ui/viewmodels/ChatViewModel.kt` - Routing logic
+- `app/src/main/java/com/xraiassistant/ui/components/SceneScreen.kt` - Auto-injection logic
+- `app/src/main/java/com/xraiassistant/data/repositories/Library3DRepository.kt` - Disabled from options (line 25)
+
+**Resolution Path**:
+- **Option 1 (Preferred)**: Wait for CodeSandbox to support React 19 packages (timeline unknown)
+- **Option 2**: Implement local bundler (webpack/vite) in Android app to compile Reactylon+React 19
+- **Option 3**: Switch to direct HTML injection (like Three.js/A-Frame) but requires complex React 19 bundling
+- **Option 4**: Build custom server-side build API similar to CodeSandbox
+
+**Impact**:
+- ❌ Reactylon temporarily unavailable in 3D library selector
+- ✅ All implementation code preserved for future re-enablement
+- ✅ Other libraries (Babylon.js, Three.js, React Three Fiber, A-Frame) work normally
+- 🔄 Awaiting CodeSandbox React 19 support before re-enabling
+
+**Reference**:
+- [Official Reactylon Template (React 19)](https://github.com/simonedevit/create-reactylon-app/blob/main/templates/reactylon/package.json)
+- [CodeSandbox Limitations](https://codesandbox.io/docs/learn/sandboxes/limitations)
 
 ---
 
