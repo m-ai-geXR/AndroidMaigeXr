@@ -1,68 +1,95 @@
 package com.xraiassistant.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = XRAccent,
-    secondary = XRSecondary,
-    tertiary = Pink80,
-    background = CodeBg,
-    surface = CodeBg,
-    onPrimary = androidx.compose.ui.graphics.Color.White,
-    onSecondary = androidx.compose.ui.graphics.Color.White,
-    onBackground = androidx.compose.ui.graphics.Color.White,
-    onSurface = androidx.compose.ui.graphics.Color.White,
+/**
+ * Neon Cyberpunk Dark Color Scheme
+ * Based on m{ai}geXR branding guide - vaporwave/cyberpunk aesthetic
+ */
+private val NeonCyberpunkColorScheme = darkColorScheme(
+    // Primary colors (neon cyan for main UI elements)
+    primary = NeonCyan,
+    onPrimary = CyberpunkBlack,  // Dark text on bright neon buttons
+    primaryContainer = NeonCyanGlow,
+    onPrimaryContainer = CyberpunkWhite,
+
+    // Secondary colors (neon purple for accents)
+    secondary = NeonPurple,
+    onSecondary = CyberpunkBlack,
+    secondaryContainer = NeonPurpleGlow,
+    onSecondaryContainer = CyberpunkWhite,
+
+    // Tertiary colors (neon pink for highlights)
+    tertiary = NeonPink,
+    onTertiary = CyberpunkBlack,
+    tertiaryContainer = NeonPinkGlow,
+    onTertiaryContainer = CyberpunkWhite,
+
+    // Background & Surface (dark cyberpunk backgrounds)
+    background = CyberpunkBlack,
+    onBackground = CyberpunkWhite,
+    surface = CyberpunkDarkGray,
+    onSurface = CyberpunkWhite,
+    surfaceVariant = CyberpunkDarkGray,
+    onSurfaceVariant = CyberpunkGray,
+
+    // Status colors (neon versions)
+    error = ErrorNeon,
+    onError = CyberpunkWhite,
+    errorContainer = Color(0x33FF0055),  // Error glow
+    onErrorContainer = ErrorNeon,
+
+    // Outlines & borders
+    outline = CyberpunkGray,
+    outlineVariant = CyberpunkDimGray,
+
+    // Container colors
+    surfaceContainer = CyberpunkDarkGray,
+    surfaceContainerHigh = CyberpunkDarkGray,
+    surfaceContainerHighest = CyberpunkDarkGray,
+    surfaceContainerLow = CyberpunkBlack,
+    surfaceContainerLowest = CyberpunkBlack,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = XRPrimary,
-    secondary = XRSecondary,
-    tertiary = Pink40,
-    background = androidx.compose.ui.graphics.Color(0xFFFFFBFE),
-    surface = androidx.compose.ui.graphics.Color(0xFFFFFBFE),
-    onPrimary = androidx.compose.ui.graphics.Color.White,
-    onSecondary = androidx.compose.ui.graphics.Color.White,
-    onTertiary = androidx.compose.ui.graphics.Color.White,
-    onBackground = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
-    onSurface = androidx.compose.ui.graphics.Color(0xFF1C1B1F),
-)
-
+/**
+ * m{ai}geXR Theme
+ *
+ * Neon cyberpunk aesthetic with:
+ * - DARK MODE ONLY (no light theme support)
+ * - Vibrant neon colors (cyan, pink, purple, blue, green)
+ * - Jet black backgrounds
+ * - Futuristic typography (Exo 2 font)
+ * - Subtle glow effects
+ */
 @Composable
 fun XRAiAssistantTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    // ALWAYS use dark neon theme - no dynamic color, no light mode
+    val colorScheme = NeonCyberpunkColorScheme
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-    
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            // Status bar: Cyberpunk black with light icons
+            window.statusBarColor = CyberpunkBlack.toArgb()
+            // Navigation bar: Match background
+            window.navigationBarColor = CyberpunkBlack.toArgb()
+
+            // Light icons on dark background
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+            }
         }
     }
 

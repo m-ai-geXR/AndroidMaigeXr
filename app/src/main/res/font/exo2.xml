@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!--
+        Exo 2 Font Family - Downloadable from Google Fonts
+
+        This font descriptor uses Android's Downloadable Fonts API to fetch
+        Exo 2 from Google Fonts at runtime. The font will be cached automatically.
+
+        If the font fails to download, the system will fallback to sans-serif.
+    -->
+
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        app:fontProviderAuthority="com.google.android.gms.fonts"
+        app:fontProviderPackage="com.google.android.gms"
+        app:fontProviderQuery="name=Exo 2&amp;weight=400"
+        app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
+
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="500"
+        app:fontProviderAuthority="com.google.android.gms.fonts"
+        app:fontProviderPackage="com.google.android.gms"
+        app:fontProviderQuery="name=Exo 2&amp;weight=500"
+        app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
+
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="600"
+        app:fontProviderAuthority="com.google.android.gms.fonts"
+        app:fontProviderPackage="com.google.android.gms"
+        app:fontProviderQuery="name=Exo 2&amp;weight=600"
+        app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
+
+    <font
+        android:fontStyle="normal"
+        android:fontWeight="700"
+        app:fontProviderAuthority="com.google.android.gms.fonts"
+        app:fontProviderPackage="com.google.android.gms"
+        app:fontProviderQuery="name=Exo 2&amp;weight=700"
+        app:fontProviderCerts="@array/com_google_android_gms_fonts_certs" />
+
+</font-family>

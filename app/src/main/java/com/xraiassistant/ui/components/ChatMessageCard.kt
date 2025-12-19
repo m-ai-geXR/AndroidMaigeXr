@@ -12,10 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.data.models.ChatMessage
+import com.xraiassistant.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -56,22 +56,22 @@ fun ChatMessageCard(
                 Alignment.Start
             }
         ) {
+            val bubbleShape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (message.isUser) 16.dp else 4.dp,
+                bottomEnd = if (message.isUser) 4.dp else 16.dp
+            )
+
             Box(
                 modifier = Modifier
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp,
-                            bottomStart = if (message.isUser) 16.dp else 4.dp,
-                            bottomEnd = if (message.isUser) 4.dp else 16.dp
-                        )
-                    )
-                    .background(
-                        if (message.isUser) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
+                    .clip(bubbleShape)
+                    .background(CyberpunkDarkGray)  // Dark background for both
+                    .neonBorder(
+                        color = if (message.isUser) NeonBlue else NeonCyan,
+                        width = 1.5.dp,
+                        glowRadius = 6.dp,
+                        shape = bubbleShape
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
@@ -84,21 +84,13 @@ fun ChatMessageCard(
                         Icon(
                             imageVector = if (message.isUser) Icons.Default.Person else Icons.Default.SmartToy,
                             contentDescription = if (message.isUser) "User" else "AI",
-                            tint = if (message.isUser) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                Color(0xFF2196F3)
-                            },
+                            tint = if (message.isUser) NeonBlue else NeonCyan,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = if (message.isUser) "You" else (message.model ?: "AI Assistant"),
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (message.isUser) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                Color(0xFF2196F3)
-                            },
+                            color = if (message.isUser) NeonBlue else NeonCyan,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -116,7 +108,7 @@ fun ChatMessageCard(
                         // User messages: Plain text
                         Text(
                             text = message.content,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = CyberpunkWhite,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -136,7 +128,7 @@ fun ChatMessageCard(
                 Text(
                     text = formatTime(message.timestamp),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    color = CyberpunkGray,
                     fontWeight = FontWeight.Light
                 )
 
@@ -147,10 +139,12 @@ fun ChatMessageCard(
 
                     Button(
                         onClick = { onRunDemo(message.libraryId) },
-                        modifier = Modifier.height(28.dp),
+                        modifier = Modifier
+                            .height(28.dp)
+                            .neonButtonGlow(NeonPurpleGlow),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF9C27B0),  // Purple for demo
-                            contentColor = Color.White
+                            containerColor = NeonPurple,
+                            contentColor = CyberpunkBlack
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
@@ -172,10 +166,12 @@ fun ChatMessageCard(
 
                     Button(
                         onClick = { onRunScene(extractedCode, message.libraryId) },
-                        modifier = Modifier.height(28.dp),
+                        modifier = Modifier
+                            .height(28.dp)
+                            .neonButtonGlow(NeonGreenGlow),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50),  // Green for scene
-                            contentColor = Color.White
+                            containerColor = NeonGreen,
+                            contentColor = CyberpunkBlack
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {

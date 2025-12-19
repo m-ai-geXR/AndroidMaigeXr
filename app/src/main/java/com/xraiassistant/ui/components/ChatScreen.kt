@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xraiassistant.R
 import com.xraiassistant.domain.models.Library3D
+import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 
 /**
@@ -162,12 +164,15 @@ private fun ChatHeader(
     isLoading: Boolean
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = CyberpunkDarkGray,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
             // Top row with title and loading indicator
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -176,13 +181,13 @@ private fun ChatHeader(
                 Icon(
                     imageVector = Icons.Default.Psychology, // Brain icon
                     contentDescription = null,
-                    tint = Color(0xFF2196F3) // Blue color
+                    tint = NeonCyan
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "AI Assistant",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = NeonCyan
                 )
                 
                 Spacer(modifier = Modifier.weight(1f))
@@ -190,13 +195,14 @@ private fun ChatHeader(
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
+                        color = NeonCyan
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             // Model and Library selector row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -206,36 +212,36 @@ private fun ChatHeader(
                 Icon(
                     imageVector = Icons.Default.Computer,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = CyberpunkGray,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "Model:",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = CyberpunkGray
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                
+
                 ModelSelector(
                     chatViewModel = chatViewModel,
                     selectedModel = selectedModel
                 )
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
-                
+
                 // Library selector
                 Icon(
                     imageVector = Icons.Default.ViewInAr,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = CyberpunkGray,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "Library:",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = CyberpunkGray
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 
@@ -243,9 +249,18 @@ private fun ChatHeader(
                     chatViewModel = chatViewModel,
                     currentLibrary = currentLibrary
                 )
-                
+
                 Spacer(modifier = Modifier.weight(1f))
             }
+            }
+
+            // Neon accent divider line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .neonAccentLine(NeonCyan, thickness = 2.dp)
+            )
         }
     }
 }
@@ -278,9 +293,10 @@ private fun AICodeReadyBanner(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .neonCardGlow(NeonGreenGlow),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = CyberpunkDarkGray
         )
     ) {
         Row(
@@ -292,25 +308,25 @@ private fun AICodeReadyBanner(
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = Color(0xFF4CAF50) // Green color
+                tint = NeonGreen
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.ai_code_ready),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = CyberpunkWhite
                 )
                 Text(
                     text = "Generated by ${chatViewModel.getModelDisplayName(selectedModel)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    color = CyberpunkGray
                 )
             }
             Text(
                 text = "($codeLength chars)",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                color = CyberpunkGray
             )
         }
     }
@@ -366,7 +382,9 @@ private fun ChatInputField(
                 OutlinedTextField(
                     value = value,
                     onValueChange = onValueChange,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .neonInputGlow(NeonCyan),  // Enhanced input glow
                     placeholder = {
                         Text(stringResource(R.string.chat_input_hint))
                     },
@@ -377,6 +395,12 @@ private fun ChatInputField(
                     ),
                     keyboardActions = KeyboardActions(
                         onSend = { if (enabled) onSend() }
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = NeonCyan,
+                        unfocusedBorderColor = CyberpunkGray,
+                        cursorColor = NeonCyan,
+                        focusedLabelColor = NeonCyan
                     )
                 )
 
@@ -384,11 +408,20 @@ private fun ChatInputField(
 
                 FloatingActionButton(
                     onClick = onSend,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .then(
+                            // Apply strong neon glow when button is active
+                            if (value.isNotBlank() && enabled) {
+                                Modifier.neonButtonGlow(NeonPink)
+                            } else {
+                                Modifier
+                            }
+                        ),
                     containerColor = if (value.isBlank() || !enabled) {
                         MaterialTheme.colorScheme.surfaceVariant
                     } else {
-                        MaterialTheme.colorScheme.primary
+                        NeonPink  // Use neon pink for active send button
                     }
                 ) {
                     Icon(
@@ -397,7 +430,7 @@ private fun ChatInputField(
                         tint = if (value.isBlank() || !enabled) {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         } else {
-                            MaterialTheme.colorScheme.onPrimary
+                            CyberpunkBlack  // Dark icon on bright button
                         }
                     )
                 }
