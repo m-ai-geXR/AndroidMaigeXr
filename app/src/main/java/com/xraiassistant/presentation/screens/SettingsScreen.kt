@@ -65,6 +65,7 @@ fun SettingsScreen(
     var topP by remember { mutableFloatStateOf(0.9f) }
     var systemPrompt by remember { mutableStateOf("") }
     var useSandpackForR3F by remember { mutableStateOf(true) }
+    var ragEnabled by remember { mutableStateOf(true) }
     var showClearAllDialog by remember { mutableStateOf(false) }
     var historyCleared by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()

@@ -1,5 +1,6 @@
 package com.xraiassistant.ui.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xraiassistant.data.models.AIModel
@@ -11,10 +12,12 @@ import com.xraiassistant.data.remote.CodeSandboxService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
 import com.xraiassistant.data.repositories.Library3DRepository
+import com.xraiassistant.data.repositories.RAGRepository
 import com.xraiassistant.data.repositories.SettingsRepository
 import com.xraiassistant.domain.models.Library3D
 import com.xraiassistant.ui.screens.AppView
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,7 +48,8 @@ class ChatViewModel @Inject constructor(
     private val library3DRepository: Library3DRepository,
     private val settingsRepository: SettingsRepository,
     private val conversationRepository: ConversationRepository,  // For chat history
-    private val codeSandboxService: CodeSandboxService  // For building React Three Fiber code
+    private val codeSandboxService: CodeSandboxService,  // For building React Three Fiber code
+    private val ragRepository: RAGRepository  // For RAG-enhanced responses
 ) : ViewModel() {
 
     // MARK: - UI State
@@ -120,6 +124,10 @@ class ChatViewModel @Inject constructor(
     // MARK: - Multimodal Support (Images)
     private val _selectedImages = MutableStateFlow<List<com.xraiassistant.data.models.AIImageContent>>(emptyList())
     val selectedImages: StateFlow<List<com.xraiassistant.data.models.AIImageContent>> = _selectedImages.asStateFlow()
+
+    // MARK: - RAG (Retrieval-Augmented Generation) Support
+    private val _ragEnabled = MutableStateFlow(true)  // Always on by default
+    val ragEnabled: StateFlow<Boolean> = _ragEnabled.asStateFlow()
 
     // MARK: - Chat History / Conversation Tracking
     // Track current conversation ID (null for new unsaved conversation)
@@ -220,6 +228,18 @@ class ChatViewModel @Inject constructor(
                     clearReplyTo()
                 }
 
+                // Get images from state FIRST (before RAG context)
+                val imagesToSend = _selectedImages.value
+
+                // Build RAG context from previous conversations ONLY if no images are present
+                // When images are present, they are the primary context, not past conversations
+                val ragContext = if (imagesToSend.isEmpty()) {
+                    getRAGContext(content)
+                } else {
+                    Log.d("ChatViewModel", "⚠️ Skipping RAG context - multimodal message with ${imagesToSend.size} image(s)")
+                    ""
+                }
+
                 // Get current library for context
                 val library = _currentLibrary.value
                 val enhancedPrompt = buildPrompt(content, currentCode, library, parentId)
@@ -237,15 +257,25 @@ class ChatViewModel @Inject constructor(
                 // Collect streaming response
                 val fullResponse = StringBuilder()
 
-                // Get images from state
-                val imagesToSend = _selectedImages.value
+                // Enhance system prompt with RAG context if available (and no images)
+                val enhancedSystemPrompt = if (ragContext.isNotEmpty()) {
+                    """
+                    ${_systemPrompt.value}
+
+                    $ragContext
+
+                    **Instructions**: Use the context above to inform your responses when relevant. Reference specific examples from previous conversations when applicable. If the context doesn't help answer the question, rely on your general knowledge.
+                    """.trimIndent()
+                } else {
+                    _systemPrompt.value
+                }
 
                 aiProviderRepository.generateResponseStream(
                     prompt = enhancedPrompt,
                     model = _selectedModel.value,
                     temperature = _temperature.value.toDouble(),
                     topP = _topP.value.toDouble(),
-                    systemPrompt = _systemPrompt.value,
+                    systemPrompt = enhancedSystemPrompt,
                     images = imagesToSend
                 ).collect { chunk ->
                     // Append chunk to full response
@@ -267,6 +297,22 @@ class ChatViewModel @Inject constructor(
 
                 // Auto-save conversation after AI response (matching iOS)
                 autoSaveConversation()
+
+                // Index messages for RAG (fire-and-forget, iOS approach)
+                // User message had images if imagesToSend was not empty
+                val hadImages = imagesToSend.isNotEmpty()
+                indexMessageForRAG(userMessage, hadImages)
+                val finalAiMessage = _messages.value.getOrNull(messageIndex)
+                if (finalAiMessage != null) {
+                    // AI message didn't have images (only user messages can have images)
+                    indexMessageForRAG(finalAiMessage, hadImages = false)
+                }
+
+                // Clear selected images after sending (prevent them from sticking to next message)
+                if (imagesToSend.isNotEmpty()) {
+                    clearImages()
+                    Log.d("ChatViewModel", "✅ Cleared ${imagesToSend.size} image(s) after sending")
+                }
 
             } catch (e: Exception) {
                 println("❌ ChatViewModel: Error in sendMessage")
@@ -319,9 +365,25 @@ class ChatViewModel @Inject constructor(
                 val userMessage = ChatMessage.userMessage(content)
                 _messages.value = _messages.value + userMessage
 
+                // Build RAG context from previous conversations
+                val ragContext = getRAGContext(content)
+
                 // Get current library for context
                 val library = _currentLibrary.value
                 val enhancedPrompt = buildPrompt(content, currentCode, library)
+
+                // Enhance system prompt with RAG context if available
+                val enhancedSystemPrompt = if (ragContext.isNotEmpty()) {
+                    """
+                    ${_systemPrompt.value}
+
+                    $ragContext
+
+                    **Instructions**: Use the context above to inform your responses when relevant. Reference specific examples from previous conversations when applicable. If the context doesn't help answer the question, rely on your general knowledge.
+                    """.trimIndent()
+                } else {
+                    _systemPrompt.value
+                }
 
                 // Call AI service (non-streaming)
                 val response = aiProviderRepository.generateResponse(
@@ -329,7 +391,7 @@ class ChatViewModel @Inject constructor(
                     model = _selectedModel.value,
                     temperature = _temperature.value.toDouble(),
                     topP = _topP.value.toDouble(),
-                    systemPrompt = _systemPrompt.value
+                    systemPrompt = enhancedSystemPrompt
                 )
 
                 // Add AI response
@@ -351,6 +413,11 @@ class ChatViewModel @Inject constructor(
 
                 // Auto-save conversation after AI response (matching iOS)
                 autoSaveConversation()
+
+                // Index messages for RAG (fire-and-forget)
+                // Non-streaming doesn't support images, so hadImages is always false
+                indexMessageForRAG(userMessage, hadImages = false)
+                indexMessageForRAG(aiMessage, hadImages = false)
 
             } catch (e: Exception) {
                 val errorMsg = when {
@@ -1341,5 +1408,60 @@ class ChatViewModel @Inject constructor(
             modelId.contains("llama", ignoreCase = true) && modelId.contains("vision", ignoreCase = true) -> true
             else -> false
         }
+    }
+
+    // MARK: - RAG Support Methods
+
+    /**
+     * Index message for RAG in background (iOS approach: fire-and-forget after message)
+     *
+     * @param message The message to index
+     * @param hadImages Whether this message was sent with images (multimodal messages are skipped)
+     */
+    private fun indexMessageForRAG(message: ChatMessage, hadImages: Boolean = false) {
+        if (!_ragEnabled.value) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                ragRepository.indexMessage(message, hadImages)
+                Log.d("ChatViewModel", "✅ Indexed message ${message.id.take(8)} for RAG")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to index message: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Get RAG-enhanced context for a user query
+     * Returns empty string if RAG is disabled or fails
+     */
+    private suspend fun getRAGContext(userQuery: String): String {
+        if (!_ragEnabled.value) return ""
+
+        return try {
+            ragRepository.buildContextForQuery(
+                userQuery = userQuery,
+                libraryId = _currentLibrary.value?.id,
+                topK = 10
+            )
+        } catch (e: Exception) {
+            Log.e("ChatViewModel", "Failed to build RAG context: ${e.message}", e)
+            ""
+        }
+    }
+
+    /**
+     * Get RAG statistics (for debugging/monitoring)
+     */
+    suspend fun getRAGStatistics(): Map<String, Int> {
+        return ragRepository.getStatistics()
+    }
+
+    /**
+     * Enable or disable RAG
+     */
+    fun setRAGEnabled(enabled: Boolean) {
+        _ragEnabled.value = enabled
+        Log.d("ChatViewModel", if (enabled) "✅ RAG enabled" else "⚠️ RAG disabled")
     }
 }

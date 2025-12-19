@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.xraiassistant.data.local.AppDatabase
 import com.xraiassistant.data.local.SettingsDataStore
 import com.xraiassistant.data.local.dao.ConversationDao
+import com.xraiassistant.data.local.dao.RAGDao
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
@@ -88,5 +89,11 @@ object AppModule {
         conversationDao: ConversationDao
     ): ConversationRepository {
         return ConversationRepository(conversationDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRAGDao(database: AppDatabase): RAGDao {
+        return database.ragDao()
     }
 }

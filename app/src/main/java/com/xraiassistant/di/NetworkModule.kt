@@ -5,6 +5,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.xraiassistant.data.remote.AnthropicService
 import com.xraiassistant.data.remote.CodeSandboxService
+import com.xraiassistant.data.remote.EmbeddingService
 import com.xraiassistant.data.remote.GeminiService
 import com.xraiassistant.data.remote.OpenAIService
 import com.xraiassistant.data.remote.TogetherAIService
@@ -255,4 +256,14 @@ object NetworkModule {
     fun provideCodeSandboxService(
         @CodeSandbox retrofit: Retrofit
     ): CodeSandboxService = retrofit.create(CodeSandboxService::class.java)
+
+    /**
+     * Embedding Service (Together.ai)
+     * Uses the same base URL as TogetherAIService for generating embeddings
+     */
+    @Provides
+    @Singleton
+    fun provideEmbeddingService(
+        @TogetherAI retrofit: Retrofit
+    ): EmbeddingService = retrofit.create(EmbeddingService::class.java)
 }
