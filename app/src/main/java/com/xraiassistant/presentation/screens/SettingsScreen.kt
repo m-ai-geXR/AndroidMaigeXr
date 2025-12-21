@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xraiassistant.R
 import com.xraiassistant.data.models.AIModel
 import com.xraiassistant.domain.models.Library3D
+import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,10 +105,29 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = null,
+                            tint = NeonCyan
+                        )
+                        Text(
+                            "m{ai}geXR Settings",
+                            color = NeonCyan
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel")
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Cancel",
+                            tint = CyberpunkGray
+                        )
                     }
                 },
                 actions = {
@@ -139,16 +159,20 @@ fun SettingsScreen(
                                 delay(1500L)
                                 onNavigateBack()
                             }
-                        }
+                        },
+                        modifier = Modifier.neonButtonGlow(NeonPink)
                     ) {
                         Text(
                             "Save",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = NeonPink
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = CyberpunkDarkGray
+                )
             )
         }
     ) { paddingValues ->
@@ -310,11 +334,14 @@ private fun ProviderAPIKeyView(
     isConfigured: Boolean
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .neonCardGlow(color),
         colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.05f)
+            containerColor = CyberpunkDarkGray
         ),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -332,7 +359,9 @@ private fun ProviderAPIKeyView(
                 value = apiKey,
                 onValueChange = onApiKeyChange,
                 placeholder = { Text("Enter your $provider API key") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .neonInputGlow(color),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
@@ -341,7 +370,12 @@ private fun ProviderAPIKeyView(
                 keyboardActions = KeyboardActions(
                     onDone = { keyboardController?.hide() }
                 ),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = color,
+                    unfocusedBorderColor = CyberpunkGray,
+                    cursorColor = color
+                )
             )
             
             Row(
@@ -395,12 +429,16 @@ private fun CodeSandboxAPIKeyView(
     apiKey: String,
     onApiKeyChange: (String) -> Unit
 ) {
+    val cardColor = Color(0xFFFF9800) // Orange
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .neonCardGlow(cardColor),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFF9800).copy(alpha = 0.05f) // Orange
+            containerColor = CyberpunkDarkGray
         ),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, cardColor)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -418,7 +456,9 @@ private fun CodeSandboxAPIKeyView(
                 value = apiKey,
                 onValueChange = onApiKeyChange,
                 placeholder = { Text("Enter your CodeSandbox API key") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .neonInputGlow(cardColor),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
@@ -427,7 +467,12 @@ private fun CodeSandboxAPIKeyView(
                 keyboardActions = KeyboardActions(
                     onDone = { keyboardController?.hide() }
                 ),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = cardColor,
+                    unfocusedBorderColor = CyberpunkGray,
+                    cursorColor = cardColor
+                )
             )
             
             Row(
@@ -904,9 +949,11 @@ private fun TemperatureSliderView(
             onValueChange = onTemperatureChange,
             valueRange = 0.0f..2.0f,
             steps = 19, // 20 steps total (0.1 increments)
+            modifier = Modifier.neonGlow(NeonBlue, blurRadius = 6.dp),
             colors = SliderDefaults.colors(
-                thumbColor = Color(0xFF2196F3),
-                activeTrackColor = Color(0xFF2196F3)
+                thumbColor = NeonBlue,
+                activeTrackColor = NeonBlue,
+                inactiveTrackColor = CyberpunkGray
             )
         )
         
@@ -963,9 +1010,11 @@ private fun TopPSliderView(
             onValueChange = onTopPChange,
             valueRange = 0.1f..1.0f,
             steps = 8, // 9 steps total (0.1 increments)
+            modifier = Modifier.neonGlow(NeonGreen, blurRadius = 6.dp),
             colors = SliderDefaults.colors(
-                thumbColor = Color(0xFF4CAF50),
-                activeTrackColor = Color(0xFF4CAF50)
+                thumbColor = NeonGreen,
+                activeTrackColor = NeonGreen,
+                inactiveTrackColor = CyberpunkGray
             )
         )
         
@@ -1019,15 +1068,17 @@ private fun ParameterSummaryView(
         }
         
         Card(
+            modifier = Modifier.neonCardGlow(NeonPurple),
             colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF9C27B0).copy(alpha = 0.1f)
+                containerColor = CyberpunkDarkGray
             ),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurple)
         ) {
             Text(
                 text = parameterDescription,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF9C27B0),
+                color = NeonPurple,
                 modifier = Modifier.padding(12.dp)
             )
         }
@@ -1084,9 +1135,12 @@ private fun SandboxSettingsSection(
                 Switch(
                     checked = useSandpackForR3F,
                     onCheckedChange = onUseSandpackChange,
+                    modifier = if (useSandpackForR3F) Modifier.neonGlow(NeonCyan, blurRadius = 6.dp) else Modifier,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color(0xFFFF9800),
-                        checkedTrackColor = Color(0xFFFF9800).copy(alpha = 0.5f)
+                        checkedThumbColor = NeonCyan,
+                        checkedTrackColor = NeonCyanGlow,
+                        uncheckedThumbColor = CyberpunkGray,
+                        uncheckedTrackColor = CyberpunkNavy
                     )
                 )
             }
@@ -1167,10 +1221,16 @@ private fun SystemPromptSection(
                 onValueChange = onSystemPromptChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
+                    .height(200.dp)
+                    .neonInputGlow(NeonPurple),
                 placeholder = { Text("Enter custom instructions for the AI assistant...") },
                 textStyle = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = NeonPurple,
+                    unfocusedBorderColor = CyberpunkGray,
+                    cursorColor = NeonPurple
                 )
             )
             
@@ -1247,11 +1307,14 @@ private fun DataPrivacySection(
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Clear Chat History Card
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .neonCardGlow(ErrorNeon),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFF44336).copy(alpha = 0.05f) // Red
+                    containerColor = CyberpunkDarkGray
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ErrorNeon)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -1282,9 +1345,11 @@ private fun DataPrivacySection(
 
                     Button(
                         onClick = onClearHistoryClick,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neonButtonGlow(ErrorNeon),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF44336)
+                            containerColor = ErrorNeon
                         )
                     ) {
                         Icon(
@@ -1395,7 +1460,7 @@ private fun SettingsSection(
                     Icon(
                         it,
                         contentDescription = title,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = NeonCyan,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1403,7 +1468,7 @@ private fun SettingsSection(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = NeonCyan
                 )
             }
         }

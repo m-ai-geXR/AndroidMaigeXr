@@ -88,7 +88,7 @@ fun ChatMessageCard(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = if (message.isUser) "You" else (message.model ?: "AI Assistant"),
+                            text = if (message.isUser) "You" else (message.model ?: "m{ai}geXR"),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (message.isUser) NeonBlue else NeonCyan,
                             fontWeight = FontWeight.SemiBold

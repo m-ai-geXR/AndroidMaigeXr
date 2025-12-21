@@ -22,6 +22,7 @@ import com.xraiassistant.ui.components.ChatScreen
 import com.xraiassistant.ui.components.SceneScreen
 import com.xraiassistant.presentation.screens.ConversationHistoryScreen
 import com.xraiassistant.presentation.screens.SettingsScreen
+import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 
 /**
@@ -85,8 +86,10 @@ fun MainScreen(
 
         println("✅ Callbacks wired successfully")
     }
-    
+
+
     Scaffold(
+        containerColor = CyberpunkBlack,
         bottomBar = {
             MainBottomNavigation(
                 currentView = uiState.currentView,
@@ -189,18 +192,43 @@ private fun MainBottomNavigation(
     onViewChange: (AppView) -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    NavigationBar {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Neon accent line separator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .neonAccentLine(NeonCyan, thickness = 2.dp)
+        )
+
+        NavigationBar(
+            containerColor = CyberpunkDarkGray,
+            contentColor = CyberpunkGray
+        ) {
         // Code Tab (Chat)
         NavigationBarItem(
-            icon = { 
+            icon = {
                 Icon(
-                    Icons.Outlined.Code, 
-                    contentDescription = stringResource(R.string.nav_chat)
-                ) 
+                    Icons.Outlined.Code,
+                    contentDescription = stringResource(R.string.nav_chat),
+                    tint = if (currentView == AppView.CHAT) NeonCyan else CyberpunkGray
+                )
             },
-            label = { Text(stringResource(R.string.nav_chat)) },
+            label = {
+                Text(
+                    stringResource(R.string.nav_chat),
+                    color = if (currentView == AppView.CHAT) NeonCyan else CyberpunkGray
+                )
+            },
             selected = currentView == AppView.CHAT,
-            onClick = { onViewChange(AppView.CHAT) }
+            onClick = { onViewChange(AppView.CHAT) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = NeonCyan,
+                selectedTextColor = NeonCyan,
+                indicatorColor = NeonCyanGlow,
+                unselectedIconColor = CyberpunkGray,
+                unselectedTextColor = CyberpunkGray
+            )
         )
         
         // Run Scene Tab
@@ -209,16 +237,17 @@ private fun MainBottomNavigation(
                 Box {
                     Icon(
                         Icons.Filled.PlayArrow,
-                        contentDescription = stringResource(R.string.nav_scene)
+                        contentDescription = stringResource(R.string.nav_scene),
+                        tint = if (currentView == AppView.SCENE) NeonPink else CyberpunkGray
                     )
 
-                    // Notification dot for generated code
+                    // Notification dot for generated code with neon glow
                     if (hasGeneratedCode && currentView != AppView.SCENE) {
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
                                 .background(
-                                    MaterialTheme.colorScheme.error,
+                                    NeonPink,
                                     CircleShape
                                 )
                                 .offset(x = 8.dp, y = (-8).dp)
@@ -226,9 +255,21 @@ private fun MainBottomNavigation(
                     }
                 }
             },
-            label = { Text(stringResource(R.string.nav_scene)) },
+            label = {
+                Text(
+                    stringResource(R.string.nav_scene),
+                    color = if (currentView == AppView.SCENE) NeonPink else CyberpunkGray
+                )
+            },
             selected = currentView == AppView.SCENE,
-            onClick = { onViewChange(AppView.SCENE) }
+            onClick = { onViewChange(AppView.SCENE) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = NeonPink,
+                selectedTextColor = NeonPink,
+                indicatorColor = NeonPinkGlow,
+                unselectedIconColor = CyberpunkGray,
+                unselectedTextColor = CyberpunkGray
+            )
         )
 
         // History Tab
@@ -236,26 +277,53 @@ private fun MainBottomNavigation(
             icon = {
                 Icon(
                     Icons.Filled.History,
-                    contentDescription = "History"
+                    contentDescription = "History",
+                    tint = if (currentView == AppView.HISTORY) NeonBlue else CyberpunkGray
                 )
             },
-            label = { Text("History") },
+            label = {
+                Text(
+                    "History",
+                    color = if (currentView == AppView.HISTORY) NeonBlue else CyberpunkGray
+                )
+            },
             selected = currentView == AppView.HISTORY,
-            onClick = { onViewChange(AppView.HISTORY) }
+            onClick = { onViewChange(AppView.HISTORY) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = NeonBlue,
+                selectedTextColor = NeonBlue,
+                indicatorColor = NeonBlueGlow,
+                unselectedIconColor = CyberpunkGray,
+                unselectedTextColor = CyberpunkGray
+            )
         )
 
         // Settings Tab
         NavigationBarItem(
-            icon = { 
+            icon = {
                 Icon(
-                    Icons.Filled.Settings, 
-                    contentDescription = stringResource(R.string.nav_settings)
-                ) 
+                    Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.nav_settings),
+                    tint = CyberpunkGray
+                )
             },
-            label = { Text(stringResource(R.string.nav_settings)) },
+            label = {
+                Text(
+                    stringResource(R.string.nav_settings),
+                    color = CyberpunkGray
+                )
+            },
             selected = false, // Settings is a modal, not a view
-            onClick = onSettingsClick
+            onClick = onSettingsClick,
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = NeonPurple,
+                selectedTextColor = NeonPurple,
+                indicatorColor = NeonPurpleGlow,
+                unselectedIconColor = CyberpunkGray,
+                unselectedTextColor = CyberpunkGray
+            )
         )
+        }
     }
 }
 

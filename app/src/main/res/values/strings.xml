@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">XRAiAssistant</string>
+    <string name="app_name">m{ai}geXR</string>
 
     <!-- Navigation -->
     <string name="nav_chat">Code</string>
@@ -12,9 +12,9 @@
     <!-- Chat Screen -->
     <string name="chat_input_placeholder">Ask me to create a 3D scene…</string>
     <string name="chat_send">Send</string>
-    <string name="chat_loading">AI is thinking…</string>
+    <string name="chat_loading">m{ai}geXR is thinking…</string>
     <string name="chat_error">Error: %s</string>
-    <string name="chat_welcome_title">AI Assistant</string>
+    <string name="chat_welcome_title">m{ai}geXR</string>
 
     <!-- Scene Screen -->
     <string name="scene_loading">Loading 3D scene…</string>
@@ -73,7 +73,7 @@
     <!-- System Prompt -->
     <string name="settings_system_prompt">System Prompt</string>
     <string name="settings_system_prompt_hint">Custom Instructions</string>
-    <string name="settings_system_prompt_desc">Customize how the AI assistant behaves</string>
+    <string name="settings_system_prompt_desc">Customize how m{ai}geXR behaves</string>
 
     <!-- Examples Screen -->
     <string name="examples_title">Code Examples</string>
@@ -124,8 +124,8 @@
     <string name="content_desc_library_icon">3D Library</string>
 
     <!-- Missing string resources -->
-    <string name="chat_thinking">AI is thinking…</string>
-    <string name="ai_code_ready">AI code ready! Tap \'Run Scene\' to see it.</string>
+    <string name="chat_thinking">m{ai}geXR is thinking…</string>
+    <string name="ai_code_ready">Code ready! Tap Run Scene to see it.</string>
     <string name="chat_input_hint">Ask me to create a 3D scene…</string>
     <string name="webview_loading">Loading 3D scene…</string>
     <string name="parameter_temperature">Temperature</string>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash screen colors matching neon cyberpunk theme -->
+    <color name="splash_background">#0A0A0A</color> <!-- CyberpunkBlack -->
+    <color name="splash_neon_pink">#FF00C1</color> <!-- NeonPink -->
+    <color name="splash_neon_cyan">#00FFF9</color> <!-- NeonCyan -->
+</resources>

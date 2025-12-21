@@ -28,7 +28,10 @@ class MainActivity : ComponentActivity() {
         try {
             super.onCreate(savedInstanceState)
             Log.d("XRAiAssistant", "super.onCreate completed")
-            
+
+            // Switch from splash theme to main theme
+            setTheme(R.style.Theme_XRAiAssistant)
+
             setContent {
                 Log.d("XRAiAssistant", "setContent started")
                 

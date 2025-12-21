@@ -185,7 +185,7 @@ private fun ChatHeader(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "AI Assistant",
+                    text = "m{ai}geXR",
                     style = MaterialTheme.typography.headlineSmall,
                     color = NeonCyan
                 )

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- CyberpunkBlack background -->
+    <item android:drawable="@color/splash_background"/>
+
+    <!-- Centered logo with neon glow effect -->
+    <item
+        android:width="160dp"
+        android:height="160dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <!-- Outer neon glow (larger, more transparent) -->
+            <solid android:color="#33FF00C1"/>
+            <size android:width="160dp" android:height="160dp"/>
+        </shape>
+    </item>
+
+    <item
+        android:width="140dp"
+        android:height="140dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <!-- Middle glow -->
+            <solid android:color="#66FF00C1"/>
+            <size android:width="140dp" android:height="140dp"/>
+        </shape>
+    </item>
+
+    <item
+        android:width="120dp"
+        android:height="120dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <!-- Inner bright glow -->
+            <solid android:color="#99FF00C1"/>
+            <size android:width="120dp" android:height="120dp"/>
+        </shape>
+    </item>
+
+    <!-- Logo icon in center -->
+    <item
+        android:width="80dp"
+        android:height="80dp"
+        android:gravity="center"
+        android:drawable="@drawable/ic_launcher"/>
+</layer-list>

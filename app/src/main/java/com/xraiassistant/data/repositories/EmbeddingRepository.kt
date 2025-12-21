@@ -3,10 +3,13 @@ package com.xraiassistant.data.repositories
 import android.util.Log
 import com.xraiassistant.data.local.SettingsDataStore
 import com.xraiassistant.data.models.EmbeddingRequest
+import com.xraiassistant.data.models.EmbeddingResponse
 import com.xraiassistant.data.remote.EmbeddingService
 import kotlinx.coroutines.delay
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.pow
 
 /**
  * Embedding Repository
@@ -27,6 +30,11 @@ class EmbeddingRepository @Inject constructor(
         private const val RATE_LIMIT_DELAY_MS = 100L // 0.1 second between batches
         private const val PROVIDER_TOGETHER_AI = "Together.ai"
         private const val DEFAULT_API_KEY = "changeMe"
+
+        // Retry configuration for handling 503 errors
+        private const val MAX_RETRIES = 3
+        private const val INITIAL_RETRY_DELAY_MS = 1000L // 1 second
+        private const val RETRY_MULTIPLIER = 2.0 // Exponential backoff
     }
 
     /**
@@ -47,6 +55,46 @@ class EmbeddingRepository @Inject constructor(
             Log.w(TAG, "Failed to get Together.ai API key: ${e.message}")
             DEFAULT_API_KEY
         }
+    }
+
+    /**
+     * Execute API call with retry logic for handling 503 Service Unavailable errors
+     *
+     * @param block Suspend function that makes the API call
+     * @return Result of the API call
+     * @throws Exception if all retries fail
+     */
+    private suspend fun <T> withRetry(block: suspend () -> T): T {
+        var lastException: Exception? = null
+
+        repeat(MAX_RETRIES) { attempt ->
+            try {
+                return block()
+            } catch (e: HttpException) {
+                lastException = e
+
+                // Only retry on 503 Service Unavailable errors
+                if (e.code() == 503) {
+                    if (attempt < MAX_RETRIES - 1) {
+                        val delayMs = (INITIAL_RETRY_DELAY_MS * RETRY_MULTIPLIER.pow(attempt)).toLong()
+                        Log.w(TAG, "⚠️ HTTP 503 Service Unavailable - Retry ${attempt + 1}/$MAX_RETRIES after ${delayMs}ms...")
+                        delay(delayMs)
+                    } else {
+                        Log.e(TAG, "❌ All retries exhausted for 503 error")
+                        throw e
+                    }
+                } else {
+                    // For non-503 errors, throw immediately without retry
+                    throw e
+                }
+            } catch (e: Exception) {
+                // For non-HTTP exceptions, throw immediately
+                throw e
+            }
+        }
+
+        // Should never reach here, but throw last exception if we do
+        throw lastException ?: IllegalStateException("Retry logic failed unexpectedly")
     }
 
     /**
@@ -74,10 +122,13 @@ class EmbeddingRepository @Inject constructor(
             input = text
         )
 
-        val response = embeddingService.generateEmbedding(
-            authorization = "Bearer $apiKey",
-            request = request
-        )
+        // Use retry logic to handle 503 errors
+        val response = withRetry {
+            embeddingService.generateEmbedding(
+                authorization = "Bearer $apiKey",
+                request = request
+            )
+        }
 
         if (response.data.isEmpty()) {
             throw IllegalStateException("Empty embedding response from API")
@@ -115,10 +166,13 @@ class EmbeddingRepository @Inject constructor(
             input = texts
         )
 
-        val response = embeddingService.generateEmbedding(
-            authorization = "Bearer $apiKey",
-            request = request
-        )
+        // Use retry logic to handle 503 errors
+        val response = withRetry {
+            embeddingService.generateEmbedding(
+                authorization = "Bearer $apiKey",
+                request = request
+            )
+        }
 
         val embeddings = response.data
             .sortedBy { it.index } // Ensure correct order

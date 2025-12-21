@@ -28,7 +28,8 @@
       "Bash(JAVA_HOME=\"/mnt/c/Program Files/Android/Android Studio/jbr\" PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew:*)",
       "Bash(mkdir:*)",
       "Bash(export PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\")",
-      "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew assembleDebug:*)"
+      "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew assembleDebug:*)",
+      "Bash(java -version:*)"
     ],
     "deny": [],
     "ask": []
