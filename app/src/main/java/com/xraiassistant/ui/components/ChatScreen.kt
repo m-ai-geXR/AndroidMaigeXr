@@ -254,12 +254,16 @@ private fun ChatHeader(
             }
             }
 
-            // Neon accent divider line
+            // Gradient divider line (cyan fade to transparent)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(2.dp)
-                    .neonAccentLine(NeonCyan, thickness = 2.dp)
+                    .gradientBackground(
+                        colors = CyanFadeGradient,
+                        angle = 0f,  // Horizontal fade
+                        shape = RoundedCornerShape(0.dp)
+                    )
             )
         }
     }
@@ -384,7 +388,7 @@ private fun ChatInputField(
                     onValueChange = onValueChange,
                     modifier = Modifier
                         .weight(1f)
-                        .neonInputGlow(NeonCyan),  // Enhanced input glow
+                        .neonInputGlow(NeonCyan),  // Keep the neon glow
                     placeholder = {
                         Text(stringResource(R.string.chat_input_hint))
                     },

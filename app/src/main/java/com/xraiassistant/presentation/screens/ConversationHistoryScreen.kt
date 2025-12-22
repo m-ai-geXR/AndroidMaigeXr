@@ -1,16 +1,25 @@
 package com.xraiassistant.presentation.screens
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -19,6 +28,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xraiassistant.data.local.entities.ConversationEntity
 import com.xraiassistant.data.repositories.ConversationRepository
+import com.xraiassistant.ui.theme.GlassCyberpunkDarkGray
+import com.xraiassistant.ui.theme.NeonCyan
+import com.xraiassistant.ui.theme.glassCard
+import com.xraiassistant.ui.theme.neonGlow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -126,16 +139,29 @@ private fun ConversationItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .clickable(onClick = onClick)
+            .glassCard(
+                backgroundColor = GlassCyberpunkDarkGray,
+                blurRadius = 10.dp,
+                borderGlow = NeonCyan,
+                shape = RoundedCornerShape(14.dp)
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Screenshot thumbnail (left side)
+            ConversationThumbnail(
+                screenshotBase64 = conversation.screenshotBase64,
+                modifier = Modifier
+            )
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -219,6 +245,62 @@ private fun ConversationItem(
                 }
             }
         )
+    }
+}
+
+/**
+ * Conversation screenshot thumbnail
+ * Decodes base64 image and displays it, or shows placeholder icon
+ */
+@Composable
+private fun ConversationThumbnail(
+    screenshotBase64: String?,
+    modifier: Modifier = Modifier
+) {
+    val bitmap = remember(screenshotBase64) {
+        if (screenshotBase64 != null && screenshotBase64.isNotEmpty()) {
+            try {
+                // Remove data URL prefix if present
+                val base64Data = screenshotBase64.removePrefix("data:image/jpeg;base64,")
+                    .removePrefix("data:image/png;base64,")
+
+                // Decode base64 to bitmap
+                val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            } catch (e: Exception) {
+                println("⚠️ Failed to decode screenshot: ${e.message}")
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(80.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.5.dp, NeonCyan, RoundedCornerShape(8.dp))
+            .neonGlow(NeonCyan, 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            // Display the screenshot
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Scene preview",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Placeholder icon
+            Icon(
+                Icons.Default.Image,
+                contentDescription = "No preview",
+                tint = NeonCyan.copy(alpha = 0.5f),
+                modifier = Modifier.size(40.dp)
+            )
+        }
     }
 }
 

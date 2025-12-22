@@ -91,14 +91,14 @@ fun Modifier.neonInputGlow(
 /**
  * Neon card glow
  *
- * Subtle glow for cards and containers (6dp blur).
- * Balanced to add presence without overwhelming the UI.
+ * Enhanced glow for cards and containers (8dp blur).
+ * Increased from 6dp for more presence and modern look.
  *
  * @param color The neon color to glow
  */
 fun Modifier.neonCardGlow(
     color: Color
-) = this.neonGlow(color, blurRadius = 6.dp)
+) = this.neonGlow(color, blurRadius = 8.dp)
 
 /**
  * Neon outline glow
@@ -192,3 +192,72 @@ fun Modifier.neonAccentLine(
         }
     }
 )
+
+/**
+ * Neon dual glow
+ *
+ * Layered glow effect with two colors for more dynamic visual depth.
+ * Creates an inner and outer glow for enhanced presence.
+ *
+ * Perfect for: Emphasized buttons, important cards, hero elements
+ *
+ * @param primaryColor Outer glow color (larger radius)
+ * @param secondaryColor Inner glow color (smaller radius)
+ * @param primaryBlur Primary glow radius (default 12dp)
+ * @param secondaryBlur Secondary glow radius (default 6dp)
+ * @param shape Glow shape (default rounded corners)
+ */
+fun Modifier.neonDualGlow(
+    primaryColor: Color,
+    secondaryColor: Color,
+    primaryBlur: Dp = 12.dp,
+    secondaryBlur: Dp = 6.dp,
+    shape: Shape = RoundedCornerShape(8.dp)
+) = this
+    .shadow(
+        elevation = primaryBlur,
+        shape = shape,
+        ambientColor = primaryColor.copy(alpha = 0.3f),
+        spotColor = primaryColor.copy(alpha = 0.3f)
+    )
+    .shadow(
+        elevation = secondaryBlur,
+        shape = shape,
+        ambientColor = secondaryColor.copy(alpha = 0.4f),
+        spotColor = secondaryColor.copy(alpha = 0.4f)
+    )
+
+/**
+ * Neon gradient glow
+ *
+ * Creates a glow effect that transitions between two colors.
+ * Simulates gradient glow by averaging the colors.
+ *
+ * Note: True gradient shadows aren't possible in Compose, so this
+ * creates a blended color glow as an approximation.
+ *
+ * @param startColor Starting color of gradient
+ * @param endColor Ending color of gradient
+ * @param blurRadius Glow blur radius (default 8dp)
+ * @param shape Glow shape
+ */
+fun Modifier.neonGradientGlow(
+    startColor: Color,
+    endColor: Color,
+    blurRadius: Dp = 8.dp,
+    shape: Shape = RoundedCornerShape(8.dp)
+): Modifier {
+    // Average the two colors for a blended glow effect
+    val blendedColor = Color(
+        red = (startColor.red + endColor.red) / 2f,
+        green = (startColor.green + endColor.green) / 2f,
+        blue = (startColor.blue + endColor.blue) / 2f,
+        alpha = 0.35f
+    )
+    return this.shadow(
+        elevation = blurRadius,
+        shape = shape,
+        ambientColor = blendedColor,
+        spotColor = blendedColor
+    )
+}

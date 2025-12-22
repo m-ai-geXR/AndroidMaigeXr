@@ -20,6 +20,7 @@ import com.xraiassistant.data.local.entities.RAGTypeConverters
  * @version 1 - Initial database schema
  * @version 2 - Added threading support (threadParentId, isWelcomeMessage)
  * @version 3 - Added RAG tables (rag_documents, rag_embeddings, rag_documents_fts)
+ * @version 4 - Added screenshotBase64 column to conversations for scene thumbnails
  */
 @Database(
     entities = [
@@ -29,7 +30,7 @@ import com.xraiassistant.data.local.entities.RAGTypeConverters
         RAGEmbeddingEntity::class,
         RAGDocumentFts::class
     ],
-    version = 3,
+    version = 4,  // UPDATED: v3 → v4 for screenshot support
     exportSchema = false // Set to false for development - enable with schemaLocation in production
 )
 @TypeConverters(RAGTypeConverters::class)

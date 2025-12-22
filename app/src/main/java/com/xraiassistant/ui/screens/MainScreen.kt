@@ -3,6 +3,7 @@ package com.xraiassistant.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
@@ -193,17 +194,27 @@ private fun MainBottomNavigation(
     onSettingsClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Neon accent line separator
+        // Gradient navigation divider (cyan → pink → purple)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
-                .neonAccentLine(NeonCyan, thickness = 2.dp)
+                .gradientBackground(
+                    colors = NavigationGradient,  // Cyan → Pink → Purple
+                    angle = 0f,
+                    shape = RoundedCornerShape(0.dp)
+                )
         )
 
         NavigationBar(
-            containerColor = CyberpunkDarkGray,
-            contentColor = CyberpunkGray
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,  // Transparent for glass effect
+            contentColor = CyberpunkGray,
+            modifier = Modifier.glassCard(
+                backgroundColor = GlassCyberpunkBlack,  // 25% opacity glass
+                blurRadius = 8.dp,
+                borderGlow = null,
+                shape = RoundedCornerShape(0.dp)
+            )
         ) {
         // Code Tab (Chat)
         NavigationBarItem(

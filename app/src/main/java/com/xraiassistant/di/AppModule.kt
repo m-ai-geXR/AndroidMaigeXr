@@ -6,6 +6,7 @@ import com.xraiassistant.data.local.AppDatabase
 import com.xraiassistant.data.local.SettingsDataStore
 import com.xraiassistant.data.local.dao.ConversationDao
 import com.xraiassistant.data.local.dao.RAGDao
+import com.xraiassistant.data.local.migrations.MIGRATION_3_4
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
@@ -73,6 +74,7 @@ object AppModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
+            .addMigrations(MIGRATION_3_4)  // Add screenshot column migration (v3→v4)
             .fallbackToDestructiveMigration() // For development - use migrations in production
             .build()
     }

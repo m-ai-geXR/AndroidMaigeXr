@@ -1553,7 +1553,60 @@ console.log("✅ Default scene creation complete!");`;
             // Open Three.js documentation in Safari
             window.location.href = 'https://threejs.org/docs/';
         }
-        
+
+        /**
+         * Capture screenshot from Three.js canvas
+         *
+         * Captures the current 3D scene as a base64-encoded JPEG image.
+         * Called automatically 5 seconds after code injection from Android.
+         *
+         * @returns {string|null} Base64 data URL (data:image/jpeg;base64,...) or null if failed
+         */
+        function captureCanvasScreenshot() {
+            console.log("📸 [Three.js] Capturing canvas screenshot...");
+
+            try {
+                // Get the Three.js rendering canvas
+                let canvas = null;
+
+                // Method 1: Try to get canvas from global renderer
+                if (typeof renderer !== 'undefined' && renderer && renderer.domElement) {
+                    canvas = renderer.domElement;
+                    console.log("✅ Canvas found via renderer.domElement");
+                }
+                // Method 2: Fallback to finding canvas by ID
+                else if (document.getElementById('renderCanvas')) {
+                    canvas = document.getElementById('renderCanvas');
+                    console.log("✅ Canvas found via getElementById('renderCanvas')");
+                }
+                // Method 3: Fallback to finding any canvas element
+                else {
+                    canvas = document.querySelector('canvas');
+                    if (canvas) {
+                        console.log("✅ Canvas found via querySelector('canvas')");
+                    }
+                }
+
+                if (!canvas) {
+                    console.error("❌ No canvas element found for screenshot");
+                    return null;
+                }
+
+                // Capture as JPEG with 70% quality for smaller file size
+                const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+
+                console.log("✅ Screenshot captured successfully!");
+                console.log("📊 Data URL length:", dataURL.length, "characters");
+                console.log("📏 Canvas size:", canvas.width, "x", canvas.height);
+
+                return dataURL;
+
+            } catch (error) {
+                console.error("❌ Screenshot capture failed:", error);
+                return null;
+            }
+        }
+
         function initFloatingConsole() {
             const consoleWindow = document.getElementById('consoleWindow');
             const titleBar = document.getElementById('consoleTitleBar');

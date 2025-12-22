@@ -65,15 +65,19 @@ fun ChatMessageCard(
 
             Box(
                 modifier = Modifier
-                    .clip(bubbleShape)
-                    .background(CyberpunkDarkGray)  // Dark background for both
-                    .neonBorder(
-                        color = if (message.isUser) NeonBlue else NeonCyan,
-                        width = 1.5.dp,
-                        glowRadius = 6.dp,
+                    .glassCard(
+                        backgroundColor = GlassCyberpunkDarkGray,  // 35% opacity glass effect
+                        blurRadius = 10.dp,
+                        borderGlow = if (message.isUser) NeonBlue else NeonCyan,
                         shape = bubbleShape
                     )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .gradientBorder(
+                        colors = if (message.isUser) BlueFadeGradient else CyanPinkGradient,
+                        width = 1.5.dp,
+                        shape = bubbleShape,
+                        angle = 45f
+                    )
+                    .padding(horizontal = 20.dp, vertical = 14.dp)  // Increased padding
             ) {
                 Column {
                     // Header with icon and sender info

@@ -1192,6 +1192,30 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Save screenshot to current conversation
+     * Called after canvas screenshot is captured in SceneScreen (5 seconds after code injection)
+     */
+    fun saveConversationScreenshot(screenshotBase64: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val conversationId = currentConversationId ?: run {
+                    println("⚠️ Cannot save screenshot - no active conversation")
+                    return@launch
+                }
+
+                conversationRepository.updateConversationScreenshot(
+                    conversationId = conversationId,
+                    screenshotBase64 = screenshotBase64
+                )
+
+                println("✅ Screenshot saved to conversation: $conversationId (${screenshotBase64.length} characters)")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to save screenshot: ${e.message}", e)
+            }
+        }
+    }
+
     // MARK: - Helper Functions
 
     /**

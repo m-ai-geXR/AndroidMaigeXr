@@ -28,12 +28,14 @@ class ConversationRepository @Inject constructor(
      * @param messages List of chat messages
      * @param libraryId The 3D library used in conversation
      * @param modelUsed The AI model used
+     * @param screenshotBase64 Optional base64-encoded screenshot from 3D scene
      * @return The conversation ID
      */
     suspend fun saveConversation(
         messages: List<ChatMessage>,
         libraryId: String?,
-        modelUsed: String?
+        modelUsed: String?,
+        screenshotBase64: String? = null  // NEW: Optional screenshot
     ): String {
         val conversationId = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
@@ -49,7 +51,8 @@ class ConversationRepository @Inject constructor(
             library3DID = libraryId,
             modelUsed = modelUsed,
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            screenshotBase64 = screenshotBase64  // NEW: Store screenshot
         )
 
         // Create message entities
@@ -154,5 +157,36 @@ class ConversationRepository @Inject constructor(
      */
     suspend fun deleteAllConversations() {
         conversationDao.deleteAllConversations()
+    }
+
+    // MARK: - Screenshot Operations
+
+    /**
+     * Update conversation with screenshot thumbnail
+     *
+     * Called after 3D scene renders and screenshot is captured from WebView canvas.
+     * Updates only the screenshot field without modifying messages or other metadata.
+     *
+     * @param conversationId The conversation ID to update
+     * @param screenshotBase64 Base64-encoded JPEG screenshot from canvas.toDataURL()
+     */
+    suspend fun updateConversationScreenshot(
+        conversationId: String,
+        screenshotBase64: String
+    ) {
+        val conversation = conversationDao.getConversationById(conversationId) ?: run {
+            println("⚠️ Cannot update screenshot: Conversation $conversationId not found")
+            return
+        }
+
+        // Update only screenshot field + timestamp
+        val updatedConversation = conversation.copy(
+            screenshotBase64 = screenshotBase64,
+            updatedAt = System.currentTimeMillis()
+        )
+
+        conversationDao.updateConversation(updatedConversation)
+        println("✅ Screenshot saved for conversation: $conversationId")
+        println("📊 Screenshot size: ${screenshotBase64.length} characters")
     }
 }

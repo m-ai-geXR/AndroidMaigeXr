@@ -99,6 +99,11 @@ fun SceneScreen(
                     println("⏰ Waiting ${initialDelay}ms before injection attempt...")
                     delay(initialDelay)
                     injectCodeWithRetry(webView!!, lastGeneratedCode, maxRetries = 5)
+
+                    // Wait 5 seconds after injection, then capture screenshot
+                    println("📸 Waiting 5 seconds before capturing screenshot...")
+                    delay(5000L)
+                    captureAndSaveScreenshot(webView!!, chatViewModel)
                 }
             }
         } else {
@@ -1039,6 +1044,47 @@ private fun injectCodeIntoWebView(webView: WebView?, code: String) {
         
     } catch (e: Exception) {
         println("❌ Code injection error: " + e.message)
+    }
+}
+
+/**
+ * Capture canvas screenshot and save to conversation
+ * Waits 5 seconds after code injection for scene to render
+ */
+private suspend fun captureAndSaveScreenshot(
+    webView: WebView,
+    chatViewModel: ChatViewModel
+) = withContext(Dispatchers.Main) {
+    println("")
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    println("📸 CAPTURING CANVAS SCREENSHOT")
+    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    val captureJS = """
+        (function() {
+            if (typeof captureCanvasScreenshot === 'function') {
+                console.log("📸 Calling captureCanvasScreenshot...");
+                return captureCanvasScreenshot();
+            } else {
+                console.error("❌ captureCanvasScreenshot function not found");
+                return null;
+            }
+        })();
+    """.trimIndent()
+
+    webView.evaluateJavascript(captureJS) { result ->
+        println("📸 Screenshot capture result received")
+        if (result != null && result != "null" && result.length > 100) {
+            // Remove quotes from JSON string result
+            val base64Data = result.trim('"')
+            println("✅ Screenshot captured successfully (${base64Data.length} characters)")
+            println("💾 Saving screenshot to conversation...")
+            chatViewModel.saveConversationScreenshot(base64Data)
+        } else {
+            println("❌ Screenshot capture failed or returned null")
+            println("🔍 Result: $result")
+        }
+        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     }
 }
 

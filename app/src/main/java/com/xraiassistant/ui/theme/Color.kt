@@ -34,3 +34,38 @@ val CyberpunkDimGray = Color(0xFF4A4A4A)   // Dim gray for disabled states
 val SuccessNeon = NeonGreen                // Success = neon green
 val ErrorNeon = Color(0xFFFF0055)          // Neon red/pink for errors
 val WarningNeon = Color(0xFFFFAA00)        // Neon orange for warnings
+
+// ================================
+// GLASSMORPHISM VARIANTS
+// ================================
+
+// GLASS OPACITY VARIANTS (for glassmorphic effects)
+val GlassCyberpunkDarkGray = Color(0x59 shl 24 or 0x1A1A1A)  // 35% opacity - for cards
+val GlassCyberpunkBlack = Color(0x40 shl 24 or 0x0A0A0A)      // 25% opacity - for overlays
+val GlassCyberpunkNavy = Color(0x4D shl 24 or 0x0D0D1F)       // 30% opacity - for accents
+
+// ================================
+// GRADIENT COLOR PAIRS
+// ================================
+// Pre-defined gradient combinations for common UI patterns
+
+// Cyan → Pink (AI messages, primary CTAs)
+val CyanPinkGradient = listOf(NeonCyan, NeonPink)
+
+// Purple → Blue (secondary accents)
+val PurpleBlueGradient = listOf(NeonPurple, NeonBlue)
+
+// Cyan → Green (success states, positive actions)
+val CyanGreenGradient = listOf(NeonCyan, NeonGreen)
+
+// Blue Fade (user messages, subtle highlights)
+val BlueFadeGradient = listOf(NeonBlue, NeonBlue.copy(alpha = 0.3f))
+
+// Pink Fade (error states, warnings)
+val PinkFadeGradient = listOf(NeonPink, NeonPink.copy(alpha = 0.3f))
+
+// Cyan Fade (dividers, accent lines)
+val CyanFadeGradient = listOf(NeonCyan, Color.Transparent)
+
+// Multi-color navigation gradient (cyan → pink → purple)
+val NavigationGradient = listOf(NeonCyan, NeonPink, NeonPurple)

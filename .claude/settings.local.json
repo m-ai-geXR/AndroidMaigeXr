@@ -29,7 +29,10 @@
       "Bash(mkdir:*)",
       "Bash(export PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\")",
       "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew assembleDebug:*)",
-      "Bash(java -version:*)"
+      "Bash(java -version:*)",
+      "WebFetch(domain:dribbble.com)",
+      "Bash(ls:*)",
+      "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew:*)"
     ],
     "deny": [],
     "ask": []

@@ -1981,7 +1981,56 @@
             // Open A-Frame documentation in Safari
             window.location.href = 'https://aframe.io/docs/';
         }
-        
+
+        /**
+         * Capture screenshot from A-Frame canvas
+         *
+         * Captures the current VR/AR scene as a base64-encoded JPEG image.
+         * Called automatically 5 seconds after code injection from Android.
+         *
+         * @returns {string|null} Base64 data URL (data:image/jpeg;base64,...) or null if failed
+         */
+        function captureCanvasScreenshot() {
+            console.log("📸 [A-Frame] Capturing canvas screenshot...");
+
+            try {
+                // Get the A-Frame rendering canvas
+                let canvas = null;
+
+                // Method 1: Try to get canvas from a-scene element
+                const aScene = document.querySelector('a-scene');
+                if (aScene && aScene.canvas) {
+                    canvas = aScene.canvas;
+                    console.log("✅ Canvas found via document.querySelector('a-scene').canvas");
+                }
+                // Method 2: Fallback to finding canvas element directly
+                else {
+                    canvas = document.querySelector('canvas');
+                    if (canvas) {
+                        console.log("✅ Canvas found via querySelector('canvas')");
+                    }
+                }
+
+                if (!canvas) {
+                    console.error("❌ No canvas element found for screenshot");
+                    return null;
+                }
+
+                // Capture as JPEG with 70% quality for smaller file size
+                const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+
+                console.log("✅ Screenshot captured successfully!");
+                console.log("📊 Data URL length:", dataURL.length, "characters");
+                console.log("📏 Canvas size:", canvas.width, "x", canvas.height);
+
+                return dataURL;
+
+            } catch (error) {
+                console.error("❌ Screenshot capture failed:", error);
+                return null;
+            }
+        }
+
         function initFloatingConsole() {
             const consoleWindow = document.getElementById('consoleWindow');
             const titleBar = document.getElementById('consoleTitleBar');
