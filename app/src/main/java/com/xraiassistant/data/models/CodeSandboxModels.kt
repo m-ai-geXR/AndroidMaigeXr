@@ -230,14 +230,14 @@ object CodeSandboxTemplates {
                         "react": "^18.3.1",
                         "react-dom": "^18.3.1",
                         "react-reconciler": "^0.29.2",
-                        "reactylon": "3.0.0",
-                        "@babylonjs/core": "8.0.0",
-                        "@babylonjs/gui": "8.0.0",
-                        "@babylonjs/havok": "1.3.10"
+                        "reactylon": "^3.2.1",
+                        "@babylonjs/core": "^8.0.0",
+                        "@babylonjs/gui": "^8.0.0",
+                        "@babylonjs/havok": "^1.3.10"
                       },
                       "devDependencies": {
-                        "@types/react": "19.0.0",
-                        "@types/react-dom": "19.0.0",
+                        "@types/react": "18.3.1",
+                        "@types/react-dom": "18.3.1",
                         "typescript": "5.4.0"
                       }
                     }
@@ -259,40 +259,9 @@ object CodeSandboxTemplates {
                       </head>
                       <body>
                         <div id="root"></div>
-                        <script type="module" src="/src/index.tsx"></script>
+                        <script type="module" src="/src/App.tsx"></script>
                       </body>
                     </html>
-                """.trimIndent()
-            ),
-            "/src/index.tsx" to CodeSandboxFile(
-                content = """
-                    import React from 'react';
-                    import { createRoot } from 'react-dom/client';
-                    import App from './App';
-
-                    // Fullscreen wrapper to ensure canvas fills entire viewport
-                    const FullscreenWrapper = () => (
-                      <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        width: '100vw',
-                        height: '100vh',
-                        margin: 0,
-                        padding: 0,
-                        overflow: 'hidden',
-                        pointerEvents: 'none'
-                      }}>
-                        <div style={{ pointerEvents: 'auto', width: '100%', height: '100%' }}>
-                          <App />
-                        </div>
-                      </div>
-                    );
-
-                    const root = createRoot(document.getElementById('root')!);
-                    root.render(<FullscreenWrapper />);
                 """.trimIndent()
             ),
             "/src/App.tsx" to CodeSandboxFile(

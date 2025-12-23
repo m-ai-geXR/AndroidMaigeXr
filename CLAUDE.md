@@ -203,13 +203,15 @@ class ChatViewModel @Inject constructor(
 2. **Three.js r171** - Popular lightweight 3D library
 3. **A-Frame v1.7.0** - WebXR VR/AR framework
 4. **React Three Fiber 8.17.10** - Declarative React + Three.js
-5. ~~**Reactylon 3.2.1**~~ - DISABLED (CodeSandbox React 19 incompatibility - see Known Issues)
+5. ~~**Reactylon 3.2.1**~~ - DISABLED (CodeSandbox TypeScript worker unstable - see Known Issues)
 
 Each library provides:
 - Custom system prompts optimized for that framework
 - Code examples and templates
 - Automatic API error correction
 - Framework-specific build pipelines
+
+**Note**: Reactylon is disabled due to CodeSandbox infrastructure bugs (TypeScript worker crashes). The template remains in the codebase for future re-enablement when CodeSandbox resolves their issues.
 
 ### **Secure Settings Management**
 
@@ -1039,69 +1041,101 @@ data class AnthropicResponse(
 
 ---
 
-### **Issue: Reactylon CodeSandbox React 19 Incompatibility**
+### **Issue: Reactylon CodeSandbox Instability**
 
-**Status**: BLOCKED 🚫 (December 17, 2025)
+**Status**: DISABLED ⚠️ (December 21, 2025)
 
-**Problem**: Reactylon 3.0.0 requires React 19 for optimal functionality, but CodeSandbox's package registry does not yet support React 19 (released December 2024).
+**Problem**: Reactylon library disabled due to CodeSandbox TypeScript worker instability. While React version compatibility was resolved, CodeSandbox iframe infrastructure has inherent bugs that cause unreliable scene rendering.
 
-**Error Encountered**:
-```
-Error: Could not fetch dependencies, please try again in a couple seconds
-TypeError: Cannot read properties of null (reading 'match')
-```
+**Implementation Journey**:
 
-**Root Cause**: CodeSandbox's dependency resolution system cannot fetch React 19.0.0 packages, resulting in build failures when attempting to create Reactylon sandboxes.
+1. **Phase 1 - React 19 Incompatibility** (Original Issue)
+   - CodeSandbox cannot fetch React 19 packages
+   - Template had mismatched types: React 18 runtime with React 19 type definitions
 
-**Attempted Solutions**:
-1. ✅ Implemented complete CodeSandbox integration for Reactylon (same pattern as React Three Fiber)
-2. ✅ Added all required dependencies: `@babylonjs/core`, `@babylonjs/gui`, `@babylonjs/havok`, `react-reconciler`
-3. ✅ Tested multiple BabylonJS versions (5.x, 6.x, 8.x) for compatibility
-4. ✅ Tried exact pinned versions vs semver ranges
-5. ❌ CodeSandbox cannot resolve React 19.x packages (deal breaker)
-6. ❌ StackBlitz investigated but POST API doesn't return project IDs (incompatible with iframe embedding architecture)
+2. **Phase 2 - React 18 Migration** (Completed)
+   - Updated `@types/react` from `19.0.0` → `18.3.1`
+   - Updated `@types/react-dom` from `19.0.0` → `18.3.1`
+   - Upgraded `reactylon` from `3.0.0` → `3.2.1` (latest with React 18 fixes)
+   - Simplified template structure (removed double-render issue)
 
-**Current Implementation**:
-- ✅ Full Reactylon CodeSandbox template exists in `CodeSandboxModels.kt` (lines 220-318)
-- ✅ ChatViewModel handles Reactylon build routing (lines 685, 696, 712, 733)
-- ✅ SceneScreen routes Reactylon to CodeSandbox (line 90)
-- 🚫 **Reactylon DISABLED in library options** (Library3DRepository.kt:25)
+3. **Phase 3 - WebView Crash Prevention** (Completed)
+   - Implemented `onRenderProcessGone()` crash handler
+   - Added JavaScript error detection
+   - Optimized WebView memory settings
+   - Added async loading to prevent ANR
 
-**Template Configuration** (React 18.3.1 - not working with React 19 requirement):
+4. **Phase 4 - CodeSandbox Iframe Failures** (Current Issue)
+   - CodeSandbox TypeScript worker crashes: `Cannot read properties of undefined (reading 'readFile')`
+   - Monaco editor (VS Code) integration bugs
+   - Scenes fail to render (black screen)
+   - **App stays alive** (crash prevention working), but scene doesn't load
+
+**Final CodeSandbox Template** (Working, but CodeSandbox unstable):
 ```kotlin
 fun createReactylonSandbox(code: String): Map<String, CodeSandboxFile> {
-    // dependencies:
+    // Runtime dependencies:
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-reconciler": "^0.29.2",
-    "reactylon": "3.0.0",
-    "@babylonjs/core": "8.0.0",
-    "@babylonjs/gui": "8.0.0",
-    "@babylonjs/havok": "1.3.10"
+    "react-reconciler": "^0.29.2",  // Required for React 18
+    "reactylon": "^3.2.1",           // Latest version with bug fixes
+    "@babylonjs/core": "^8.0.0",
+    "@babylonjs/gui": "^8.0.0",
+    "@babylonjs/havok": "^1.3.10"
+
+    // Dev dependencies (matching runtime):
+    "@types/react": "18.3.1",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.4.0"
 }
 ```
 
-**Files Modified**:
-- `app/src/main/java/com/xraiassistant/data/models/CodeSandboxModels.kt` - Reactylon template (lines 220-318)
-- `app/src/main/java/com/xraiassistant/ui/viewmodels/ChatViewModel.kt` - Routing logic
-- `app/src/main/java/com/xraiassistant/ui/components/SceneScreen.kt` - Auto-injection logic
-- `app/src/main/java/com/xraiassistant/data/repositories/Library3DRepository.kt` - Disabled from options (line 25)
+**Current Status**:
+- ❌ Reactylon **disabled** in library dropdown (line 25: `Library3DRepository.kt`)
+- ✅ CodeSandbox template **remains in codebase** (can be re-enabled when CodeSandbox fixes bugs)
+- ✅ Crash prevention **working** (app survives CodeSandbox failures)
+- ✅ 4 stable libraries available: Babylon.js, Three.js, React Three Fiber, A-Frame
 
-**Resolution Path**:
-- **Option 1 (Preferred)**: Wait for CodeSandbox to support React 19 packages (timeline unknown)
-- **Option 2**: Implement local bundler (webpack/vite) in Android app to compile Reactylon+React 19
-- **Option 3**: Switch to direct HTML injection (like Three.js/A-Frame) but requires complex React 19 bundling
-- **Option 4**: Build custom server-side build API similar to CodeSandbox
+**Why Disabled**:
+CodeSandbox is a **third-party service** with bugs beyond our control:
+- TypeScript worker crashes on complex React builds
+- Monaco editor file system API failures
+- Unreliable iframe rendering
+- Cannot be fixed from app side
+
+**Files Modified**:
+- `app/src/main/java/com/xraiassistant/data/models/CodeSandboxModels.kt` - Template updated (kept for future)
+- `app/src/main/java/com/xraiassistant/data/repositories/Library3DRepository.kt` (Line 25) - **Commented out ReactylonLibrary**
+- `app/src/main/java/com/xraiassistant/ui/components/SceneScreen.kt` - Crash prevention and CodeSandbox error detection
+
+**Workarounds**:
+1. **Use Babylon.js** (recommended) - Direct injection, no CodeSandbox, very stable
+2. **Use Three.js** - Direct injection, no CodeSandbox, very stable
+3. **Use React Three Fiber** - CodeSandbox build, more stable than Reactylon
+4. **Use A-Frame** - Direct injection for VR/AR scenes
+
+**Future Re-enablement**:
+Reactylon can be re-enabled when:
+1. CodeSandbox fixes TypeScript worker bugs, OR
+2. Local bundler implemented (webpack/vite on-device), OR
+3. Alternative build service found (StackBlitz, etc.)
+
+**Documentation**:
+- `REACTYLON_CODESANDBOX_ISSUES.md` - Detailed analysis of CodeSandbox failures
+- `REACTYLON_TESTING_CHECKLIST.md` - Comprehensive testing guide (if re-enabled)
+- `REACTYLON_IMPLEMENTATION_PLAN.md` - Original implementation plan
+- `WEBVIEW_CRASH_FIX_SUMMARY.md` - Crash prevention implementation
 
 **Impact**:
-- ❌ Reactylon temporarily unavailable in 3D library selector
-- ✅ All implementation code preserved for future re-enablement
-- ✅ Other libraries (Babylon.js, Three.js, React Three Fiber, A-Frame) work normally
-- 🔄 Awaiting CodeSandbox React 19 support before re-enabling
+- ✅ App crash prevention working (no more SIGTRAP deaths)
+- ✅ 4 stable 3D libraries available
+- ❌ Reactylon unavailable until CodeSandbox improves
+- ✅ Codebase ready for quick re-enablement
 
 **Reference**:
-- [Official Reactylon Template (React 19)](https://github.com/simonedevit/create-reactylon-app/blob/main/templates/reactylon/package.json)
-- [CodeSandbox Limitations](https://codesandbox.io/docs/learn/sandboxes/limitations)
+- [Reactylon Documentation](https://www.reactylon.com/docs/getting-started/reactylon)
+- [CodeSandbox Known Limitations](https://codesandbox.io/docs/learn/sandboxes/limitations)
+- Issue: CodeSandbox TypeScript worker `readFile` bug (external, unfixable)
 
 ---
 

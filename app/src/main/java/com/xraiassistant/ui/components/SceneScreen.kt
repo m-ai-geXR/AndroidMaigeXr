@@ -1,6 +1,9 @@
 package com.xraiassistant.ui.components
 
+import android.os.Build
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -409,6 +412,44 @@ private fun PlaygroundWebView(
                     ): Boolean {
                         return false
                     }
+
+                    // CRITICAL: Handle WebView render process crashes (API 26+)
+                    override fun onRenderProcessGone(
+                        view: WebView?,
+                        detail: RenderProcessGoneDetail?
+                    ): Boolean {
+                        println("")
+                        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        println("💥 WEBVIEW RENDER PROCESS CRASHED!")
+                        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                        println("   Did crash: ${detail?.didCrash()}")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            println("   Renderer priority: ${detail?.rendererPriorityAtExit()}")
+                        }
+                        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+                        // Remove crashed WebView from view hierarchy
+                        try {
+                            (view?.parent as? ViewGroup)?.removeView(view)
+                            println("✅ Crashed WebView removed from hierarchy")
+                        } catch (e: Exception) {
+                            println("⚠️ Failed to remove WebView: ${e.message}")
+                        }
+
+                        // Notify user with recovery option
+                        if (detail?.didCrash() == true) {
+                            onWebViewError(
+                                "The 3D scene crashed due to high complexity. " +
+                                "This is a CodeSandbox limitation. Tap retry to reload."
+                            )
+                        } else {
+                            onWebViewError("WebView process terminated. Tap retry to reload.")
+                        }
+
+                        // CRITICAL: Return true to prevent app from crashing
+                        println("🛡️ Crash isolated - app will continue running")
+                        return true
+                    }
                 }
 
                 webChromeClient = object : WebChromeClient() {
@@ -422,6 +463,41 @@ private fun PlaygroundWebView(
                                 else -> "📝"
                             }
                             println("$emoji [WebView Console - ${msg.messageLevel()}] ${msg.message()} (${msg.sourceId()}:${msg.lineNumber()})")
+
+                            // Detect critical JavaScript errors that may trigger WebView crash
+                            if (msg.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                                val message = msg.message() ?: ""
+                                val sourceId = msg.sourceId() ?: ""
+
+                                // Detect CodeSandbox-specific failures (TypeScript worker, Monaco editor)
+                                val isCodeSandboxError = sourceId.contains("codesandbox.io") &&
+                                    (message.contains("readFile") ||
+                                     message.contains("tsWorker") ||
+                                     message.contains("vs/language/typescript"))
+
+                                if (isCodeSandboxError) {
+                                    println("")
+                                    println("🚨━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🚨")
+                                    println("🚨 CODESANDBOX IFRAME ERROR!")
+                                    println("🚨 CodeSandbox TypeScript worker failed")
+                                    println("🚨 This is a CodeSandbox bug, not your app")
+                                    println("🚨 Scene may not render properly")
+                                    println("🚨 Error: $message")
+                                    println("🚨 Recommendation: Try a simpler scene or different library")
+                                    println("🚨━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━🚨")
+                                } else if (message.contains("is not a function") ||
+                                    message.contains("Cannot read properties of null") ||
+                                    message.contains("Cannot read properties of undefined") ||
+                                    message.contains("out of memory")) {
+                                    println("")
+                                    println("⚠️━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚠️")
+                                    println("⚠️ CRITICAL JS ERROR DETECTED!")
+                                    println("⚠️ This may trigger a WebView crash")
+                                    println("⚠️ Error: $message")
+                                    println("⚠️ Source: ${msg.sourceId()}:${msg.lineNumber()}")
+                                    println("⚠️━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━⚠️")
+                                }
+                            }
                         }
                         return true
                     }
@@ -445,10 +521,26 @@ private fun PlaygroundWebView(
 
                     // Performance optimizations for heavy content like CodeSandbox
                     cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                    @Suppress("DEPRECATION")
                     setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH)
 
                     // Enable Web Workers and SharedArrayBuffer for CodeSandbox
                     javaScriptCanOpenWindowsAutomatically = true
+
+                    // CRITICAL: Optimize memory for heavy CodeSandbox iframes
+                    // Note: App cache methods removed in API 33+ (deprecated)
+                    // Modern WebView uses automatic caching
+
+                    // Reduce memory pressure by disabling unnecessary features
+                    setSaveFormData(false) // We don't need form data
+                    setGeolocationEnabled(false) // We don't use geolocation
+
+                    // Load images (needed for 3D scenes)
+                    loadsImagesAutomatically = true
+
+                    // Allow more storage for DOM and JavaScript
+                    databaseEnabled = true
+                    domStorageEnabled = true
                 }
 
                 // Enable hardware acceleration for better performance
@@ -501,15 +593,22 @@ private fun PlaygroundWebView(
                 println("🔗 Loading CodeSandbox preview: $sandboxUrl")
                 println("📦 This is a server-bundled React Three Fiber sandbox")
 
-                // Load asynchronously to avoid blocking main thread (ANR prevention)
-                webView.post {
-                    try {
-                        webView.loadUrl(sandboxUrl!!)
-                        lastLoadedLibrary = "codesandbox"
-                        println("✅ CodeSandbox URL loaded successfully")
-                    } catch (e: Exception) {
-                        println("❌ Failed to load CodeSandbox URL: ${e.message}")
-                        onWebViewError("Failed to load CodeSandbox: ${e.message}")
+                // CRITICAL: Load asynchronously with coroutine to prevent ANR (skipped frames)
+                coroutineScope.launch(Dispatchers.IO) {
+                    // Small delay to let UI thread breathe (prevents "Skipped 41 frames" ANR)
+                    delay(100)
+
+                    withContext(Dispatchers.Main) {
+                        try {
+                            println("🚀 Starting async CodeSandbox iframe load...")
+                            webView.loadUrl(sandboxUrl!!)
+                            lastLoadedLibrary = "codesandbox"
+                            println("✅ CodeSandbox URL load initiated (async)")
+                        } catch (e: Exception) {
+                            println("❌ Failed to load CodeSandbox URL: ${e.message}")
+                            e.printStackTrace()
+                            onWebViewError("Failed to load CodeSandbox: ${e.message}")
+                        }
                     }
                 }
             }

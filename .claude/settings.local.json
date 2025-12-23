@@ -32,7 +32,8 @@
       "Bash(java -version:*)",
       "WebFetch(domain:dribbble.com)",
       "Bash(ls:*)",
-      "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew:*)"
+      "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
