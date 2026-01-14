@@ -61,6 +61,7 @@ object CodeSandboxTemplates {
                         "react-dom": "^18.2.0",
                         "@react-three/fiber": "^8.15.0",
                         "@react-three/drei": "^9.88.0",
+                        "@react-three/postprocessing": "^2.16.3",
                         "three": "^0.158.0"
                       },
                       "devDependencies": {

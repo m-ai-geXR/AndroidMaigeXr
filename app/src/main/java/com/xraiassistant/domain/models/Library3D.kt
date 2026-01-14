@@ -1308,6 +1308,129 @@ code here
         - Use object.position.set(x, y, z) for positioning
         - Use object.rotation.set(x, y, z) for rotation
 
+        POSTPROCESSING EFFECTS (FULL SUITE AVAILABLE):
+        Three.js r171 includes powerful postprocessing capabilities for cinematic visuals.
+        Available globally: EffectComposer, RenderPass, OutputPass, UnrealBloomPass, GlitchPass, FilmPass,
+        RGBShiftShader, ShaderPass, BokehPass, SMAAPass
+
+        IMPORTANT: The renderer is pre-configured with:
+        - Tone Mapping: ACESFilmicToneMapping (for HDR and realistic lighting)
+        - Tone Mapping Exposure: 1.0 (adjustable for brightness control)
+        - Output Color Space: sRGB (for accurate color reproduction)
+
+        When to use postprocessing:
+        - User asks for "bloom", "glow effects", "glowing objects", or "neon" effects → Use UnrealBloomPass
+        - User wants "depth of field", "blur", or "bokeh" effects → Use BokehPass
+        - User requests "glitch", "digital artifact", or "cyberpunk" effects → Use GlitchPass
+        - User wants "film grain", "vintage", or "analog" look → Use FilmPass
+        - User asks for "chromatic aberration" or "RGB split" → Use ShaderPass + RGBShiftShader
+        - User requests "cinematic", "realistic", or "dramatic" visuals → Combine multiple passes
+        - Scene has emissive materials that would benefit from bloom
+        - You want to create visually stunning or professional-looking scenes
+
+        CRITICAL RULE: When using EffectComposer, you MUST:
+        1. Replace renderer.render(scene, camera) with composer.render()
+        2. Always add RenderPass first
+        3. Always add OutputPass last (for proper color output)
+
+        1. UNREAL BLOOM PASS - Glowing, neon, dramatic lighting effects
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            1.5,  // strength (try 0.5-3.0 for different intensities)
+            0.4,  // radius (try 0.2-1.0 for bloom spread)
+            0.85  // threshold (0.0-1.0, lower = more bloom on darker objects)
+        );
+        composer.addPass(bloomPass);
+        composer.addPass(new OutputPass());
+
+        // In animation loop:
+        composer.render();  // NOT renderer.render()
+
+        2. GLITCH PASS - Digital glitch effects for cyberpunk/sci-fi scenes
+
+        const glitchPass = new GlitchPass();
+        composer.addPass(glitchPass);
+        // Glitches automatically occur at random intervals
+        // Set glitchPass.goWild = true for constant glitching
+
+        3. FILM PASS - Vintage film grain and scanline effects
+
+        const filmPass = new FilmPass(
+            0.35,   // noise intensity (0-1, try 0.35 for subtle grain)
+            0.5,    // scanline intensity (0-1, try 0.5 for visible scanlines)
+            648,    // scanline count (higher = finer scanlines)
+            false   // grayscale mode (false for color)
+        );
+        composer.addPass(filmPass);
+
+        4. RGB SHIFT SHADER - Chromatic aberration / color separation
+
+        const rgbShiftPass = new ShaderPass(RGBShiftShader);
+        rgbShiftPass.uniforms['amount'].value = 0.0015;  // shift amount (try 0.001-0.005)
+        composer.addPass(rgbShiftPass);
+
+        5. BOKEH PASS - Depth of field / blur effects
+
+        const bokehPass = new BokehPass(scene, camera, {
+            focus: 1.0,      // focus distance (try 0.5-10.0)
+            aperture: 0.025, // blur amount (try 0.001-0.1, higher = more blur)
+            maxblur: 0.01    // maximum blur (try 0.005-0.02)
+        });
+        composer.addPass(bokehPass);
+
+        6. SMAA PASS - Anti-aliasing for smooth edges
+
+        const smaaPass = new SMAAPass(window.innerWidth, window.innerHeight);
+        composer.addPass(smaaPass);
+
+        COMBINING EFFECTS - Create stunning cinematic scenes:
+
+        // Example: Neon cyberpunk scene with bloom + glitch + RGB shift
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+
+        // Bloom for neon glow
+        composer.addPass(new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            2.0, 0.4, 0.7
+        ));
+
+        // Glitch for digital artifacts
+        composer.addPass(new GlitchPass());
+
+        // RGB shift for chromatic aberration
+        const rgbPass = new ShaderPass(RGBShiftShader);
+        rgbPass.uniforms['amount'].value = 0.002;
+        composer.addPass(rgbPass);
+
+        // Always end with OutputPass
+        composer.addPass(new OutputPass());
+
+        // In animation loop:
+        function animate() {
+            requestAnimationFrame(animate);
+            // Your animation code here
+            controls.update();
+            composer.render();  // Use composer, NOT renderer!
+        }
+        animate();
+
+        Tips for effective postprocessing:
+        - Combine bloom with emissive materials for stunning glow effects
+        - Lower bloom threshold (0.5-0.8) to make more objects glow
+        - Higher bloom strength (2.0-3.0) for dramatic neon effects
+        - Use FilmPass for retro/analog aesthetic
+        - Use GlitchPass sparingly for dramatic moments (or set goWild = true for chaos)
+        - BokehPass creates cinematic depth of field (blur distant objects)
+        - RGBShiftShader adds chromatic aberration like real camera lenses
+        - Always add OutputPass as the final pass for proper color output
+        - Use dark backgrounds (0x000000-0x111111) to make bloom more visible
+        - Combine 2-3 effects maximum to avoid performance issues
+
         VISUAL EFFECTS:
         Create stunning visual effects using emissive materials and creative lighting:
 
@@ -1321,9 +1444,10 @@ code here
         });
 
         Tips for Beautiful Scenes:
+        - Use postprocessing (EffectComposer + UnrealBloomPass) for professional bloom effects
         - Use emissive + emissiveIntensity for self-illuminated objects
         - Combine ambient + directional lights for depth
-        - Dark backgrounds (0x000011) make emissive materials pop
+        - Dark backgrounds (0x000011) make emissive materials and bloom pop
         - Use multiple colored lights for dramatic effects
         - Try transparent materials with opacity for layered effects
 
@@ -1332,7 +1456,8 @@ code here
         - Use materials with realistic properties (metalness, roughness for StandardMaterial)
         - Add subtle animations with requestAnimationFrame patterns
         - Create interesting geometries and compositions
-        - Consider adding fog, shadows, or post-processing effects
+        - When creating glowing, neon, or dramatic scenes, USE POSTPROCESSING (EffectComposer + UnrealBloomPass)
+        - Add fog, shadows, and atmospheric effects for depth
         - Use the camera controls for interactive viewing
 
         Special commands you MUST use:
@@ -1396,7 +1521,7 @@ code here
     override val examples = listOf(
         CodeExample(
             title = "Neon Cubes",
-            description = "Rotating cubes with neon materials and emissive glow",
+            description = "Rotating cubes with neon materials, emissive glow, and bloom postprocessing",
             code = """
                 const createScene = () => {
                     const scene = new THREE.Scene();
@@ -1448,6 +1573,23 @@ code here
                     ground.rotation.x = -Math.PI / 2;
                     scene.add(ground);
 
+                    // Set up postprocessing for bloom effect
+                    const composer = new EffectComposer(renderer);
+
+                    const renderPass = new RenderPass(scene, camera);
+                    composer.addPass(renderPass);
+
+                    const bloomPass = new UnrealBloomPass(
+                        new THREE.Vector2(window.innerWidth, window.innerHeight),
+                        1.5,  // strength
+                        0.4,  // radius
+                        0.85  // threshold
+                    );
+                    composer.addPass(bloomPass);
+
+                    const outputPass = new OutputPass();
+                    composer.addPass(outputPass);
+
                     // Animation
                     function animate() {
                         requestAnimationFrame(animate);
@@ -1459,7 +1601,7 @@ code here
                         });
 
                         controls.update();
-                        renderer.render(scene, camera);
+                        composer.render();  // Use composer for bloom effect
                     }
                     animate();
 
@@ -2154,6 +2296,211 @@ code here
             """.trimIndent(),
             category = ExampleCategory.ANIMATION,
             difficulty = ExampleDifficulty.INTERMEDIATE
+        ),
+
+        CodeExample(
+            title = "Cyberpunk Glitch Effect",
+            description = "Neon scene with bloom, glitch, and RGB shift postprocessing",
+            code = """
+                const createScene = () => {
+                    const scene = new THREE.Scene();
+                    scene.background = new THREE.Color(0x000510);
+                    scene.fog = new THREE.Fog(0x000510, 5, 50);
+
+                    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+                    camera.position.set(0, 2, 8);
+
+                    // Cyberpunk lighting
+                    const ambientLight = new THREE.AmbientLight(0x0088ff, 0.2);
+                    scene.add(ambientLight);
+
+                    const light1 = new THREE.PointLight(0xff00ff, 2, 20);
+                    light1.position.set(-5, 3, 0);
+                    scene.add(light1);
+
+                    const light2 = new THREE.PointLight(0x00ffff, 2, 20);
+                    light2.position.set(5, 3, 0);
+                    scene.add(light2);
+
+                    // Create neon objects
+                    const torusGeometry = new THREE.TorusGeometry(1.5, 0.4, 16, 100);
+                    const torusMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xff00ff,
+                        emissive: 0xff00ff,
+                        emissiveIntensity: 0.8,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+                    torus.position.set(-2, 1.5, 0);
+                    scene.add(torus);
+
+                    const sphereGeometry = new THREE.SphereGeometry(0.8, 32, 32);
+                    const sphereMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x00ffff,
+                        emissive: 0x00ffff,
+                        emissiveIntensity: 0.8,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                    sphere.position.set(2, 1.5, 0);
+                    scene.add(sphere);
+
+                    // Ground with grid
+                    const groundGeometry = new THREE.PlaneGeometry(30, 30);
+                    const groundMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x0a0a20,
+                        roughness: 0.9,
+                        metalness: 0.1
+                    });
+                    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                    ground.rotation.x = -Math.PI / 2;
+                    scene.add(ground);
+
+                    // Set up postprocessing for cyberpunk effect
+                    const composer = new EffectComposer(renderer);
+
+                    const renderPass = new RenderPass(scene, camera);
+                    composer.addPass(renderPass);
+
+                    // Bloom for neon glow
+                    const bloomPass = new UnrealBloomPass(
+                        new THREE.Vector2(window.innerWidth, window.innerHeight),
+                        2.0,  // Strong bloom
+                        0.5,  // Radius
+                        0.6   // Low threshold for more glow
+                    );
+                    composer.addPass(bloomPass);
+
+                    // Glitch for digital artifacts
+                    const glitchPass = new GlitchPass();
+                    composer.addPass(glitchPass);
+
+                    // RGB shift for chromatic aberration
+                    const rgbShiftPass = new ShaderPass(RGBShiftShader);
+                    rgbShiftPass.uniforms['amount'].value = 0.003;
+                    composer.addPass(rgbShiftPass);
+
+                    // Output pass
+                    composer.addPass(new OutputPass());
+
+                    // Animation
+                    function animate() {
+                        requestAnimationFrame(animate);
+
+                        torus.rotation.x += 0.01;
+                        torus.rotation.y += 0.02;
+
+                        sphere.rotation.x += 0.02;
+                        sphere.rotation.y += 0.01;
+
+                        // Animate lights
+                        light1.position.x = Math.sin(Date.now() * 0.001) * 5;
+                        light2.position.x = Math.cos(Date.now() * 0.001) * 5;
+
+                        controls.update();
+                        composer.render();
+                    }
+                    animate();
+
+                    return { scene, camera };
+                };
+
+                const { scene, camera } = createScene();
+            """.trimIndent(),
+            category = ExampleCategory.EFFECTS,
+            difficulty = ExampleDifficulty.ADVANCED
+        ),
+
+        CodeExample(
+            title = "Cinematic Depth of Field",
+            description = "Bokeh effect with depth of field blur for cinematic look",
+            code = """
+                const createScene = () => {
+                    const scene = new THREE.Scene();
+                    scene.background = new THREE.Color(0x1a1a2e);
+
+                    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+                    camera.position.set(0, 2, 10);
+
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                    scene.add(ambientLight);
+
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    directionalLight.position.set(5, 10, 5);
+                    scene.add(directionalLight);
+
+                    // Create multiple objects at different depths
+                    const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b731, 0xa55eea];
+                    const spheres = [];
+
+                    for (let i = 0; i < 5; i++) {
+                        const geometry = new THREE.SphereGeometry(0.8, 32, 32);
+                        const material = new THREE.MeshStandardMaterial({
+                            color: colors[i],
+                            metalness: 0.5,
+                            roughness: 0.5
+                        });
+                        const sphere = new THREE.Mesh(geometry, material);
+                        sphere.position.set(
+                            (i - 2) * 2.5,
+                            1,
+                            (i - 2) * -3  // Spread objects in depth
+                        );
+                        scene.add(sphere);
+                        spheres.push(sphere);
+                    }
+
+                    // Ground
+                    const groundGeometry = new THREE.PlaneGeometry(50, 50);
+                    const groundMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2a2a3e,
+                        roughness: 0.8
+                    });
+                    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                    ground.rotation.x = -Math.PI / 2;
+                    scene.add(ground);
+
+                    // Set up postprocessing for depth of field
+                    const composer = new EffectComposer(renderer);
+
+                    const renderPass = new RenderPass(scene, camera);
+                    composer.addPass(renderPass);
+
+                    // Bokeh pass for depth of field
+                    const bokehPass = new BokehPass(scene, camera, {
+                        focus: 10.0,      // Focus on center sphere
+                        aperture: 0.05,   // Large aperture = more blur
+                        maxblur: 0.015    // Maximum blur amount
+                    });
+                    composer.addPass(bokehPass);
+
+                    // Output pass
+                    composer.addPass(new OutputPass());
+
+                    // Animation
+                    function animate() {
+                        requestAnimationFrame(animate);
+
+                        spheres.forEach((sphere, i) => {
+                            sphere.rotation.x += 0.01;
+                            sphere.rotation.y += 0.01;
+                            sphere.position.y = 1 + Math.sin(Date.now() * 0.001 + i) * 0.3;
+                        });
+
+                        controls.update();
+                        composer.render();
+                    }
+                    animate();
+
+                    return { scene, camera };
+                };
+
+                const { scene, camera } = createScene();
+            """.trimIndent(),
+            category = ExampleCategory.EFFECTS,
+            difficulty = ExampleDifficulty.ADVANCED
         )
     )
 }

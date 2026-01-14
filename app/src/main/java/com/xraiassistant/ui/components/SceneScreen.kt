@@ -50,6 +50,7 @@ fun SceneScreen(
     chatViewModel: ChatViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
     val currentLibrary by chatViewModel.currentLibrary.collectAsStateWithLifecycle()
@@ -64,6 +65,8 @@ fun SceneScreen(
     var monacoReady by remember { mutableStateOf(false) }
     var webViewError by remember { mutableStateOf<String?>(null) }
     var lastInjectedCode by remember { mutableStateOf("") }
+    var showExportSuccess by remember { mutableStateOf(false) }
+    var exportedFileUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val hasGeneratedCode = lastGeneratedCode.isNotEmpty()
     val coroutineScope = rememberCoroutineScope()
@@ -168,6 +171,22 @@ fun SceneScreen(
                 webViewError = error
                 webViewLoaded = false
                 println("❌ WebView error: $error")
+            },
+            onSceneSaved = { filename, base64Data ->
+                // Handle scene export - save zip file and show share sheet
+                coroutineScope.launch(Dispatchers.IO) {
+                    val uri = saveSceneZipFile(context, filename, base64Data)
+                    withContext(Dispatchers.Main) {
+                        if (uri != null) {
+                            exportedFileUri = uri
+                            showExportSuccess = true
+                            // Show Android share sheet
+                            shareFile(context, uri, filename)
+                        } else {
+                            webViewError = "Failed to save scene file"
+                        }
+                    }
+                }
             },
             lastGeneratedCode = lastGeneratedCode,
             sandboxUrl = sandboxUrl,
@@ -366,6 +385,7 @@ private fun PlaygroundWebView(
     onWebViewCreated: (WebView) -> Unit,
     onWebViewLoaded: () -> Unit,
     onWebViewError: (String) -> Unit,
+    onSceneSaved: (filename: String, base64Data: String) -> Unit,
     lastGeneratedCode: String,
     sandboxUrl: String?,
     modifier: Modifier = Modifier
@@ -381,12 +401,26 @@ private fun PlaygroundWebView(
 
     AndroidView(
         factory = { context ->
-            WebView(context).apply {
-                // CRITICAL: Set explicit layout parameters so HTML can inherit height
-                layoutParams = android.view.ViewGroup.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                )
+            // CRITICAL: Wrap WebView creation in try-catch to prevent crashes
+            try {
+                WebView(context).apply {
+                    // CRITICAL: Set explicit layout parameters so HTML can inherit height
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            } catch (e: Exception) {
+                println("❌ CRITICAL: WebView creation failed: ${e.message}")
+                e.printStackTrace()
+                // Return a minimal WebView to prevent null pointer exceptions
+                WebView(context).apply {
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                }
+            }.apply {
 
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
@@ -551,7 +585,7 @@ private fun PlaygroundWebView(
                     PlaygroundMessageHandler(
                         onMessage = { action, data ->
                             println("🔔 [JS → Native] Action: $action, Data: $data")
-                            handleWebViewMessage(action, data)
+                            handleWebViewMessage(action, data, onSceneSaved)
                         }
                     ),
                     "AndroidBridge"
@@ -673,7 +707,11 @@ private fun checkMonacoReadiness(webView: WebView, callback: (Boolean) -> Unit) 
 /**
  * Handle messages from JavaScript (iOS WKScriptMessageHandler equivalent)
  */
-private fun handleWebViewMessage(action: String, data: Map<String, Any>) {
+private fun handleWebViewMessage(
+    action: String,
+    data: Map<String, Any>,
+    onSceneSaved: ((String, String) -> Unit)? = null
+) {
     when (action) {
         "initializationComplete" -> {
             println("✅ Monaco editor initialization complete")
@@ -698,6 +736,33 @@ private fun handleWebViewMessage(action: String, data: Map<String, Any>) {
         }
         "codeFormatted" -> {
             println("✅ Code formatted")
+        }
+        "sceneSaved" -> {
+            println("💾 Scene save received from JavaScript")
+            val filename = data["filename"] as? String ?: "maigeXR_scene.zip"
+            val base64Data = data["data"] as? String
+            val success = data["success"] as? Boolean ?: false
+
+            if (success && base64Data != null) {
+                println("✅ Scene save successful, filename: $filename, data length: ${base64Data.length}")
+                onSceneSaved?.invoke(filename, base64Data)
+            } else {
+                println("❌ Scene save failed: ${data["error"]}")
+            }
+        }
+        "sceneExported" -> {
+            println("📦 Scene export received from JavaScript")
+            val format = data["format"] as? String ?: "unknown"
+            val filename = data["filename"] as? String ?: "maigeXR_scene_export"
+            val base64Data = data["data"] as? String
+            val success = data["success"] as? Boolean ?: false
+
+            if (success && base64Data != null) {
+                println("✅ Scene export successful ($format), filename: $filename, data length: ${base64Data.length}")
+                onSceneSaved?.invoke(filename, base64Data) // Reuse sceneSaved callback for exports
+            } else {
+                println("❌ Scene export failed: ${data["error"]}")
+            }
         }
         else -> {
             println("⚠️ Unknown action: $action")
@@ -1184,6 +1249,113 @@ private suspend fun captureAndSaveScreenshot(
             println("🔍 Result: $result")
         }
         println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    }
+}
+
+/**
+ * Save scene zip file from base64 data to user's Downloads folder
+ * Returns URI for sharing the file
+ *
+ * Android 10+ (API 29+): Uses MediaStore to save to public Downloads (no permission needed)
+ * Android 9 and below (API 26-28): Falls back to app-private storage
+ */
+private fun saveSceneZipFile(
+    context: android.content.Context,
+    filename: String,
+    base64Data: String
+): android.net.Uri? {
+    return try {
+        println("💾 Saving scene file: $filename")
+        println("📊 Base64 data length: ${base64Data.length} characters")
+
+        // Decode base64 to bytes
+        val zipBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+        println("✅ Decoded ${zipBytes.size} bytes")
+
+        // Use MediaStore for Android 10+ to save to public Downloads
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            println("📱 Android 10+ detected - using MediaStore for public Downloads")
+
+            val contentValues = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, filename)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/zip")
+                put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+            }
+
+            val resolver = context.contentResolver
+            val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+
+            if (uri != null) {
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(zipBytes)
+                }
+
+                // Mark file as no longer pending
+                contentValues.clear()
+                contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(uri, contentValues, null, null)
+
+                println("✅ File saved to public Downloads: $uri")
+                println("📁 User can find it in their Downloads folder")
+
+                uri
+            } else {
+                throw Exception("Failed to create MediaStore entry")
+            }
+        } else {
+            // Android 9 and below - use app-private storage with FileProvider
+            // Note: This is accessible via FileProvider but not in public Downloads
+            println("📱 Android 9 or below - using app-private storage")
+
+            val downloadsDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+            val file = java.io.File(downloadsDir, filename)
+
+            file.writeBytes(zipBytes)
+            println("✅ File saved: ${file.absolutePath}")
+            println("ℹ️ File is in app storage, accessible via FileProvider")
+
+            // Create content URI using FileProvider
+            val authority = "${context.packageName}.fileprovider"
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, authority, file)
+            println("✅ Content URI created: $uri")
+
+            uri
+        }
+    } catch (e: Exception) {
+        println("❌ Failed to save scene file: ${e.message}")
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * Show Android share sheet for file
+ */
+private fun shareFile(
+    context: android.content.Context,
+    uri: android.net.Uri,
+    filename: String
+) {
+    try {
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "application/zip"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, "m{ai}geXR Scene Export")
+            putExtra(
+                android.content.Intent.EXTRA_TEXT,
+                "3D scene created with m{ai}geXR\n\nFilename: $filename"
+            )
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        val chooser = android.content.Intent.createChooser(intent, "Save or Share Scene")
+        chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(chooser)
+
+        println("✅ Share sheet launched")
+    } catch (e: Exception) {
+        println("❌ Failed to launch share sheet: ${e.message}")
+        e.printStackTrace()
     }
 }
 

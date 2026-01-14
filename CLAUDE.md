@@ -200,9 +200,9 @@ class ChatViewModel @Inject constructor(
 ### **Supported 3D Libraries**
 
 1. **Babylon.js v8.22.3** - Full-featured WebGL engine
-2. **Three.js r171** - Popular lightweight 3D library
+2. **Three.js (super-three v0.173.0)** - Modern ES6 modules with postprocessing
 3. **A-Frame v1.7.0** - WebXR VR/AR framework
-4. **React Three Fiber 8.17.10** - Declarative React + Three.js
+4. **React Three Fiber 8.15.0** - Declarative React + Three.js with postprocessing
 5. ~~**Reactylon 3.2.1**~~ - DISABLED (CodeSandbox TypeScript worker unstable - see Known Issues)
 
 Each library provides:
@@ -210,8 +210,191 @@ Each library provides:
 - Code examples and templates
 - Automatic API error correction
 - Framework-specific build pipelines
+- **Scene export as standalone .zip packages** (NEW ✨)
+- **Advanced postprocessing effects** (Three.js, R3F) (NEW ✨)
 
 **Note**: Reactylon is disabled due to CodeSandbox infrastructure bugs (TypeScript worker crashes). The template remains in the codebase for future re-enablement when CodeSandbox resolves their issues.
+
+### **Scene Export System** 💾
+
+All 3D playgrounds now support exporting complete, standalone scene packages:
+
+#### **Export Formats by Framework**
+
+**Babylon.js** → `maigeXR_babylonjs_scene.zip`
+- `index.html` - Standalone HTML with embedded code
+- `scene.js` - User's Babylon.js code
+- `README.txt` - Setup and usage instructions
+- **Opens directly in any browser** (no build required)
+
+**Three.js** → `maigeXR_threejs_scene.zip`
+- `index.html` - ES6 module-based standalone scene
+- `scene.js` - User's Three.js code
+- `README.txt` - Setup and troubleshooting
+- **Uses ES6 import maps** for modern browsers
+
+**A-Frame** → `maigeXR_aframe_scene.zip`
+- `index.html` - WebXR-ready standalone scene
+- `scene.html` - User's A-Frame markup
+- `README.txt` - VR/AR setup instructions
+- **WebXR compatible** for VR headsets
+
+**React Three Fiber** → `maigeXR_r3f_project.zip`
+- **Complete npm project structure**:
+  - `package.json` - All dependencies (React, R3F, Drei, Three.js)
+  - `public/index.html` - React app shell
+  - `src/App.js` - User's R3F scene component
+  - `src/index.js`, `src/index.css` - React entry point
+  - `.gitignore` - Standard React gitignore
+  - `README.txt` - npm setup instructions
+- **Production-ready**: Run `npm install && npm start`
+
+#### **Export Architecture**
+
+```javascript
+// JavaScript side (cross-platform)
+async function saveScene() {
+    const zip = new JSZip();
+
+    // Add files to package
+    zip.file('index.html', generateStandaloneHTML(userCode));
+    zip.file('scene.js', userCode);
+    zip.file('README.txt', generateReadme());
+
+    // Generate compressed zip
+    const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 9 }
+    });
+
+    // Convert to base64 for native transfer
+    const base64 = btoa(arrayBufferToString(zipBlob));
+
+    // Send to native platform (iOS or Android)
+    notifySwift('sceneSaved', {
+        filename: 'maigeXR_scene.zip',
+        data: base64,
+        format: 'zip',
+        size: bytes.length
+    });
+}
+```
+
+```kotlin
+// Android side (SceneScreen.kt)
+onSceneSaved = { filename, base64Data ->
+    coroutineScope.launch(Dispatchers.IO) {
+        // Decode base64 to bytes
+        val zipBytes = Base64.decode(base64Data, Base64.DEFAULT)
+
+        // Save to Downloads folder
+        val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), filename)
+        file.writeBytes(zipBytes)
+
+        // Create FileProvider URI for sharing
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+
+        // Show Android share sheet
+        shareFile(context, uri, filename)
+    }
+}
+```
+
+**Features:**
+- ✅ **One-click export** from playground toolbar
+- ✅ **Android Share Sheet** integration (save, email, upload to Drive, etc.)
+- ✅ **Chunked base64 encoding** prevents memory issues
+- ✅ **FileProvider security** for Android 7+ compatibility
+- ✅ **Framework-specific templates** with best practices
+- ✅ **Complete documentation** in README.txt
+
+### **Advanced Postprocessing Effects** 🎨
+
+Three.js and React Three Fiber playgrounds now support professional postprocessing effects via ES6 module imports.
+
+#### **Available Effects**
+
+**Three.js (super-three v0.173.0)**
+```javascript
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// All globally available
+window.EffectComposer
+window.RenderPass
+window.UnrealBloomPass
+window.OutputPass
+window.createInspector // three-inspect debugging
+```
+
+**React Three Fiber (Three.js r160 + addons)**
+```javascript
+// Postprocessing loaded automatically
+window.EffectComposer
+window.RenderPass
+window.UnrealBloomPass
+window.OutputPass
+window.OrbitControls
+```
+
+#### **Example: Neon Glow with UnrealBloom**
+
+```javascript
+// Three.js
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5, // strength
+    0.4, // radius
+    0.85 // threshold
+);
+
+composer.addPass(renderPass);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+// Render loop
+function animate() {
+    requestAnimationFrame(animate);
+    composer.render();
+}
+```
+
+#### **Technical Implementation**
+
+**Modern ES6 Modules**: Android WebView (API 26+) fully supports ES6 modules and import maps:
+```html
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/super-three@0.173.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/super-three@0.173.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    window.THREE = THREE;
+    window.UnrealBloomPass = UnrealBloomPass;
+</script>
+```
+
+**Features:**
+- ✅ **UnrealBloom** - Neon glow effects
+- ✅ **EffectComposer** - Multi-pass rendering pipeline
+- ✅ **RenderPass** - Base scene render
+- ✅ **OutputPass** - Tone mapping and color correction
+- ✅ **Automatic loading** - No manual setup required
+- ✅ **Polling system** - 5-second timeout for CDN reliability
+- ✅ **Fallback handling** - Continues gracefully if addons fail to load
 
 ### **Secure Settings Management**
 

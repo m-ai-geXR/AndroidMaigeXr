@@ -258,6 +258,7 @@
                 </div>
                 <div id="toolbar-right">
                     <div id="build-status">Ready to build</div>
+                    <button id="save-button">💾 Save</button>
                     <button id="build-button">Build</button>
                     <button id="run-button">Run</button>
                 </div>
@@ -300,7 +301,8 @@
             ReactDOM: false,
             THREE: false,
             ReactThreeFiber: false,
-            Drei: false
+            Drei: false,
+            Postprocessing: false
         };
         
         let librariesReady = false;
@@ -555,7 +557,52 @@
                     'THREE'
                 );
                 console.log('✅ XCODE DEBUG: Three.js loading completed');
-                
+
+                // Load THREE.js post-processing addons
+                console.log('📦 Loading THREE.js post-processing addons...');
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.textContent = `
+                        import { EffectComposer } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+                        import { RenderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+                        import { UnrealBloomPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+                        import { OutputPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/OutputPass.js';
+                        import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+                        window.EffectComposer = EffectComposer;
+                        window.RenderPass = RenderPass;
+                        window.UnrealBloomPass = UnrealBloomPass;
+                        window.OutputPass = OutputPass;
+                        window.OrbitControls = OrbitControls;
+
+                        window.postProcessingReady = true;
+                        console.log('✅ Post-processing addons loaded:', {
+                            EffectComposer: typeof EffectComposer,
+                            UnrealBloomPass: typeof UnrealBloomPass,
+                            OrbitControls: typeof OrbitControls
+                        });
+                    `;
+                    document.head.appendChild(script);
+
+                    // Poll for readiness
+                    const checkReady = setInterval(() => {
+                        if (window.postProcessingReady) {
+                            clearInterval(checkReady);
+                            resolve();
+                        }
+                    }, 50);
+
+                    // Timeout after 5 seconds
+                    setTimeout(() => {
+                        clearInterval(checkReady);
+                        if (!window.postProcessingReady) {
+                            console.warn('⚠️ Post-processing addons timeout - continuing anyway');
+                            resolve(); // Don't fail, just continue
+                        }
+                    }, 5000);
+                });
+
                 // Since React Three Fiber and Drei don't provide UMD builds,
                 // we'll load basic functionality and create mock globals
                 console.log('⚠️ XCODE DEBUG: React Three Fiber and Drei require ES modules - creating fallback globals');
@@ -619,7 +666,52 @@
                     script.onerror = () => reject(new Error('THREE CDN failed'));
                     document.head.appendChild(script);
                 });
-                
+
+                // Load THREE.js post-processing addons
+                console.log('📦 Loading THREE.js post-processing addons...');
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.textContent = `
+                        import { EffectComposer } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+                        import { RenderPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+                        import { UnrealBloomPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+                        import { OutputPass } from 'https://unpkg.com/three@0.160.0/examples/jsm/postprocessing/OutputPass.js';
+                        import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+                        window.EffectComposer = EffectComposer;
+                        window.RenderPass = RenderPass;
+                        window.UnrealBloomPass = UnrealBloomPass;
+                        window.OutputPass = OutputPass;
+                        window.OrbitControls = OrbitControls;
+
+                        window.postProcessingReady = true;
+                        console.log('✅ Post-processing addons loaded:', {
+                            EffectComposer: typeof EffectComposer,
+                            UnrealBloomPass: typeof UnrealBloomPass,
+                            OrbitControls: typeof OrbitControls
+                        });
+                    `;
+                    document.head.appendChild(script);
+
+                    // Poll for readiness
+                    const checkReady = setInterval(() => {
+                        if (window.postProcessingReady) {
+                            clearInterval(checkReady);
+                            resolve();
+                        }
+                    }, 50);
+
+                    // Timeout after 5 seconds
+                    setTimeout(() => {
+                        clearInterval(checkReady);
+                        if (!window.postProcessingReady) {
+                            console.warn('⚠️ Post-processing addons timeout - continuing anyway');
+                            resolve(); // Don't fail, just continue
+                        }
+                    }, 5000);
+                });
+
                 // Wait for all basic libraries to settle
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
@@ -654,14 +746,35 @@
                     };
                     document.head.appendChild(script);
                 });
-                
+
+                // Load @react-three/postprocessing
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.type = 'module';
+                    script.textContent = `
+                        import * as PostProcessing from 'https://unpkg.com/@react-three/postprocessing@2.16.2/dist/index.js';
+                        window.ReactThreePostprocessing = PostProcessing;
+                        console.log('✅ @react-three/postprocessing loaded:', Object.keys(PostProcessing));
+                    `;
+                    script.onload = () => resolve();
+                    script.onerror = () => {
+                        console.warn('⚠️ Failed to load @react-three/postprocessing, continuing without it');
+                        window.ReactThreePostprocessing = {}; // Empty fallback
+                        resolve(); // Don't block on failure
+                    };
+                    document.head.appendChild(script);
+                    // Give it a moment to execute
+                    setTimeout(resolve, 300);
+                });
+
                 // Mark all as loaded
                 window.libraryLoadingProgress = {
                     React: true,
                     ReactDOM: true,
                     THREE: true,
                     ReactThreeFiber: true,
-                    Drei: true
+                    Drei: true,
+                    Postprocessing: true
                 };
                 
                 librariesReady = true;
@@ -1747,7 +1860,267 @@
             });
         }
         
+        function generatePackageJSON() {
+            return JSON.stringify({
+                "name": "maigexr-r3f-scene",
+                "version": "1.0.0",
+                "description": "React Three Fiber scene created with m{ai}geXR",
+                "private": true,
+                "dependencies": {
+                    "react": "^18.2.0",
+                    "react-dom": "^18.2.0",
+                    "@react-three/fiber": "^8.15.0",
+                    "@react-three/drei": "^9.88.0",
+                    "@react-three/postprocessing": "^2.16.0",
+                    "three": "^0.158.0",
+                    "postprocessing": "^6.35.0"
+                },
+                "scripts": {
+                    "start": "react-scripts start",
+                    "build": "react-scripts build",
+                    "test": "react-scripts test",
+                    "eject": "react-scripts eject"
+                },
+                "devDependencies": {
+                    "react-scripts": "^5.0.1"
+                },
+                "browserslist": {
+                    "production": [
+                        ">0.2%",
+                        "not dead",
+                        "not op_mini all"
+                    ],
+                    "development": [
+                        "last 1 chrome version",
+                        "last 1 firefox version",
+                        "last 1 safari version"
+                    ]
+                }
+            }, null, 2);
+        }
+
+        function generateIndexHTML() {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="React Three Fiber scene created with m{ai}geXR" />
+    <title>m{ai}geXR - React Three Fiber Scene</title>
+</head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+</body>
+</html>`;
+        }
+
+        function generateIndexJS() {
+            return `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);`;
+        }
+
+        function generateIndexCSS() {
+            return `body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+canvas {
+  display: block;
+}`;
+        }
+
+        function generateGitignore() {
+            return `# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production
+/build
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*`;
+        }
+
+        function generateR3FReadme() {
+            const timestamp = new Date().toISOString();
+            return `m{ai}geXR React Three Fiber Scene Export
+Generated: ${timestamp}
+
+CONTENTS:
+- package.json: Dependencies and scripts
+- public/index.html: HTML shell
+- src/App.js: Your R3F scene code
+- src/index.js: React entry point
+- src/index.css: Basic styles
+- .gitignore: Git ignore file
+- README.txt: This file
+
+SETUP:
+1. Extract this zip file
+2. Navigate to folder in terminal
+3. Run: npm install
+4. Run: npm start
+5. Browser opens to http://localhost:3000
+
+REQUIREMENTS:
+- Node.js 16+ and npm
+- Modern web browser
+
+DEPENDENCIES:
+- react, react-dom
+- @react-three/fiber
+- @react-three/drei
+- three
+
+EDITING:
+- Edit src/App.js to modify your 3D scene
+- Changes hot-reload automatically
+- Use npm run build for production
+
+LEARN MORE:
+- React Three Fiber: https://docs.pmnd.rs/react-three-fiber
+- Three.js: https://threejs.org
+- m{ai}geXR: https://maigexr.com
+
+---
+Created with m{ai}geXR - The Ultimate Mobile XR Development Environment
+https://maigexr.com
+`;
+        }
+
+        async function saveScene() {
+            try {
+                console.log('💾 Save button clicked - starting React Three Fiber project save...');
+
+                // Check if JSZip is available
+                if (!window.JSZip) {
+                    console.error('❌ JSZip library not available');
+                    alert('⚠️ JSZip library is still loading. Please try again in a moment.');
+                    return;
+                }
+
+                console.log('✅ JSZip is ready');
+
+                const zip = new JSZip();
+                const userCode = editor ? editor.getValue() : '';
+                console.log(`📝 User code length: ${userCode.length} characters`);
+
+                // Validate we have code to save
+                if (!userCode || userCode.trim() === '') {
+                    console.log('⚠️ No code to save');
+                    alert('⚠️ No code to save. Please write some R3F code first.');
+                    return;
+                }
+
+                console.log('📁 Creating project structure...');
+
+                // Create public folder
+                zip.file('public/index.html', generateIndexHTML());
+
+                // Create src folder
+                zip.file('src/App.js', userCode);
+                zip.file('src/index.js', generateIndexJS());
+                zip.file('src/index.css', generateIndexCSS());
+
+                // Root files
+                zip.file('package.json', generatePackageJSON());
+                zip.file('.gitignore', generateGitignore());
+                zip.file('README.txt', generateR3FReadme());
+
+                console.log('✅ All project files added to zip');
+
+                console.log('🗜️ Compressing files...');
+
+                // Generate zip blob
+                const zipBlob = await zip.generateAsync({
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: {
+                        level: 9
+                    }
+                });
+                console.log('✅ Zip blob generated');
+
+                // Convert blob to base64
+                console.log('🔄 Converting blob to ArrayBuffer...');
+                const arrayBuffer = await zipBlob.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                console.log(`📊 ArrayBuffer size: ${bytes.length} bytes`);
+
+                console.log('🔄 Converting to base64...');
+
+                // Chunked conversion to avoid call stack limits
+                let binary = '';
+                const chunkSize = 0x8000; // 32KB chunks
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+                    binary += String.fromCharCode.apply(null, chunk);
+                }
+                const base64 = btoa(binary);
+                console.log(`✅ Base64 conversion complete: ${base64.length} characters`);
+
+                // Send to Native (iOS or Android)
+                console.log('📤 Sending to native platform via notifySwift...');
+                const payload = {
+                    format: 'zip',
+                    filename: 'maigeXR_r3f_project.zip',
+                    data: base64,
+                    size: bytes.length,
+                    success: true
+                };
+
+                notifySwift('sceneSaved', payload);
+                console.log('✅ sceneSaved message sent to native platform');
+
+                const sizeKB = (bytes.length / 1024).toFixed(2);
+                console.log(`📦 React Three Fiber project package complete: ${sizeKB} KB`);
+                alert(`✅ React Three Fiber project packaged successfully!\n\nSize: ${sizeKB} KB\n\nContents:\n- Full npm project structure\n- package.json with dependencies\n- src/App.js (your code)\n- Ready for npm install && npm start`);
+
+            } catch (error) {
+                console.error('❌ Save failed:', error);
+                console.error('❌ Error stack:', error.stack);
+                alert(`❌ Failed to save project: ${error.message}\n\nTry exporting the scene instead.`);
+            }
+        }
+
+        // Make saveScene globally accessible for onclick handlers
+        window.saveScene = saveScene;
+
         function setupEventListeners() {
+            document.getElementById('save-button').addEventListener('click', saveScene);
             document.getElementById('build-button').addEventListener('click', buildScene);
             document.getElementById('run-button').addEventListener('click', runScene);
             document.getElementById('console-clear').addEventListener('click', clearConsole);
@@ -2128,6 +2501,7 @@
                         .replace(/import\s+\{([^}]+)\}\s+from\s+['"]react-dom\/client['"];?\s*/g, 'const {$1} = window.ReactDOM;\n')
                         .replace(/import\s+\{([^}]+)\}\s+from\s+['"]@react-three\/fiber['"];?\s*/g, 'const {$1} = window.ReactThreeFiber;\n')
                         .replace(/import\s+\{([^}]+)\}\s+from\s+['"]@react-three\/drei['"];?\s*/g, 'const {$1} = window.Drei;\n')
+                        .replace(/import\s+\{([^}]+)\}\s+from\s+['"]@react-three\/postprocessing['"];?\s*/g, 'const {$1} = window.ReactThreePostprocessing;\n')
                         .replace(/import\s+\*\s+as\s+THREE\s+from\s+['"]three['"];?\s*/g, 'const THREE = window.THREE;\n')
                         .replace(/import\s+THREE\s+from\s+['"]three['"];?\s*/g, 'const THREE = window.THREE;\n');
                     

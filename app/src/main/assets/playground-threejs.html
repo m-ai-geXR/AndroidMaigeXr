@@ -5,46 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Three.js Playground</title>
     
-    <!-- Three.js Core - Use UMD builds for Android WebView compatibility -->
-    <!-- CRITICAL: Android WebView doesn't support ES modules, use r149 which has UMD builds -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-
-    <script>
-        console.log('📦 Three.js loading via traditional script tags for Android WebView...');
-
-        // Wait for all scripts to load
-        window.addEventListener('load', function() {
-            console.log('✅ Window loaded, checking THREE availability...');
-
-            if (typeof THREE !== 'undefined') {
-                console.log('✅ THREE.js loaded successfully, version:', THREE.REVISION);
-                console.log('✅ OrbitControls available:', typeof THREE.OrbitControls !== 'undefined');
-                console.log('✅ EffectComposer available:', typeof THREE.EffectComposer !== 'undefined');
-                console.log('✅ RenderPass available:', typeof THREE.RenderPass !== 'undefined');
-                console.log('✅ UnrealBloomPass available:', typeof THREE.UnrealBloomPass !== 'undefined');
-
-                // Make addons easily accessible
-                window.OrbitControls = THREE.OrbitControls;
-                window.EffectComposer = THREE.EffectComposer;
-                window.RenderPass = THREE.RenderPass;
-                window.UnrealBloomPass = THREE.UnrealBloomPass;
-                window.OutputPass = THREE.OutputPass || THREE.ShaderPass; // Fallback
-
-                // Dispatch ready event
-                window.threeJSReady = true;
-                window.dispatchEvent(new CustomEvent('threejs-loaded'));
-                console.log('✅ threejs-loaded event dispatched, window.threeJSReady set to true');
-            } else {
-                console.error('❌ THREE.js failed to load');
-            }
-        });
+    <!-- Import Map for Three.js ES modules -->
+    <!-- Modern Android WebView (API 26+) supports ES6 modules and import maps -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/super-three@0.173.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/super-three@0.173.0/examples/jsm/",
+            "postprocessing": "https://cdn.jsdelivr.net/npm/postprocessing@6.37.8/+esm"
+        }
+    }
     </script>
+
+    <!-- Three.js Core (super-three v0.173.0 from CDN) - Load as ES module -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+        import { GlitchPass } from 'three/addons/postprocessing/GlitchPass.js';
+        import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
+        import { RGBShiftShader } from 'three/addons/shaders/RGBShiftShader.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+        import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+
+        // Make THREE and addons globally available
+        window.THREE = THREE;
+        window.OrbitControls = OrbitControls;
+        window.EffectComposer = EffectComposer;
+        window.RenderPass = RenderPass;
+        window.UnrealBloomPass = UnrealBloomPass;
+        window.OutputPass = OutputPass;
+        window.GlitchPass = GlitchPass;
+        window.FilmPass = FilmPass;
+        window.RGBShiftShader = RGBShiftShader;
+        window.ShaderPass = ShaderPass;
+        window.BokehPass = BokehPass;
+        window.SMAAPass = SMAAPass;
+
+        console.log('✅ super-three v0.173.0 loaded from CDN, version:', THREE.REVISION);
+        console.log('✅ OrbitControls available:', typeof OrbitControls !== 'undefined');
+        console.log('✅ Postprocessing suite loaded: EffectComposer, RenderPass, UnrealBloomPass, OutputPass, GlitchPass, FilmPass, RGBShiftShader, ShaderPass, BokehPass, SMAAPass');
+
+        // Dispatch event to signal Three.js is ready
+        window.threeJSReady = true;
+        window.dispatchEvent(new CustomEvent('threejs-loaded'));
+    </script>
+
+    <!-- JSZip library for scene export -->
+    <script src="file:///android_asset/jszip.min.js"></script>
+
+    <!-- Shared playground utilities -->
+    <script src="file:///android_asset/playground-utils.js"></script>
 
 
     <!-- Monaco Editor -->
@@ -449,6 +464,12 @@
         <button class="menu-btn" onclick="formatCode()">{ } Format</button>
         <button class="menu-btn" onclick="clearCode()">🗑 Clear</button>
         <button class="menu-btn" onclick="saveScene()">💾 Save</button>
+        <select class="menu-btn" onchange="exportScene(this.value); this.value='';" title="Export Scene">
+            <option value="">📦 Export Scene</option>
+            <option value="glb">GLB (Binary glTF)</option>
+            <option value="gltf">glTF (Text + Assets)</option>
+            <option value="json">Three.js Scene JSON</option>
+        </select>
         <button class="menu-btn" onclick="downloadScene()">⬇ Download</button>
         <button class="menu-btn" onclick="newScene()">📄 New</button>
         <button class="menu-btn" onclick="openDocumentation()">📖 Docs</button>
@@ -479,9 +500,6 @@
             <option value="OrthographicCamera">Orthographic</option>
             <option value="OrbitControls">Orbit Controls</option>
         </select>
-        <label style="margin-left: 10px; color: white; cursor: pointer;">
-            <input type="checkbox" id="debugCheckbox" onchange="toggleDebugger(this.checked)" style="cursor: pointer;">
-        </label>
     </div>
     
     <div class="main-container">
@@ -1533,12 +1551,375 @@ console.log("✅ Default scene creation complete!");`;
                 notifySwift('codeCleared', {});
             }
         }
-        
-        function saveScene() {
-            const code = editor ? editor.getValue() : '';
-            notifySwift('saveRequested', { code: code });
+
+        /**
+         * Export Scene - Universal 3D Scene Export System (Three.js)
+         * Supports GLB (binary glTF), glTF (text + assets), and Three.js Scene JSON
+         */
+        async function exportScene(format) {
+            if (!format) {
+                console.log('⚠️ Export cancelled - no format selected');
+                return;
+            }
+
+            console.log(`🚀 Exporting scene as ${format.toUpperCase()}...`);
+            console.log('🔍 Checking window.scene:', window.scene);
+
+            // Ensure we have a valid scene
+            if (!window.scene) {
+                console.error('❌ No active scene to export');
+                alert('Please run the scene first before exporting');
+                return;
+            }
+
+            const scene = window.scene;
+            console.log('✅ Scene ready for export, children count:', scene.children.length);
+
+            try {
+                switch(format) {
+                    case 'glb':
+                        await exportGLB(scene);
+                        break;
+                    case 'gltf':
+                        await exportGLTF(scene);
+                        break;
+                    case 'json':
+                        exportThreeJSONNative(scene);
+                        break;
+                    default:
+                        console.error(`❌ Unsupported export format: ${format}`);
+                }
+            } catch (error) {
+                console.error(`❌ Export failed: ${error.message}`);
+                alert(`Export failed: ${error.message}`);
+            }
         }
-        
+
+        /**
+         * Export as GLB (Binary glTF) - PREFERRED DEFAULT
+         * Single-file, portable, universally supported
+         */
+        async function exportGLB(scene) {
+            console.log('📦 Preparing GLB export...');
+
+            // Dynamically import GLTFExporter from super-three
+            const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+
+            console.log('✅ GLTFExporter loaded, exporting scene...');
+
+            // Create exporter and export as GLB (binary)
+            const exporter = new GLTFExporter();
+
+            exporter.parse(
+                scene,
+                (result) => {
+                    console.log('✅ GLB export successful');
+
+                    // Convert ArrayBuffer to base64 for Android transfer
+                    const bytes = new Uint8Array(result);
+                    let binary = '';
+                    const chunkSize = 0x8000; // Process in chunks to avoid stack overflow
+                    for (let i = 0; i < bytes.byteLength; i += chunkSize) {
+                        const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.byteLength));
+                        binary += String.fromCharCode.apply(null, chunk);
+                    }
+                    const base64 = btoa(binary);
+
+                    console.log(`📦 GLB file size: ${(result.byteLength / 1024).toFixed(2)} KB`);
+
+                    // Send to Android for saving (uses notifySwift for cross-platform compatibility)
+                    notifySwift('sceneExported', {
+                        format: 'glb',
+                        filename: 'maigeXR_scene.glb',
+                        data: base64,
+                        size: result.byteLength,
+                        success: true
+                    });
+
+                    alert(`✅ GLB exported successfully! (${(result.byteLength / 1024).toFixed(2)} KB)\n\nThe file will be saved to your device.`);
+                },
+                (error) => {
+                    console.error('❌ GLB export error:', error);
+                    throw error;
+                },
+                { binary: true } // Export as binary GLB
+            );
+        }
+
+        /**
+         * Export as glTF (Text + Assets) - EDITABLE FORMAT
+         * Multiple files: .gltf + .bin + textures
+         * Use when editable asset graphs are required
+         */
+        async function exportGLTF(scene) {
+            console.log('📦 Preparing glTF export...');
+
+            // Dynamically import GLTFExporter from super-three
+            const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+
+            console.log('✅ GLTFExporter loaded, exporting scene...');
+
+            // Create exporter and export as glTF (text)
+            const exporter = new GLTFExporter();
+
+            exporter.parse(
+                scene,
+                (result) => {
+                    console.log('✅ glTF export successful');
+
+                    // result is object for glTF (text)
+                    const output = JSON.stringify(result, null, 2);
+                    const base64 = btoa(unescape(encodeURIComponent(output)));
+
+                    console.log(`📦 glTF file size: ${(output.length / 1024).toFixed(2)} KB`);
+
+                    // Send to Android for saving
+                    notifySwift('sceneExported', {
+                        format: 'gltf',
+                        filename: 'maigeXR_scene.gltf',
+                        data: base64,
+                        size: output.length,
+                        success: true
+                    });
+
+                    alert(`✅ glTF exported successfully! (${(output.length / 1024).toFixed(2)} KB)\n\nThe file will be saved to your device.`);
+                },
+                (error) => {
+                    console.error('❌ glTF export error:', error);
+                    throw error;
+                },
+                { binary: false } // Export as text glTF
+            );
+        }
+
+        /**
+         * Export as Three.js Scene JSON
+         * Engine-specific format for internal reload, persistence, debugging
+         * Non-portable, but captures full Three.js scene graph
+         */
+        function exportThreeJSONNative(scene) {
+            console.log('📦 Preparing Three.js Scene JSON export...');
+
+            // Serialize the entire scene to Three.js JSON format
+            const sceneJSON = JSON.stringify(scene.toJSON(), null, 2);
+            const base64 = btoa(unescape(encodeURIComponent(sceneJSON)));
+
+            console.log(`📦 JSON file size: ${(sceneJSON.length / 1024).toFixed(2)} KB`);
+            console.log('✅ Three.js Scene JSON exported successfully');
+
+            // Send to Android for saving
+            notifySwift('sceneExported', {
+                format: 'json',
+                filename: 'maigeXR_scene_threejs.json',
+                data: base64,
+                size: sceneJSON.length,
+                success: true
+            });
+
+            alert(`✅ Three.js Scene JSON exported successfully! (${(sceneJSON.length / 1024).toFixed(2)} KB)\n\nThe file will be saved to your device.`);
+        }
+
+        /**
+         * Generate standalone HTML file with embedded Three.js scene
+         */
+        function generateStandaloneHTML(userCode) {
+            const timestamp = new Date().toISOString();
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>m{ai}geXR - Three.js Scene</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/super-three@0.173.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/super-three@0.173.0/examples/jsm/"
+        }
+    }
+    <\\/script>
+
+    <script type="module">
+        // Generated by m{ai}geXR on ${timestamp}
+        import * as THREE from 'three';
+        window.THREE = THREE;
+
+        ${userCode}
+    <\\/script>
+</body>
+</html>`;
+        }
+
+        /**
+         * Generate README.txt with usage instructions
+         */
+        function generateThreeReadme() {
+            const timestamp = new Date().toLocaleString();
+            return `m{ai}geXR Three.js Scene Export
+Generated: ${timestamp}
+
+CONTENTS:
+- index.html: Complete standalone scene (open in any browser)
+- scene.js: Your Three.js code
+- README.txt: This file
+
+USAGE:
+1. Extract this zip file
+2. Open index.html in any modern web browser
+3. Scene will run immediately, no build step required
+
+EDITING:
+- Edit scene.js to modify your 3D scene
+- The code is already embedded in index.html
+- For advanced editing, use a code editor like VS Code
+
+REQUIREMENTS:
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+- No installation or build tools needed
+- Internet connection (for CDN-loaded Three.js library)
+
+CONTROLS:
+- Left Mouse: Rotate camera (if OrbitControls enabled)
+- Right Mouse: Pan camera (if OrbitControls enabled)
+- Mouse Wheel: Zoom in/out (if OrbitControls enabled)
+- Touch: Use one/two fingers to rotate and zoom
+
+LEARN MORE:
+- Three.js Documentation: https://threejs.org/docs
+- Three.js Examples: https://threejs.org/examples
+- m{ai}geXR: Built with AI-powered XR development tools
+
+TROUBLESHOOTING:
+- If scene doesn't load, check browser console for errors
+- Ensure you have internet connection for CDN libraries
+- Try opening in a different browser
+- Make sure JavaScript is enabled
+- Some browsers require HTTPS for ES6 modules
+
+---
+Created with m{ai}geXR - The Ultimate Mobile XR Development Environment
+https://maigexr.com
+`;
+        }
+
+        /**
+         * Save complete scene as .zip package
+         */
+        /**
+         * Load JSZip library dynamically (verify it's loaded)
+         */
+        async function loadJSZip() {
+            // JSZip is loaded in the HTML head via <script src="file:///android_asset/jszip.min.js">
+            // This function just verifies it's available
+            if (window.JSZip) {
+                console.log('✅ JSZip available:', typeof window.JSZip);
+                return;
+            }
+
+            // If not loaded yet, wait a bit and retry
+            console.log('⏳ Waiting for JSZip to load...');
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            if (window.JSZip) {
+                console.log('✅ JSZip loaded successfully:', typeof window.JSZip);
+                return;
+            }
+
+            throw new Error('JSZip library not available - script tag may have failed to load');
+        }
+
+        async function saveScene() {
+            try {
+                console.log('💾 Save button clicked - starting save process...');
+
+                // Load JSZip library if not already loaded
+                console.log('📚 Checking for JSZip...');
+                await loadJSZip();
+                console.log('✅ JSZip is ready');
+
+                const zip = new JSZip();
+                const userCode = editor ? editor.getValue() : '';
+                console.log(`📝 User code length: ${userCode.length} characters`);
+
+                if (!userCode || userCode.trim() === '') {
+                    console.log('⚠️ No code to save');
+                    alert('⚠️ No code to save. Please write some code first.');
+                    return;
+                }
+
+                // Add files to zip
+                console.log('📁 Adding files to package...');
+                const htmlContent = generateStandaloneHTML(userCode);
+                const readmeContent = generateThreeReadme();
+
+                zip.file('index.html', htmlContent);
+                zip.file('scene.js', userCode);
+                zip.file('README.txt', readmeContent);
+                console.log('✅ All files added to zip');
+
+                // Generate zip as blob
+                console.log('🗜️ Compressing files...');
+                const zipBlob = await zip.generateAsync({
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 9 }
+                });
+                console.log('✅ Zip blob generated');
+
+                // Convert blob to base64
+                console.log('🔄 Converting blob to ArrayBuffer...');
+                const arrayBuffer = await zipBlob.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                console.log(`📊 ArrayBuffer size: ${bytes.length} bytes`);
+
+                console.log('🔄 Converting to base64...');
+                let binary = '';
+                const chunkSize = 0x8000;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+                    binary += String.fromCharCode.apply(null, chunk);
+                }
+                const base64 = btoa(binary);
+                console.log(`✅ Base64 conversion complete: ${base64.length} characters`);
+
+                // Send to Native (iOS or Android)
+                console.log('📤 Sending to native platform via notifySwift...');
+                const payload = {
+                    format: 'zip',
+                    filename: 'maigeXR_threejs_scene.zip',
+                    data: base64,
+                    size: bytes.length,
+                    success: true
+                };
+
+                notifySwift('sceneSaved', payload);
+                console.log('✅ sceneSaved message sent to native platform');
+
+                const sizeKB = (bytes.length / 1024).toFixed(2);
+                console.log(`📦 Scene package complete: ${sizeKB} KB`);
+                alert(`✅ Scene packaged successfully!\n\nSize: ${sizeKB} KB\n\nContents:\n- index.html (standalone scene)\n- scene.js (your code)\n- README.txt (instructions)`);
+
+            } catch (error) {
+                console.error('❌ Save failed:', error);
+                console.error('❌ Error stack:', error.stack);
+                alert(`❌ Failed to save scene: ${error.message}\n\nTry exporting individual files instead.`);
+            }
+        }
+
+        // Make saveScene globally accessible for onclick handlers
+        window.saveScene = saveScene;
+
         function downloadScene() {
             const code = editor ? editor.getValue() : '';
             notifySwift('downloadRequested', { code: code });
@@ -2076,7 +2457,10 @@ console.log("✅ Default scene creation complete!");`;
             }
         }
 
-        // three-inspect debugger toggle (using official three-inspect library)
+        // three-inspect debugger DISABLED (causes localStorage SecurityError in Android WebView)
+        // Android WebView blocks localStorage access for security, causing three-inspect to fail
+        // The library is a debugging tool and not essential for core functionality
+        /*
         let inspectorInstance = null;
 
         function toggleDebugger(checked) {
@@ -2103,7 +2487,6 @@ console.log("✅ Default scene creation complete!");`;
                     return;
                 }
 
-                // Get the canvas container (use correct camelCase ID)
                 const canvasContainer = document.getElementById('canvasContainer');
                 if (!canvasContainer) {
                     console.error('Canvas container not found');
@@ -2111,7 +2494,6 @@ console.log("✅ Default scene creation complete!");`;
                     return;
                 }
 
-                // Initialize three-inspect
                 inspectorInstance = window.createInspector(canvasContainer, {
                     scene: scene,
                     camera: camera,
@@ -2140,6 +2522,7 @@ console.log("✅ Default scene creation complete!");`;
                 console.error('Error closing three-inspect:', error);
             }
         }
+        */
 
         // Auto-detect camera type when scene changes
         function detectCurrentCamera() {
