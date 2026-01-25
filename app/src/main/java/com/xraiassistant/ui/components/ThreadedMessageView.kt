@@ -6,8 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.data.models.ChatMessage
 import com.xraiassistant.data.models.getReplies
+import com.xraiassistant.ui.theme.NeonPink
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,6 +36,7 @@ import java.util.*
  * - Expand/collapse threads
  * - Reply button on AI messages
  * - Run Scene button for extracting code
+ * - Favorite button to bookmark code snippets
  * - Markdown rendering for AI messages
  */
 @Composable
@@ -40,6 +48,8 @@ fun ThreadedMessageView(
     onToggleThread: (String) -> Unit,
     onRunScene: ((code: String, libraryId: String?) -> Unit)? = null,
     onRunDemo: ((libraryId: String?) -> Unit)? = null,
+    onToggleFavorite: ((messageId: String, title: String, code: String, libraryId: String?) -> Unit)? = null,
+    isFavorited: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val replies = allMessages.getReplies(message.id)
@@ -179,6 +189,28 @@ fun ThreadedMessageView(
                                 text = "Reply",
                                 style = MaterialTheme.typography.labelSmall
                             )
+                        }
+
+                        // Favorite button (star icon)
+                        if (onToggleFavorite != null && hasCode) {
+                            Spacer(modifier = Modifier.width(4.dp))
+
+                            IconButton(
+                                onClick = {
+                                    val code = extractedCode ?: message.content
+                                    // Generate title from first line of code
+                                    val title = code.lines().firstOrNull()?.take(50) ?: "Untitled"
+                                    onToggleFavorite(message.id, title, code, message.libraryId)
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isFavorited) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                    contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
+                                    tint = if (isFavorited) NeonPink else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
 

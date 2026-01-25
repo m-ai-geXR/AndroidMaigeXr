@@ -11,6 +11,7 @@ import com.xraiassistant.data.models.CodeSandboxTemplates
 import com.xraiassistant.data.remote.CodeSandboxService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
+import com.xraiassistant.data.repositories.FavoriteRepository
 import com.xraiassistant.data.repositories.Library3DRepository
 import com.xraiassistant.data.repositories.RAGRepository
 import com.xraiassistant.data.repositories.SettingsRepository
@@ -49,7 +50,8 @@ class ChatViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val conversationRepository: ConversationRepository,  // For chat history
     private val codeSandboxService: CodeSandboxService,  // For building React Three Fiber code
-    private val ragRepository: RAGRepository  // For RAG-enhanced responses
+    private val ragRepository: RAGRepository,  // For RAG-enhanced responses
+    private val favoriteRepository: FavoriteRepository  // For favorites (code bookmarks)
 ) : ViewModel() {
 
     // MARK: - UI State
@@ -152,6 +154,7 @@ class ChatViewModel @Inject constructor(
         setupInitialMessage()
         setupDefaultSystemPrompt()
         loadSettings()
+        loadFavoritedMessages()
 
         println("✅ ChatViewModel initialization complete")
     }
@@ -1487,5 +1490,75 @@ class ChatViewModel @Inject constructor(
     fun setRAGEnabled(enabled: Boolean) {
         _ragEnabled.value = enabled
         Log.d("ChatViewModel", if (enabled) "✅ RAG enabled" else "⚠️ RAG disabled")
+    }
+
+    // MARK: - Favorites Support
+
+    /**
+     * Map of message IDs to their favorited status
+     */
+    private val _favoritedMessages = MutableStateFlow<Set<String>>(emptySet())
+    val favoritedMessages: StateFlow<Set<String>> = _favoritedMessages.asStateFlow()
+
+    /**
+     * Load all favorited message IDs
+     */
+    private fun loadFavoritedMessages() {
+        viewModelScope.launch {
+            try {
+                val favorites = favoriteRepository.getAllFavoritesOnce()
+                _favoritedMessages.value = favorites.map { it.messageId }.toSet()
+                Log.d("ChatViewModel", "Loaded ${favorites.size} favorited messages")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to load favorites: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Check if a message is favorited
+     */
+    fun isMessageFavorited(messageId: String): Boolean {
+        return _favoritedMessages.value.contains(messageId)
+    }
+
+    /**
+     * Toggle favorite status for a message
+     *
+     * @param messageId The ID of the message
+     * @param title Title for the favorite
+     * @param code The code content to save
+     * @param libraryId Optional library ID
+     */
+    fun toggleFavorite(
+        messageId: String,
+        title: String,
+        code: String,
+        libraryId: String?
+    ) {
+        viewModelScope.launch {
+            try {
+                val isFavorited = favoriteRepository.toggleFavorite(
+                    messageId = messageId,
+                    conversationId = currentConversationId ?: "",
+                    title = title,
+                    codeContent = code,
+                    libraryId = libraryId,
+                    modelUsed = selectedModel,
+                    screenshotBase64 = null  // Screenshot captured separately
+                )
+
+                // Update local state
+                _favoritedMessages.value = if (isFavorited) {
+                    _favoritedMessages.value + messageId
+                } else {
+                    _favoritedMessages.value - messageId
+                }
+
+                Log.d("ChatViewModel", if (isFavorited) "Added to favorites" else "Removed from favorites")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to toggle favorite: ${e.message}", e)
+            }
+        }
     }
 }

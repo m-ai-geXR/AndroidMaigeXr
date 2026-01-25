@@ -46,6 +46,7 @@ fun ChatScreen(
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
     val currentLibrary by chatViewModel.currentLibrary.collectAsStateWithLifecycle()
     val selectedModel = chatViewModel.selectedModel
+    val favoritedMessages by chatViewModel.favoritedMessages.collectAsStateWithLifecycle()
     
     var chatInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -106,6 +107,10 @@ fun ChatScreen(
                         // Navigate to Scene tab to show the demo
                         onNavigateToScene()
                     },
+                    onToggleFavorite = { messageId, title, code, libraryId ->
+                        chatViewModel.toggleFavorite(messageId, title, code, libraryId)
+                    },
+                    isFavorited = favoritedMessages.contains(message.id),
                     modifier = Modifier.fillMaxWidth()
                 )
             }

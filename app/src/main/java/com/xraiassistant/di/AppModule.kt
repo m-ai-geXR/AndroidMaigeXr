@@ -5,8 +5,10 @@ import androidx.room.Room
 import com.xraiassistant.data.local.AppDatabase
 import com.xraiassistant.data.local.SettingsDataStore
 import com.xraiassistant.data.local.dao.ConversationDao
+import com.xraiassistant.data.local.dao.FavoriteDao
 import com.xraiassistant.data.local.dao.RAGDao
 import com.xraiassistant.data.local.migrations.MIGRATION_3_4
+import com.xraiassistant.data.local.migrations.MIGRATION_4_5
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
@@ -74,7 +76,7 @@ object AppModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .addMigrations(MIGRATION_3_4)  // Add screenshot column migration (v3→v4)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)  // Add screenshot (v3->v4) and favorites (v4->v5) migrations
             .fallbackToDestructiveMigration() // For development - use migrations in production
             .build()
     }
@@ -97,5 +99,11 @@ object AppModule {
     @Singleton
     fun provideRAGDao(database: AppDatabase): RAGDao {
         return database.ragDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFavoriteDao(database: AppDatabase): FavoriteDao {
+        return database.favoriteDao()
     }
 }

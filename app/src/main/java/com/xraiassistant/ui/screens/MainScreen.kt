@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import com.xraiassistant.R
 import com.xraiassistant.ui.components.ChatScreen
 import com.xraiassistant.ui.components.SceneScreen
 import com.xraiassistant.presentation.screens.ConversationHistoryScreen
+import com.xraiassistant.presentation.screens.FavoritesScreen
 import com.xraiassistant.presentation.screens.SettingsScreen
 import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
@@ -34,7 +36,8 @@ enum class AppView {
     SCENE,
     SETTINGS,
     EXAMPLES,
-    HISTORY
+    HISTORY,
+    FAVORITES
 }
 
 /**
@@ -150,6 +153,22 @@ fun MainScreen(
                     },
                     onNavigateBack = {
                         // Go back to previous view (Chat)
+                        chatViewModel.updateCurrentView(AppView.CHAT)
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                )
+            }
+            AppView.FAVORITES -> {
+                FavoritesScreen(
+                    onFavoriteSelected = { favorite ->
+                        // Load the favorite code into the scene
+                        chatViewModel.runCodeFromMessage(favorite.codeContent, favorite.libraryId)
+                        // Switch to Scene view
+                        chatViewModel.updateCurrentView(AppView.SCENE)
+                    },
+                    onNavigateBack = {
                         chatViewModel.updateCurrentView(AppView.CHAT)
                     },
                     modifier = Modifier
@@ -304,6 +323,32 @@ private fun MainBottomNavigation(
                 selectedIconColor = NeonBlue,
                 selectedTextColor = NeonBlue,
                 indicatorColor = NeonBlueGlow,
+                unselectedIconColor = CyberpunkGray,
+                unselectedTextColor = CyberpunkGray
+            )
+        )
+
+        // Favorites Tab
+        NavigationBarItem(
+            icon = {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = "Favorites",
+                    tint = if (currentView == AppView.FAVORITES) NeonPink else CyberpunkGray
+                )
+            },
+            label = {
+                Text(
+                    "Favorites",
+                    color = if (currentView == AppView.FAVORITES) NeonPink else CyberpunkGray
+                )
+            },
+            selected = currentView == AppView.FAVORITES,
+            onClick = { onViewChange(AppView.FAVORITES) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = NeonPink,
+                selectedTextColor = NeonPink,
+                indicatorColor = NeonPinkGlow,
                 unselectedIconColor = CyberpunkGray,
                 unselectedTextColor = CyberpunkGray
             )
