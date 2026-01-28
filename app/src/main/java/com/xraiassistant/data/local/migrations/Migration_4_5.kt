@@ -53,18 +53,20 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         println("Created favorites table")
 
         // Create index on messageId for quick favorite lookups
+        // NOTE: Index name must match Room's default naming convention: index_{tableName}_{columnName}
         database.execSQL(
             """
-            CREATE INDEX IF NOT EXISTS idx_favorites_messageId
+            CREATE INDEX IF NOT EXISTS index_favorites_messageId
             ON favorites(messageId)
             """.trimIndent()
         )
         println("Created index on messageId")
 
         // Create index on createdAt for sorted queries
+        // NOTE: Index name must match Room's default naming convention: index_{tableName}_{columnName}
         database.execSQL(
             """
-            CREATE INDEX IF NOT EXISTS idx_favorites_createdAt
+            CREATE INDEX IF NOT EXISTS index_favorites_createdAt
             ON favorites(createdAt)
             """.trimIndent()
         )

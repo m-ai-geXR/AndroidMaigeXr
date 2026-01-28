@@ -24,6 +24,7 @@ import com.xraiassistant.data.local.entities.RAGTypeConverters
  * @version 3 - Added RAG tables (rag_documents, rag_embeddings, rag_documents_fts)
  * @version 4 - Added screenshotBase64 column to conversations for scene thumbnails
  * @version 5 - Added favorites table for bookmarked code snippets
+ * @version 6 - Fixed favorites table index names (idx_ -> index_ prefix)
  */
 @Database(
     entities = [
@@ -34,7 +35,7 @@ import com.xraiassistant.data.local.entities.RAGTypeConverters
         RAGDocumentFts::class,
         FavoriteEntity::class
     ],
-    version = 5,  // UPDATED: v4 -> v5 for favorites support
+    version = 6,  // UPDATED: v5 -> v6 for favorites index name fix
     exportSchema = false // Set to false for development - enable with schemaLocation in production
 )
 @TypeConverters(RAGTypeConverters::class)

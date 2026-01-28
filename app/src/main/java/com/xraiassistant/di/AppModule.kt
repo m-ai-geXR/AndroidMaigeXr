@@ -9,6 +9,7 @@ import com.xraiassistant.data.local.dao.FavoriteDao
 import com.xraiassistant.data.local.dao.RAGDao
 import com.xraiassistant.data.local.migrations.MIGRATION_3_4
 import com.xraiassistant.data.local.migrations.MIGRATION_4_5
+import com.xraiassistant.data.local.migrations.MIGRATION_5_6
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.repositories.AIProviderRepository
 import com.xraiassistant.data.repositories.ConversationRepository
@@ -76,7 +77,7 @@ object AppModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5)  // Add screenshot (v3->v4) and favorites (v4->v5) migrations
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)  // v3->v4 screenshot, v4->v5 favorites, v5->v6 index fix
             .fallbackToDestructiveMigration() // For development - use migrations in production
             .build()
     }
