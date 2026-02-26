@@ -30,6 +30,10 @@ moshi = "1.15.0"
 room = "2.6.0"
 datastore = "1.0.0"
 
+# Ads
+play-services-ads = "23.5.0"
+user-messaging-platform = "3.0.0"
+
 # Image Loading
 coil = "2.5.0"
 
@@ -99,6 +103,10 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 
 # DataStore
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+
+# Ads
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "play-services-ads" }
+user-messaging-platform = { group = "com.google.android.ump", name = "user-messaging-platform", version.ref = "user-messaging-platform" }
 
 # Coil
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }

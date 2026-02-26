@@ -20,6 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xraiassistant.R
+import com.xraiassistant.monetization.AdBannerView
+import com.xraiassistant.monetization.AdManager
 import com.xraiassistant.ui.components.ChatScreen
 import com.xraiassistant.ui.components.SceneScreen
 import com.xraiassistant.presentation.screens.ConversationHistoryScreen
@@ -49,7 +51,8 @@ enum class AppView {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    chatViewModel: ChatViewModel
+    chatViewModel: ChatViewModel,
+    adManager: AdManager
 ) {
     val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
@@ -98,6 +101,7 @@ fun MainScreen(
             MainBottomNavigation(
                 currentView = uiState.currentView,
                 hasGeneratedCode = lastGeneratedCode.isNotEmpty(),
+                adManager = adManager,
                 onViewChange = { view ->
                     chatViewModel.updateCurrentView(view)
                 },
@@ -123,6 +127,7 @@ fun MainScreen(
             AppView.SCENE -> {
                 SceneScreen(
                     chatViewModel = chatViewModel,
+                    adManager = adManager,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
@@ -209,10 +214,14 @@ fun MainScreen(
 private fun MainBottomNavigation(
     currentView: AppView,
     hasGeneratedCode: Boolean,
+    adManager: AdManager,
     onViewChange: (AppView) -> Unit,
     onSettingsClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // AdMob banner — shown above nav bar for non-premium users
+        AdBannerView(adManager = adManager)
+
         // Gradient navigation divider (cyan → pink → purple)
         Box(
             modifier = Modifier
