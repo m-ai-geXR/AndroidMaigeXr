@@ -1,7 +1,9 @@
 package com.xraiassistant
 
 import android.app.Application
+import com.google.android.gms.ads.MobileAds
 import com.xraiassistant.BuildConfig
+import com.xraiassistant.config.AppConfig
 import dagger.hilt.android.HiltAndroidApp
 import android.util.Log
 
@@ -18,6 +20,14 @@ class XRAiAssistantApplication : Application() {
         super.onCreate()
 
         Log.d("XRAiAssistant", "Application onCreate called")
+
+        // Initialize AdMob SDK — must happen before any ad requests
+        MobileAds.initialize(this) { initializationStatus ->
+            AppConfig.printConfiguration()
+            if (AppConfig.showAdDebugLogs) {
+                Log.d("AdMob", "MobileAds initialized: $initializationStatus")
+            }
+        }
 
         try {
             // Initialize WebView early to create cache directories and prevent Crashpad errors

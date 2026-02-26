@@ -17,11 +17,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.xraiassistant.monetization.AdManager
 import com.xraiassistant.ui.components.SplashScreen
 import com.xraiassistant.ui.screens.MainScreen
 import com.xraiassistant.ui.theme.XRAiAssistantTheme
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * MainActivity - Entry point for XRAiAssistant Android
@@ -36,6 +38,9 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var adManager: AdManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("XRAiAssistant", "MainActivity onCreate started")
 
@@ -66,7 +71,7 @@ class MainActivity : ComponentActivity() {
                             val chatViewModel: ChatViewModel = hiltViewModel()
                             Log.d("XRAiAssistant", "ChatViewModel created successfully")
 
-                            MainScreen(chatViewModel = chatViewModel)
+                            MainScreen(chatViewModel = chatViewModel, adManager = adManager)
                             Log.d("XRAiAssistant", "MainScreen composed successfully")
                         }
 
