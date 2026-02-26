@@ -20,6 +20,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // AdMob manifest placeholder (overridden per buildType below)
+        manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
     buildTypes {
@@ -30,11 +33,32 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Production AdMob IDs — replace before Play Store submission
+            manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY"
+            buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY\"")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-XXXXXXXXXXXXXXXX/AAAAAAAAAA\"")
+            buildConfigField("String", "ADMOB_REWARDED_ID", "\"ca-app-pub-XXXXXXXXXXXXXXXX/BBBBBBBBBB\"")
+            buildConfigField("boolean", "ADS_ENABLED", "true")
+            buildConfigField("boolean", "FORCE_PREMIUM", "false")
+            buildConfigField("boolean", "AD_DEBUG_LOGS", "false")
+            buildConfigField("int", "INTERSTITIAL_INTERVAL_SECONDS", "480")
+            buildConfigField("int", "SCENES_BEFORE_INTERSTITIAL", "3")
         }
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            // Google public test IDs — safe to commit
+            buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-3940256099942544/1033173712\"")
+            buildConfigField("String", "ADMOB_REWARDED_ID", "\"ca-app-pub-3940256099942544/5224354917\"")
+            buildConfigField("boolean", "ADS_ENABLED", "false")
+            buildConfigField("boolean", "FORCE_PREMIUM", "false")
+            buildConfigField("boolean", "AD_DEBUG_LOGS", "true")
+            buildConfigField("int", "INTERSTITIAL_INTERVAL_SECONDS", "30")
+            buildConfigField("int", "SCENES_BEFORE_INTERSTITIAL", "1")
         }
     }
 
@@ -125,6 +149,10 @@ dependencies {
     implementation(libs.commonmark)
     implementation(libs.compose.richtext.commonmark)
     implementation(libs.compose.richtext.ui)
+
+    // AdMob + GDPR UMP
+    implementation(libs.play.services.ads)
+    implementation(libs.user.messaging.platform)
 
     // Testing
     testImplementation(libs.junit)

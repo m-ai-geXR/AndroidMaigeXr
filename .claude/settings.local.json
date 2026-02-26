@@ -33,7 +33,13 @@
       "WebFetch(domain:dribbble.com)",
       "Bash(ls:*)",
       "Bash(JAVA_HOME='/mnt/c/Program Files/Android/Android Studio/jbr' PATH=\"$PATH:/mnt/c/Program Files/Android/Android Studio/jbr/bin\" ./gradlew:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(tree:*)",
+      "Bash(bash gradlew assembleDebug 2>&1 | tail -60)",
+      "Bash(ANDROID_HOME=/mnt/c/Users/brend/AppData/Local/Android/Sdk bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew assembleDebug 2>&1 | tail -60)",
+      "Bash(GRADLE_USER_HOME=/mnt/c/Users/brend/.gradle bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew assembleDebug 2>&1 | tail -60)",
+      "Bash(GRADLE_USER_HOME=/mnt/c/Users/brend/.gradle bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew --version 2>&1)",
+      "Bash(node --version && ./node_modules/.bin/electron --version 2>/dev/null || echo \"electron not in PATH\")"
     ],
     "deny": [],
     "ask": []
