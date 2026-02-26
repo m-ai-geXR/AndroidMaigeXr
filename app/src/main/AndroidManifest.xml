@@ -33,6 +33,11 @@
             </intent-filter>
         </activity>
 
+        <!-- AdMob Application ID — required for MobileAds SDK initialization -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${ADMOB_APP_ID}" />
+
         <!-- FileProvider for scene export file sharing -->
         <provider
             android:name="androidx.core.content.FileProvider"
