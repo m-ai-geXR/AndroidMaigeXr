@@ -2,7 +2,6 @@ package com.xraiassistant.data.remote
 
 import android.util.Log
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.Types
 import com.xraiassistant.data.models.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -132,7 +131,7 @@ class RealAIProviderService @Inject constructor(
             temperature = temperature,
             topP = topP,
             stream = true,
-            maxTokens = 4096
+            maxTokens = 8192
         )
 
         var lastException: Exception? = null
@@ -303,7 +302,7 @@ class RealAIProviderService @Inject constructor(
             temperature = temperature,
             topP = topP,
             stream = true,
-            maxTokens = 4096
+            maxTokens = 8192
         )
 
         // Log the serialized request for debugging (only first 500 chars to avoid huge logs)
@@ -382,7 +381,7 @@ class RealAIProviderService @Inject constructor(
             temperature = temperature,
             topP = topP,
             stream = true,
-            maxTokens = 4096
+            maxTokens = 8192
         )
 
         val response = xaiService.chatCompletion(
@@ -456,7 +455,7 @@ class RealAIProviderService @Inject constructor(
             temperature = temperature,
             topP = null,  // CRITICAL: Claude 4.5+ doesn't allow both temperature and top_p
             stream = true,
-            maxTokens = 4096,
+            maxTokens = 8192,
             system = systemPrompt.takeIf { it.isNotEmpty() }
         )
 
@@ -626,7 +625,7 @@ class RealAIProviderService @Inject constructor(
         val generationConfig = GeminiRequest.GenerationConfig(
             temperature = temperature,
             topP = topP,
-            maxOutputTokens = 8192
+            maxOutputTokens = 65536
         )
 
         val request = GeminiRequest(
@@ -737,50 +736,46 @@ class RealAIProviderService @Inject constructor(
      *
      * iOS approach:
      * 1. Read ALL bytes into fullResponse string
-     * 2. Parse entire response as JSON array
-     * 3. Iterate through array elements and extract text
+     * 2. Parse each SSE line as it arrives
+     * 3. Extract text from each GeminiResponse chunk
      *
-     * We do the same in Android with Moshi.
+     * Using alt=sse for true line-by-line streaming (avoids blocking body.string() on long responses).
      */
     private fun parseGeminiServerSentEvents(body: ResponseBody): Flow<String> = flow {
-        Log.d(TAG, "✅ Gemini API response received, parsing as JSON array...")
+        Log.d(TAG, "✅ Gemini SSE stream started, parsing line by line...")
+
+        val source = body.source()
+        val adapter = moshi.adapter(GeminiResponse::class.java)
 
         try {
-            // Step 1: Read ALL bytes into a single string (matching iOS lines 129-132)
-            val fullResponse = body.string()
-            Log.d(TAG, "📊 Received ${fullResponse.length} total bytes")
-            Log.d(TAG, "📄 Response preview (first 200 chars): ${fullResponse.take(200)}")
+            while (!source.exhausted()) {
+                val line = source.readUtf8Line() ?: break
 
-            // Step 2: Parse as JSON array (matching iOS line 138)
-            val moshi = Moshi.Builder().build()
-            val listType = Types.newParameterizedType(List::class.java, GeminiResponse::class.java)
-            val adapter = moshi.adapter<List<GeminiResponse>>(listType)
+                // SSE format: "data: {json}"
+                if (!line.startsWith("data: ")) continue
+                val jsonData = line.substring(6).trim()
+                if (jsonData.isEmpty()) continue
 
-            val jsonArray = adapter.fromJson(fullResponse)
+                val chunk = try {
+                    adapter.fromJson(jsonData)
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Failed to parse Gemini chunk: ${jsonData.take(100)}")
+                    null
+                }
 
-            if (jsonArray != null) {
-                Log.d(TAG, "✅ Parsed JSON array with ${jsonArray.size} chunks")
-
-                // Step 3: Process each chunk and extract text (matching iOS lines 143-154)
-                var totalTextYielded = 0
-                jsonArray.forEachIndexed { index, chunk ->
-                    chunk.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text?.let { text ->
-                        Log.d(TAG, "📦 Chunk ${index + 1}: Yielding ${text.length} chars")
-                        totalTextYielded += text.length
+                chunk?.candidates?.firstOrNull()?.content?.parts?.forEach { part ->
+                    val text = part.text
+                    if (!text.isNullOrEmpty()) {
                         emit(text)
                     }
                 }
-
-                Log.d(TAG, "🏁 Gemini stream complete ($totalTextYielded total chars yielded)")
-            } else {
-                Log.e(TAG, "❌ Failed to parse response as JSON array")
-                Log.e(TAG, "📄 Response preview (first 500 chars): ${fullResponse.take(500)}")
             }
-
+            Log.d(TAG, "🏁 Gemini stream complete")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Gemini parsing error: ${e.message}")
-            e.printStackTrace()
             throw e
+        } finally {
+            body.close()
         }
     }
 

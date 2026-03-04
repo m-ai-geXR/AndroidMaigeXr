@@ -154,8 +154,8 @@ class SettingsDataStore @Inject constructor(
      * Get API key for provider (encrypted storage)
      */
     suspend fun getAPIKey(provider: String): String {
-        return encryptedPrefs.getString("${API_KEY_PREFIX}${provider}", DEFAULT_API_KEY)
-            ?: DEFAULT_API_KEY
+        return (encryptedPrefs.getString("${API_KEY_PREFIX}${provider}", DEFAULT_API_KEY)
+            ?: DEFAULT_API_KEY).trim()
     }
     
     /**

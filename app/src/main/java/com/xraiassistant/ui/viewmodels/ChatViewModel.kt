@@ -995,16 +995,14 @@ class ChatViewModel @Inject constructor(
      * Save all settings to persistent storage
      * Equivalent to iOS saveSettings()
      */
-    fun saveSettings() {
-        viewModelScope.launch {
-            settingsRepository.saveSettings(
-                selectedModel = _selectedModel.value,
-                temperature = _temperature.value.toDouble(),
-                topP = _topP.value.toDouble(),
-                systemPrompt = _systemPrompt.value,
-                selectedLibraryId = _currentLibrary.value?.id
-            )
-        }
+    suspend fun saveSettings() {
+        settingsRepository.saveSettings(
+            selectedModel = _selectedModel.value,
+            temperature = _temperature.value.toDouble(),
+            topP = _topP.value.toDouble(),
+            systemPrompt = _systemPrompt.value,
+            selectedLibraryId = _currentLibrary.value?.id
+        )
     }
 
     /**
@@ -1056,7 +1054,7 @@ class ChatViewModel @Inject constructor(
      * Made suspend to ensure caller can await completion
      */
     suspend fun setAPIKey(provider: String, key: String) {
-        aiProviderRepository.setAPIKey(provider, key)
+        aiProviderRepository.setAPIKey(provider, key.trim())
     }
 
     /**

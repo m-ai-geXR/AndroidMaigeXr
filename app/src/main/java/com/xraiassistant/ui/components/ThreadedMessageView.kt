@@ -78,6 +78,7 @@ fun ThreadedMessageView(
             }
 
             Column(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = if (message.isUser) {
                     Alignment.End
                 } else {
@@ -155,7 +156,8 @@ fun ThreadedMessageView(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Action buttons row
+                // Action buttons row: timestamp + reply + favorite + thread toggle
+                // Run Scene is in its own row below so it is never clipped
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -198,7 +200,6 @@ fun ThreadedMessageView(
                             IconButton(
                                 onClick = {
                                     val code = extractedCode ?: message.content
-                                    // Generate title from first line of code
                                     val title = code.lines().firstOrNull()?.take(50) ?: "Untitled"
                                     onToggleFavorite(message.id, title, code, message.libraryId)
                                 },
@@ -212,84 +213,78 @@ fun ThreadedMessageView(
                                 )
                             }
                         }
-                    }
 
-                    // Run Demo button for welcome messages OR Run Scene for AI messages with code
-                    if (message.isWelcomeMessage && onRunDemo != null) {
-                        Spacer(modifier = Modifier.width(12.dp))
+                        // Thread expansion toggle
+                        if (hasReplies) {
+                            Spacer(modifier = Modifier.width(12.dp))
 
-                        Button(
-                            onClick = { onRunDemo(message.libraryId) },
-                            modifier = Modifier.height(28.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF9C27B0),  // Purple for demo
-                                contentColor = Color.White
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Run Demo",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Run Demo",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    } else if (!message.isUser && onRunScene != null) {
-                        // Always show Run Scene button for AI messages
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Button(
-                            onClick = {
-                                // Use extracted code if available, otherwise use full content
-                                val code = extractedCode ?: message.content
-                                onRunScene(code, message.libraryId)
-                            },
-                            modifier = Modifier.height(28.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (hasCode) Color(0xFF4CAF50) else Color(0xFFFF9800),
-                                contentColor = Color.White
-                            ),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Run Scene",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Run Scene",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            TextButton(
+                                onClick = { onToggleThread(message.id) },
+                                modifier = Modifier.height(28.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    text = "${replies.size} ${if (replies.size == 1) "reply" else "replies"}",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
+                }
 
-                    // Thread expansion toggle
-                    if (hasReplies) {
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        TextButton(
-                            onClick = { onToggleThread(message.id) },
-                            modifier = Modifier.height(28.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                        ) {
-                            Text(
-                                text = "${replies.size} ${if (replies.size == 1) "reply" else "replies"}",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = if (isExpanded) "Collapse" else "Expand",
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
+                // Run Demo / Run Scene on its own row so it is always fully visible
+                if (message.isWelcomeMessage && onRunDemo != null) {
+                    Button(
+                        onClick = { onRunDemo(message.libraryId) },
+                        modifier = Modifier.height(32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF9C27B0),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Run Demo",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Run Demo",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                } else if (!message.isUser && onRunScene != null) {
+                    Button(
+                        onClick = {
+                            val code = extractedCode ?: message.content
+                            onRunScene(code, message.libraryId)
+                        },
+                        modifier = Modifier.height(32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (hasCode) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Run Scene",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Run Scene",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }

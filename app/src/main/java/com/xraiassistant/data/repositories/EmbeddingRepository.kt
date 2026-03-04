@@ -14,7 +14,7 @@ import kotlin.math.pow
 /**
  * Embedding Repository
  *
- * Handles generation of vector embeddings using Together AI's m2-bert-80M-8k-retrieval model
+ * Handles generation of vector embeddings using Together AI's BAAI/bge-base-en-v1.5 model
  * Provides single and batch embedding generation with rate limiting
  */
 @Singleton
@@ -24,7 +24,7 @@ class EmbeddingRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "EmbeddingRepository"
-        private const val EMBEDDING_MODEL = "togethercomputer/m2-bert-80M-8k-retrieval"
+        private const val EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
         private const val EMBEDDING_DIMENSION = 768
         private const val DEFAULT_BATCH_SIZE = 20
         private const val RATE_LIMIT_DELAY_MS = 100L // 0.1 second between batches
@@ -100,7 +100,7 @@ class EmbeddingRepository @Inject constructor(
     /**
      * Generate embedding for a single text
      *
-     * @param text Text to embed (up to 8k tokens)
+     * @param text Text to embed (up to 512 tokens for BAAI/bge-base-en-v1.5)
      * @return 768-dimensional embedding vector
      * @throws Exception if API call fails, text is empty, or API key not configured
      */
@@ -254,10 +254,10 @@ class EmbeddingRepository @Inject constructor(
      * Truncate text to fit within token limit
      *
      * @param text Text to truncate
-     * @param maxTokens Maximum tokens (default 8000 for this model)
+     * @param maxTokens Maximum tokens (default 512 for BAAI/bge-base-en-v1.5)
      * @return Truncated text
      */
-    fun truncateToTokenLimit(text: String, maxTokens: Int = 8000): String {
+    fun truncateToTokenLimit(text: String, maxTokens: Int = 512): String {
         val estimatedTokens = estimateTokenCount(text)
 
         if (estimatedTokens <= maxTokens) {

@@ -38,6 +38,7 @@ interface GeminiService {
     suspend fun streamGenerateContent(
         @Path("model") model: String,
         @Query("key") apiKey: String,
+        @Query("alt") alt: String = "sse",
         @Body request: com.xraiassistant.data.models.GeminiRequest
     ): Response<ResponseBody>
 

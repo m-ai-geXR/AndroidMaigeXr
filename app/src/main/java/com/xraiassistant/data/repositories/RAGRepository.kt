@@ -273,7 +273,7 @@ class RAGRepository @Inject constructor(
      */
     private fun createConversationChunks(messages: List<ChatMessage>): List<ConversationChunk> {
         val chunks = mutableListOf<ConversationChunk>()
-        val maxChunkSize = 6000 // Max characters per chunk (~1500 tokens)
+        val maxChunkSize = 1800 // Max characters per chunk (~450 tokens, fits within bge-base 512 token limit)
 
         var currentChunk = StringBuilder()
         var currentMessageCount = 0

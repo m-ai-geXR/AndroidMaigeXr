@@ -6,7 +6,7 @@ import com.squareup.moshi.JsonClass
 /**
  * Together AI Embedding API Models
  *
- * For generating vector embeddings using the m2-bert-80M-8k-retrieval model
+ * For generating vector embeddings using the BAAI/bge-base-en-v1.5 model
  * Documentation: https://docs.together.ai/reference/embeddings
  */
 
@@ -16,7 +16,7 @@ import com.squareup.moshi.JsonClass
  */
 @JsonClass(generateAdapter = true)
 data class EmbeddingRequest(
-    @Json(name = "model") val model: String = "togethercomputer/m2-bert-80M-8k-retrieval",
+    @Json(name = "model") val model: String = "BAAI/bge-base-en-v1.5",
     @Json(name = "input") val input: Any  // String or List<String>
 )
 

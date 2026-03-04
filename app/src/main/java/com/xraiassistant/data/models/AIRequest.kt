@@ -94,7 +94,7 @@ data class AnthropicRequest(
     @Json(name = "temperature") val temperature: Double = 0.7,
     @Json(name = "top_p") val topP: Double? = null,  // NULLABLE: Claude 4.5+ doesn't allow both temperature and top_p
     @Json(name = "stream") val stream: Boolean = true,
-    @Json(name = "max_tokens") val maxTokens: Int = 4096,
+    @Json(name = "max_tokens") val maxTokens: Int = 8192,
     @Json(name = "system") val system: String? = null,
     @Json(name = "thinking") val thinking: ThinkingConfig? = null  // Extended Thinking (Claude 4.5+)
 ) {
@@ -138,8 +138,10 @@ data class AnthropicResponse(
 
     @JsonClass(generateAdapter = true)
     data class Delta(
-        @Json(name = "type") val type: String,
-        @Json(name = "text") val text: String? = null
+        @Json(name = "type") val type: String? = null,  // nullable: message_delta events omit this field
+        @Json(name = "text") val text: String? = null,
+        @Json(name = "stop_reason") val stopReason: String? = null,
+        @Json(name = "stop_sequence") val stopSequence: String? = null
     )
 
     @JsonClass(generateAdapter = true)
