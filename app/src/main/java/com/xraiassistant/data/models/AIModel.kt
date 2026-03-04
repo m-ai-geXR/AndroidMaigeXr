@@ -355,13 +355,85 @@ object AIModels {
         )
     )
 
+    // ============= XAI (GROK) MODELS =============
+
+    val GROK_4 = AIModel(
+        id = "grok-4-0709",
+        displayName = "Grok 4",
+        description = "xAI flagship model - advanced reasoning, coding, functions - 256K context",
+        provider = "xAI",
+        pricing = "Pay per token",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GROK_4_FAST_REASONING = AIModel(
+        id = "grok-4-fast-reasoning",
+        displayName = "Grok 4 Fast Reasoning",
+        description = "Fast reasoning with massive 2M token context window",
+        provider = "xAI",
+        pricing = "Pay per token",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GROK_3 = AIModel(
+        id = "grok-3",
+        displayName = "Grok 3",
+        description = "General-purpose model - 131K context",
+        provider = "xAI",
+        pricing = "Pay per token",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GROK_3_MINI = AIModel(
+        id = "grok-3-mini",
+        displayName = "Grok 3 Mini",
+        description = "Lightweight reasoning model - fast and cost-effective - 131K context",
+        provider = "xAI",
+        pricing = "Pay per token",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val GROK_CODE_FAST = AIModel(
+        id = "grok-code-fast-1",
+        displayName = "Grok Code Fast",
+        description = "Coding specialist with reasoning - optimized for code generation - 256K context",
+        provider = "xAI",
+        pricing = "Pay per token",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
     // ============= GOOGLE GEMINI MODELS =============
 
-    // Gemini 3 Series (Newest & Most Powerful)
+    // Gemini 3.1 Series (Latest - February 2026)
     val GEMINI_3_PRO_PREVIEW = AIModel(
-        id = "gemini-3-pro-preview",
-        displayName = "Gemini 3 Pro",
-        description = "Newest and most powerful general-purpose model - top-tier reasoning, writing, planning, coding, multimodal understanding",
+        id = "gemini-3.1-pro-preview",
+        displayName = "Gemini 3.1 Pro",
+        description = "Latest and most powerful Gemini model - top-tier reasoning, writing, planning, coding, multimodal understanding",
         provider = "Google AI",
         pricing = "FREE tier available",
         capabilities = setOf(
@@ -444,6 +516,13 @@ object AIModels {
         CLAUDE_3_OPUS,
         CLAUDE_3_SONNET,
         CLAUDE_3_HAIKU,
+
+        // xAI (Grok) models (5 models)
+        GROK_4,
+        GROK_4_FAST_REASONING,
+        GROK_3,
+        GROK_3_MINI,
+        GROK_CODE_FAST,
 
         // Google AI models (4 models)
         GEMINI_3_PRO_PREVIEW,

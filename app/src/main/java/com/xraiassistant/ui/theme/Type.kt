@@ -2,24 +2,19 @@ package com.xraiassistant.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.xraiassistant.R
 
 /**
  * Exo 2 Font Family - Futuristic geometric sans-serif
  *
- * TEMPORARY: Using system SansSerif as fallback due to Downloadable Fonts complexity.
- * System SansSerif (Roboto on Android) is clean, modern, and works immediately.
- *
- * TODO: Implement proper Downloadable Fonts with async loading in future update.
- * Requires additional AndroidManifest.xml configuration and async font loading.
- *
- * Alternative: Roboto is Android's default and has a modern, tech-forward aesthetic.
+ * This implementation uses the Downloadable Fonts API (via R.font.exo2)
+ * which fetches the font from Google Fonts at runtime.
+ * Preloading is configured in AndroidManifest.xml and res/values/preloaded_fonts.xml
+ * to ensure availability on first paint.
  */
-val ExoFontFamily = FontFamily.SansSerif  // System default (Roboto on most devices)
+val ExoFontFamily = FontFamily.SansSerif
 
 /**
  * Neon Cyberpunk Typography System

@@ -29,6 +29,7 @@ class RealAIProviderService @Inject constructor(
     private val openAIService: OpenAIService,
     private val anthropicService: AnthropicService,
     private val geminiService: GeminiService,
+    private val xaiService: XAIService,
     private val moshi: Moshi
 ) {
 
@@ -85,6 +86,10 @@ class RealAIProviderService @Inject constructor(
             }
             "Google AI" -> {
                 streamGemini(apiKey, model, prompt, systemPrompt, temperature, topP, images)
+                    .collect { chunk -> emit(chunk) }
+            }
+            "xAI" -> {
+                streamXAI(apiKey, model, prompt, systemPrompt, temperature, topP, images)
                     .collect { chunk -> emit(chunk) }
             }
             else -> {
@@ -321,6 +326,77 @@ class RealAIProviderService @Inject constructor(
         }
 
         Log.d(TAG, "✅ OpenAI API response received, streaming chunks...")
+        parseServerSentEvents(response.body()!!).collect { chunk ->
+            emit(chunk)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Stream response from xAI (Grok)
+     *
+     * xAI uses an OpenAI-compatible API — same request format and SSE streaming.
+     * Reuses OpenAIRequest and parseServerSentEvents().
+     */
+    private suspend fun streamXAI(
+        apiKey: String,
+        model: String,
+        prompt: String,
+        systemPrompt: String,
+        temperature: Double,
+        topP: Double,
+        images: List<AIImageContent> = emptyList()
+    ): Flow<String> = flow {
+        Log.d(TAG, "📡 Calling xAI (Grok) API...")
+        Log.d(TAG, "   Model: $model")
+        Log.d(TAG, "   Prompt length: ${prompt.length} chars")
+
+        val userMessageContent: Any = if (images.isEmpty()) {
+            prompt
+        } else {
+            // xAI (Grok 4) supports vision - same format as OpenAI
+            Log.d(TAG, "📷 xAI: ${images.size} images attached")
+            buildList<Map<String, Any>> {
+                add(mapOf("type" to "text", "text" to prompt))
+                images.forEachIndexed { index, imageContent ->
+                    Log.d(TAG, "   Adding image $index: ${imageContent.mimeType}")
+                    add(mapOf(
+                        "type" to "image_url",
+                        "image_url" to mapOf(
+                            "url" to "data:${imageContent.mimeType};base64,${imageContent.base64String}"
+                        )
+                    ))
+                }
+            }
+        }
+
+        val messages = buildList<APIChatMessage> {
+            if (systemPrompt.isNotEmpty()) {
+                add(APIChatMessage(role = "system", content = systemPrompt))
+            }
+            add(APIChatMessage(role = "user", content = userMessageContent))
+        }
+
+        val request = OpenAIRequest(
+            model = model,
+            messages = messages,
+            temperature = temperature,
+            topP = topP,
+            stream = true,
+            maxTokens = 4096
+        )
+
+        val response = xaiService.chatCompletion(
+            authorization = "Bearer $apiKey",
+            request = request
+        )
+
+        if (!response.isSuccessful) {
+            val errorBody = response.errorBody()?.string()
+            Log.e(TAG, "❌ xAI API error: ${response.code()} - $errorBody")
+            throw Exception("xAI API error: ${response.code()} - $errorBody")
+        }
+
+        Log.d(TAG, "✅ xAI API response received, streaming chunks...")
         parseServerSentEvents(response.body()!!).collect { chunk ->
             emit(chunk)
         }

@@ -9,6 +9,7 @@ import com.xraiassistant.data.remote.EmbeddingService
 import com.xraiassistant.data.remote.GeminiService
 import com.xraiassistant.data.remote.OpenAIService
 import com.xraiassistant.data.remote.TogetherAIService
+import com.xraiassistant.data.remote.XAIService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -58,6 +59,10 @@ object NetworkModule {
     @Qualifier
     @Retention(AnnotationRetention.BINARY)
     annotation class CodeSandbox
+
+    @Qualifier
+    @Retention(AnnotationRetention.BINARY)
+    annotation class XAI
 
     /**
      * Moshi for JSON serialization
@@ -231,6 +236,32 @@ object NetworkModule {
     fun provideGeminiService(
         @Google retrofit: Retrofit
     ): GeminiService = retrofit.create(GeminiService::class.java)
+
+    /**
+     * Retrofit for xAI (Grok)
+     * Base URL: https://api.x.ai
+     * Uses OpenAI-compatible API format
+     */
+    @Provides
+    @Singleton
+    @XAI
+    fun provideXAIRetrofit(
+        okHttpClient: OkHttpClient,
+        moshi: Moshi
+    ): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.x.ai/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
+        .build()
+
+    /**
+     * xAI (Grok) Service
+     */
+    @Provides
+    @Singleton
+    fun provideXAIService(
+        @XAI retrofit: Retrofit
+    ): XAIService = retrofit.create(XAIService::class.java)
 
     /**
      * Retrofit for CodeSandbox

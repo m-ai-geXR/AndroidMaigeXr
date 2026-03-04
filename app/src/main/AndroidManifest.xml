@@ -33,6 +33,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Preloaded Fonts — ensures Exo 2 is available immediately -->
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
+
         <!-- AdMob Application ID — required for MobileAds SDK initialization -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"

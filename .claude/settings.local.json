@@ -39,7 +39,15 @@
       "Bash(ANDROID_HOME=/mnt/c/Users/brend/AppData/Local/Android/Sdk bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew assembleDebug 2>&1 | tail -60)",
       "Bash(GRADLE_USER_HOME=/mnt/c/Users/brend/.gradle bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew assembleDebug 2>&1 | tail -60)",
       "Bash(GRADLE_USER_HOME=/mnt/c/Users/brend/.gradle bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew --version 2>&1)",
-      "Bash(node --version && ./node_modules/.bin/electron --version 2>/dev/null || echo \"electron not in PATH\")"
+      "Bash(node --version && ./node_modules/.bin/electron --version 2>/dev/null || echo \"electron not in PATH\")",
+      "WebFetch(domain:docs.x.ai)",
+      "WebFetch(domain:blog.google)",
+      "Bash(ls gradlew && bash ./gradlew assembleDebug 2>&1 | tail -60)",
+      "Bash(java -version 2>&1 && echo \"JAVA_HOME=$JAVA_HOME\" && which java)",
+      "Bash(bash gradlew --version 2>&1 | head -20)",
+      "Bash(bash -x /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew --version 2>&1 | head -40)",
+      "Bash(chmod +x /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew && bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew --version 2>&1)",
+      "Bash(bash /mnt/c/Users/brend/exp/maigeXR/AndroidMaigeXr/gradlew assembleDebug 2>&1 | tail -80)"
     ],
     "deny": [],
     "ask": []

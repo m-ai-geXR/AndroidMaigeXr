@@ -104,7 +104,7 @@ class SettingsDataStore @Inject constructor(
     }
 
     /**
-     * Migrate old non-serverless Together.ai model IDs to new serverless ones
+     * Migrate old model IDs to new ones
      * See CLAUDE.md "Known Issues & Fixes" for details
      */
     private fun migrateModelId(oldId: String): String {
@@ -114,6 +114,9 @@ class SettingsDataStore @Inject constructor(
 
             // Llama 3.3 70B migrations
             "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" -> "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+
+            // Gemini 3.1 Pro migration (released February 2026)
+            "gemini-3-pro-preview" -> "gemini-3.1-pro-preview"
 
             // If no migration needed, return original
             else -> oldId

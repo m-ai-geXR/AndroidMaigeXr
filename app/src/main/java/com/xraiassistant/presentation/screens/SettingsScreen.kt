@@ -59,6 +59,7 @@ fun SettingsScreen(
     var openaiApiKey by remember { mutableStateOf("") }
     var anthropicApiKey by remember { mutableStateOf("") }
     var googleApiKey by remember { mutableStateOf("") }
+    var xaiApiKey by remember { mutableStateOf("") }
     var codesandboxApiKey by remember { mutableStateOf("") }
     var selectedModel by remember { mutableStateOf("") }
     var selectedLibrary by remember { mutableStateOf("") }
@@ -81,6 +82,7 @@ fun SettingsScreen(
         openaiApiKey = viewModel.getRawAPIKey("OpenAI")
         anthropicApiKey = viewModel.getRawAPIKey("Anthropic")
         googleApiKey = viewModel.getRawAPIKey("Google AI")
+        xaiApiKey = viewModel.getRawAPIKey("xAI")
         codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox")
         selectedModel = viewModel.selectedModel
         selectedLibrary = viewModel.currentLibraryId
@@ -140,6 +142,7 @@ fun SettingsScreen(
                                 viewModel.setAPIKey("OpenAI", openaiApiKey)
                                 viewModel.setAPIKey("Anthropic", anthropicApiKey)
                                 viewModel.setAPIKey("Google AI", googleApiKey)
+                                viewModel.setAPIKey("xAI", xaiApiKey)
                                 viewModel.setAPIKey("CodeSandbox", codesandboxApiKey)
 
                                 // Update model settings
@@ -194,6 +197,8 @@ fun SettingsScreen(
                 onAnthropicApiKeyChange = { anthropicApiKey = it },
                 googleApiKey = googleApiKey,
                 onGoogleApiKeyChange = { googleApiKey = it },
+                xaiApiKey = xaiApiKey,
+                onXaiApiKeyChange = { xaiApiKey = it },
                 codesandboxApiKey = codesandboxApiKey,
                 onCodesandboxApiKeyChange = { codesandboxApiKey = it },
                 viewModel = viewModel
@@ -266,6 +271,8 @@ private fun ApiConfigurationSection(
     onAnthropicApiKeyChange: (String) -> Unit,
     googleApiKey: String,
     onGoogleApiKeyChange: (String) -> Unit,
+    xaiApiKey: String,
+    onXaiApiKeyChange: (String) -> Unit,
     codesandboxApiKey: String,
     onCodesandboxApiKeyChange: (String) -> Unit,
     viewModel: ChatViewModel
@@ -284,7 +291,7 @@ private fun ApiConfigurationSection(
                 onApiKeyChange = onTogetherApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Together.ai")
             )
-            
+
             // OpenAI API Key
             ProviderAPIKeyView(
                 provider = "OpenAI",
@@ -294,7 +301,7 @@ private fun ApiConfigurationSection(
                 onApiKeyChange = onOpenaiApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("OpenAI")
             )
-            
+
             // Anthropic API Key
             ProviderAPIKeyView(
                 provider = "Anthropic",
@@ -313,6 +320,16 @@ private fun ApiConfigurationSection(
                 apiKey = googleApiKey,
                 onApiKeyChange = onGoogleApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Google AI")
+            )
+
+            // xAI (Grok) API Key
+            ProviderAPIKeyView(
+                provider = "xAI",
+                description = "Get your API key from console.x.ai",
+                color = Color(0xFFFF6B35), // xAI Orange
+                apiKey = xaiApiKey,
+                onApiKeyChange = onXaiApiKeyChange,
+                isConfigured = viewModel.isProviderConfigured("xAI")
             )
 
             // CodeSandbox API Key (Optional)

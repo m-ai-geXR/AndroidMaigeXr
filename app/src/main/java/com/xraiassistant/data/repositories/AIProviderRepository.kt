@@ -25,6 +25,7 @@ class AIProviderRepository @Inject constructor(
         private const val PROVIDER_OPENAI = "OpenAI"
         private const val PROVIDER_ANTHROPIC = "Anthropic"
         private const val PROVIDER_GOOGLE = "Google AI"
+        private const val PROVIDER_XAI = "xAI"
     }
     
     /**
@@ -146,9 +147,10 @@ class AIProviderRepository @Inject constructor(
      */
     private fun getProviderForModel(model: String): String {
         return when {
-            model.startsWith("gpt-") -> PROVIDER_OPENAI
+            model.startsWith("gpt-") || model.startsWith("o1-") || model.startsWith("o3-") -> PROVIDER_OPENAI
             model.startsWith("claude-") -> PROVIDER_ANTHROPIC
             model.startsWith("gemini-") -> PROVIDER_GOOGLE
+            model.startsWith("grok-") -> PROVIDER_XAI
             model.contains("deepseek") ||
             model.contains("llama") ||
             model.contains("qwen") -> PROVIDER_TOGETHER_AI
@@ -160,7 +162,7 @@ class AIProviderRepository @Inject constructor(
      * Get all supported providers
      */
     fun getSupportedProviders(): List<String> {
-        return listOf(PROVIDER_TOGETHER_AI, PROVIDER_OPENAI, PROVIDER_ANTHROPIC, PROVIDER_GOOGLE)
+        return listOf(PROVIDER_TOGETHER_AI, PROVIDER_OPENAI, PROVIDER_ANTHROPIC, PROVIDER_GOOGLE, PROVIDER_XAI)
     }
 
     /**
@@ -172,6 +174,7 @@ class AIProviderRepository @Inject constructor(
             PROVIDER_OPENAI -> key.startsWith("sk-") && key.length > 20
             PROVIDER_ANTHROPIC -> key.startsWith("sk-ant-") && key.length > 20
             PROVIDER_GOOGLE -> key.startsWith("AIzaSy") && key.length > 30
+            PROVIDER_XAI -> key.isNotBlank() && key != DEFAULT_API_KEY && key.length > 10
             else -> key.isNotBlank() && key != DEFAULT_API_KEY
         }
     }
