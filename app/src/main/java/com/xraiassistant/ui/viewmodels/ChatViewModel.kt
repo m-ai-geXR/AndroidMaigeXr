@@ -76,6 +76,7 @@ class ChatViewModel @Inject constructor(
 
     // MARK: - AI Configuration
     private val _selectedModel = MutableStateFlow(AIModels.DEEPSEEK_R1_70B.id)
+    val selectedModelState: StateFlow<String> = _selectedModel.asStateFlow()
     var selectedModel: String
         get() = _selectedModel.value
         set(value) { _selectedModel.value = value }

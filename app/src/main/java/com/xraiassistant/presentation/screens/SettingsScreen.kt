@@ -52,6 +52,7 @@ fun SettingsScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val currentVmSelectedModel by viewModel.selectedModelState.collectAsStateWithLifecycle()
     var settingsSaved by remember { mutableStateOf(false) }
     
     // Local state for editing before save
@@ -72,7 +73,7 @@ fun SettingsScreen(
     var historyCleared by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     
-    // Initialize local state with current values
+    // Initialize local state with current values (everything except selectedModel)
     LaunchedEffect(Unit) {
         println("🔧 SettingsScreen: Loading current settings from ViewModel...")
 
@@ -84,7 +85,6 @@ fun SettingsScreen(
         googleApiKey = viewModel.getRawAPIKey("Google AI")
         xaiApiKey = viewModel.getRawAPIKey("xAI")
         codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox")
-        selectedModel = viewModel.selectedModel
         selectedLibrary = viewModel.currentLibraryId
         temperature = viewModel.temperature
         topP = viewModel.topP
@@ -92,7 +92,6 @@ fun SettingsScreen(
         useSandpackForR3F = true // Default value
 
         println("✅ SettingsScreen: Settings loaded")
-        println("   Selected Model: $selectedModel")
         println("   Selected Library: $selectedLibrary")
         println("   Temperature: $temperature")
         println("   Top-P: $topP")
@@ -102,6 +101,13 @@ fun SettingsScreen(
         } else {
             println("   ⚠️ System Prompt is EMPTY!")
         }
+    }
+
+    // Reactive sync: fires when DataStore load completes or user saves
+    // Fixes the race condition where the stale default was captured before DataStore finished reading
+    LaunchedEffect(currentVmSelectedModel) {
+        selectedModel = currentVmSelectedModel
+        println("🔄 SettingsScreen: selectedModel synced to $currentVmSelectedModel")
     }
     
     Scaffold(

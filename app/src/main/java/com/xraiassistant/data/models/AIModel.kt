@@ -196,6 +196,35 @@ object AIModels {
     
     // ============= ANTHROPIC CLAUDE MODELS =============
 
+    // Claude 4.6 Series (Latest - 2026)
+    val CLAUDE_OPUS_4_6 = AIModel(
+        id = "claude-opus-4-6",
+        displayName = "Claude Opus 4.6",
+        description = "Most capable Claude model for complex tasks - 200K context",
+        provider = "Anthropic",
+        pricing = "$15.00/$75.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
+    val CLAUDE_SONNET_4_6 = AIModel(
+        id = "claude-sonnet-4-6",
+        displayName = "Claude Sonnet 4.6",
+        description = "Smartest model for complex agents and coding - 200K context",
+        provider = "Anthropic",
+        pricing = "$3.00/$15.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        )
+    )
+
     // Claude 4.5 Series (Latest - 2025)
     val CLAUDE_SONNET_4_5 = AIModel(
         id = "claude-sonnet-4-5-20250929",
@@ -504,7 +533,9 @@ object AIModels {
         GPT_4O,
         GPT_4O_MINI,
 
-        // Anthropic models (12 models)
+        // Anthropic models (14 models)
+        CLAUDE_OPUS_4_6,
+        CLAUDE_SONNET_4_6,
         CLAUDE_SONNET_4_5,
         CLAUDE_HAIKU_4_5,
         CLAUDE_OPUS_4_1,

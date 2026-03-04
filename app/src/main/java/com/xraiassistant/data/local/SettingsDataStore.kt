@@ -118,6 +118,12 @@ class SettingsDataStore @Inject constructor(
             // Gemini 3.1 Pro migration (released February 2026)
             "gemini-3-pro-preview" -> "gemini-3.1-pro-preview"
 
+            // Anthropic 4.x → 4.6 migrations
+            "claude-sonnet-4-5-20250929" -> "claude-sonnet-4-6"
+            "claude-opus-4-1-20250805"   -> "claude-opus-4-6"
+            "claude-sonnet-4-20250514"   -> "claude-sonnet-4-6"
+            "claude-opus-4-20250514"     -> "claude-opus-4-6"
+
             // If no migration needed, return original
             else -> oldId
         }
