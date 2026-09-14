@@ -3,7 +3,9 @@ package com.xraiassistant.ui.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.xraiassistant.data.models.AIEffort
 import com.xraiassistant.data.models.AIModel
+import com.xraiassistant.data.models.AIModelControl
 import com.xraiassistant.data.models.AIModels
 import com.xraiassistant.data.models.ChatMessage
 import com.xraiassistant.data.models.CodeSandboxDefineRequest
@@ -21,8 +23,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -90,6 +95,23 @@ class ChatViewModel @Inject constructor(
     var topP: Float
         get() = _topP.value
         set(value) { _topP.value = value.coerceIn(0.1f, 1.0f) }
+
+    /** Reasoning depth for models that take effort instead of temperature/top-p. */
+    private val _effort = MutableStateFlow(AIEffort.HIGH)
+    val effortFlow: StateFlow<AIEffort> = _effort.asStateFlow()
+    var effort: AIEffort
+        get() = _effort.value
+        set(value) { _effort.value = value }
+
+    /**
+     * True when the selected model takes a reasoning-effort level rather than
+     * temperature/top-p, so the settings UI can show the right control.
+     */
+    val usesEffortControl: StateFlow<Boolean> = _selectedModel
+        .map { id ->
+            AIModels.ALL_MODELS.firstOrNull { it.id == id }?.control == AIModelControl.EFFORT
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _systemPrompt = MutableStateFlow("")
     var systemPrompt: String
@@ -280,6 +302,7 @@ class ChatViewModel @Inject constructor(
                     temperature = _temperature.value.toDouble(),
                     topP = _topP.value.toDouble(),
                     systemPrompt = enhancedSystemPrompt,
+                    effort = _effort.value,
                     images = imagesToSend
                 ).collect { chunk ->
                     // Append chunk to full response
@@ -395,7 +418,8 @@ class ChatViewModel @Inject constructor(
                     model = _selectedModel.value,
                     temperature = _temperature.value.toDouble(),
                     topP = _topP.value.toDouble(),
-                    systemPrompt = enhancedSystemPrompt
+                    systemPrompt = enhancedSystemPrompt,
+                    effort = _effort.value
                 )
 
                 // Add AI response
@@ -1001,7 +1025,8 @@ class ChatViewModel @Inject constructor(
             temperature = _temperature.value.toDouble(),
             topP = _topP.value.toDouble(),
             systemPrompt = _systemPrompt.value,
-            selectedLibraryId = _currentLibrary.value?.id
+            selectedLibraryId = _currentLibrary.value?.id,
+            effort = _effort.value.apiValue
         )
     }
 
@@ -1015,6 +1040,7 @@ class ChatViewModel @Inject constructor(
             _selectedModel.value = settings.selectedModel
             _temperature.value = settings.temperature.toFloat()
             _topP.value = settings.topP.toFloat()
+            _effort.value = AIEffort.fromApiValue(settings.effort)
 
             // Only override system prompt if a custom one was saved (matching iOS)
             if (settings.systemPrompt.isNotEmpty()) {

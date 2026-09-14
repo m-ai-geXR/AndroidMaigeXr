@@ -40,6 +40,16 @@ class RealAIProviderService @Inject constructor(
     }
 
     /**
+     * Which generation controls the given model accepts. Unknown ids fall back to
+     * sampling so custom or user-entered models keep working.
+     */
+    private fun controlFor(model: String): AIModelControl =
+        AIModels.ALL_MODELS.firstOrNull { it.id == model }?.control ?: AIModelControl.SAMPLING
+
+    private fun maxOutputFor(model: String, default: Int): Int =
+        AIModels.ALL_MODELS.firstOrNull { it.id == model }?.maxOutputTokens ?: default
+
+    /**
      * Generate AI response with streaming
      *
      * Routes to appropriate provider based on provider name:
@@ -60,6 +70,7 @@ class RealAIProviderService @Inject constructor(
         systemPrompt: String,
         temperature: Double,
         topP: Double,
+        effort: AIEffort = AIEffort.HIGH,
         images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "🚀 Generating streaming response")
@@ -76,11 +87,11 @@ class RealAIProviderService @Inject constructor(
                     .collect { chunk -> emit(chunk) }
             }
             "OpenAI" -> {
-                streamOpenAI(apiKey, model, prompt, systemPrompt, temperature, topP, images)
+                streamOpenAI(apiKey, model, prompt, systemPrompt, temperature, topP, effort, images)
                     .collect { chunk -> emit(chunk) }
             }
             "Anthropic" -> {
-                streamAnthropic(apiKey, model, prompt, systemPrompt, temperature, topP, images)
+                streamAnthropic(apiKey, model, prompt, systemPrompt, temperature, topP, effort, images)
                     .collect { chunk -> emit(chunk) }
             }
             "Google AI" -> {
@@ -252,6 +263,7 @@ class RealAIProviderService @Inject constructor(
         systemPrompt: String,
         temperature: Double,
         topP: Double,
+        effort: AIEffort,
         images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "📡 Calling OpenAI API...")
@@ -296,13 +308,17 @@ class RealAIProviderService @Inject constructor(
 
         Log.d(TAG, "   Total messages: ${messages.size}")
 
+        val usesEffort = controlFor(model) == AIModelControl.EFFORT
+
         val request = OpenAIRequest(
             model = model,
             messages = messages,
-            temperature = temperature,
-            topP = topP,
+            // GPT-5.6 and GPT-6 400 on any custom temperature/top_p, so omit them entirely.
+            temperature = if (usesEffort) null else temperature,
+            topP = if (usesEffort) null else topP,
             stream = true,
-            maxTokens = 8192
+            maxTokens = maxOutputFor(model, 8192),
+            reasoningEffort = if (usesEffort) effort.apiValue else null
         )
 
         // Log the serialized request for debugging (only first 500 chars to avoid huge logs)
@@ -414,7 +430,8 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double,  // Ignored for Anthropic - Claude 4.5+ only accepts temperature
+        topP: Double,  // Ignored for Anthropic - Claude 4.x only accepts temperature
+        effort: AIEffort,
         images: List<AIImageContent> = emptyList()
     ): Flow<String> = flow {
         Log.d(TAG, "📡 Calling Anthropic API...")
@@ -449,14 +466,19 @@ class RealAIProviderService @Inject constructor(
             APIChatMessage(role = "user", content = messageContent)
         )
 
+        val usesEffort = controlFor(model) == AIModelControl.EFFORT
+
         val request = AnthropicRequest(
             model = model,
             messages = messages,
-            temperature = temperature,
-            topP = null,  // CRITICAL: Claude 4.5+ doesn't allow both temperature and top_p
+            // The Claude 5 series removed temperature/top_p; Claude 4.x rejects both together.
+            temperature = if (usesEffort) null else temperature,
+            topP = null,
             stream = true,
-            maxTokens = 8192,
-            system = systemPrompt.takeIf { it.isNotEmpty() }
+            maxTokens = maxOutputFor(model, 8192),
+            system = systemPrompt.takeIf { it.isNotEmpty() },
+            thinking = if (usesEffort) AnthropicRequest.ThinkingConfig(type = "adaptive") else null,
+            outputConfig = if (usesEffort) AnthropicRequest.OutputConfig(effort = effort.apiValue) else null
         )
 
         val response = anthropicService.messages(
@@ -792,12 +814,13 @@ class RealAIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        effort: AIEffort = AIEffort.HIGH
     ): String {
         val fullResponse = StringBuilder()
 
         generateResponseStream(
-            provider, apiKey, model, prompt, systemPrompt, temperature, topP
+            provider, apiKey, model, prompt, systemPrompt, temperature, topP, effort
         ).collect { chunk ->
             fullResponse.append(chunk)
         }

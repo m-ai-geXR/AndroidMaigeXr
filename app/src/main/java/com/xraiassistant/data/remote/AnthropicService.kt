@@ -14,49 +14,53 @@ import retrofit2.http.Streaming
  * Endpoint: https://api.anthropic.com
  * Documentation: https://docs.claude.com/en/api/messages
  *
- * Supported Models (2025):
- * - Claude Sonnet 4.5 (claude-sonnet-4-5-20250929) - Latest, 200K context, extended thinking
- * - Claude Opus 4.1 (claude-opus-4-1-20250805) - Most powerful, complex reasoning
- * - Claude Haiku 4.5 (claude-haiku-4-5-20251001) - Fast & cost-effective
+ * Supported Models:
+ * - Claude Fable 5.1 (claude-fable-5-1) - Most capable, 1M context, effort-based
+ * - Claude Opus 5 (claude-opus-5) - Frontier coding and agents, 1M context, effort-based
+ * - Claude Sonnet 5 (claude-sonnet-5) - Best speed/cost balance, 1M context, effort-based
+ * - Claude Haiku 4.5 (claude-haiku-4-5) - Fast and cheap, 200K context, sampling-based
+ * - Claude Opus 4.6 / Sonnet 4.6 - Previous generation, sampling-based
  */
 interface AnthropicService {
 
     /**
      * Messages API with streaming support
      *
-     * Supports Claude Sonnet 4.5, Opus 4.1, and Haiku 4.5 with extended thinking.
+     * Supports the Claude 5 series (effort-based) and Claude 4.x (sampling-based).
      *
-     * Example curl (Basic):
+     * Example curl (Claude 4.x - sampling):
      * ```
      * curl -X POST "https://api.anthropic.com/v1/messages" \
      *   -H "x-api-key: YOUR_API_KEY" \
      *   -H "anthropic-version: 2023-06-01" \
      *   -H "Content-Type: application/json" \
      *   -d '{
-     *     "model": "claude-sonnet-4-5-20250929",
+     *     "model": "claude-sonnet-4-6",
      *     "messages": [{"role": "user", "content": "Hello"}],
      *     "stream": true,
-     *     "max_tokens": 4096
+     *     "max_tokens": 4096,
+     *     "temperature": 0.7
      *   }'
      * ```
      *
-     * Example curl (With Extended Thinking):
+     * Example curl (Claude 5 series - adaptive thinking plus effort):
      * ```
      * curl -X POST "https://api.anthropic.com/v1/messages" \
      *   -H "x-api-key: YOUR_API_KEY" \
      *   -H "anthropic-version: 2023-06-01" \
      *   -H "Content-Type: application/json" \
      *   -d '{
-     *     "model": "claude-sonnet-4-5-20250929",
+     *     "model": "claude-opus-5",
      *     "messages": [{"role": "user", "content": "Solve this complex problem..."}],
      *     "stream": true,
-     *     "max_tokens": 16000,
-     *     "thinking": {
-     *       "type": "enabled",
-     *       "budget_tokens": 10000
-     *     }
+     *     "max_tokens": 64000,
+     *     "thinking": {"type": "adaptive"},
+     *     "output_config": {"effort": "high"}
      *   }'
      * ```
+     *
+     * IMPORTANT: the Claude 5 series removed temperature and top_p, and rejects the
+     * older thinking shape {"type": "enabled", "budget_tokens": N}. Both return 400.
      */
     @POST("v1/messages")
     @Streaming

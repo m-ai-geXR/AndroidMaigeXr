@@ -54,10 +54,13 @@ data class TogetherAIResponse(
 data class OpenAIRequest(
     @Json(name = "model") val model: String,
     @Json(name = "messages") val messages: List<APIChatMessage>,
-    @Json(name = "temperature") val temperature: Double = 0.7,
-    @Json(name = "top_p") val topP: Double = 0.9,
+    // NULLABLE: GPT-5.6 and GPT-6 accept only the default value and 400 on anything else.
+    @Json(name = "temperature") val temperature: Double? = null,
+    @Json(name = "top_p") val topP: Double? = null,
     @Json(name = "stream") val stream: Boolean = true,
-    @Json(name = "max_completion_tokens") val maxTokens: Int? = null  // Updated for GPT-5.2, o1, o3-mini
+    @Json(name = "max_completion_tokens") val maxTokens: Int? = null,
+    // low | medium | high | xhigh | max, for models that take effort instead of sampling
+    @Json(name = "reasoning_effort") val reasoningEffort: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -91,13 +94,23 @@ data class OpenAIResponse(
 data class AnthropicRequest(
     @Json(name = "model") val model: String,
     @Json(name = "messages") val messages: List<APIChatMessage>,
-    @Json(name = "temperature") val temperature: Double = 0.7,
-    @Json(name = "top_p") val topP: Double? = null,  // NULLABLE: Claude 4.5+ doesn't allow both temperature and top_p
+    // NULLABLE: the Claude 5 series removed temperature and top_p entirely and 400s on either.
+    @Json(name = "temperature") val temperature: Double? = null,
+    @Json(name = "top_p") val topP: Double? = null,  // Claude 4.x also rejects temperature and top_p together
     @Json(name = "stream") val stream: Boolean = true,
     @Json(name = "max_tokens") val maxTokens: Int = 8192,
     @Json(name = "system") val system: String? = null,
-    @Json(name = "thinking") val thinking: ThinkingConfig? = null  // Extended Thinking (Claude 4.5+)
+    @Json(name = "thinking") val thinking: ThinkingConfig? = null,
+    @Json(name = "output_config") val outputConfig: OutputConfig? = null
 ) {
+    /**
+     * Reasoning effort for the Claude 5 series, replacing temperature/top_p.
+     */
+    @JsonClass(generateAdapter = true)
+    data class OutputConfig(
+        @Json(name = "effort") val effort: String
+    )
+
     /**
      * Extended Thinking configuration for Claude Sonnet 4.5+
      *

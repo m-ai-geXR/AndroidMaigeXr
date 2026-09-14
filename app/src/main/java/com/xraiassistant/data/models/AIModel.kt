@@ -10,7 +10,9 @@ data class AIModel(
     val description: String,
     val provider: String,
     val pricing: String = "",
-    val capabilities: Set<AICapability> = emptySet()
+    val capabilities: Set<AICapability> = emptySet(),
+    val control: AIModelControl = AIModelControl.SAMPLING,
+    val maxOutputTokens: Int = 16_000
 )
 
 enum class AICapability {
@@ -18,6 +20,40 @@ enum class AICapability {
     CODE_GENERATION,
     STREAMING,
     FUNCTION_CALLING
+}
+
+/**
+ * Which generation controls a model actually accepts.
+ *
+ * Frontier models (Claude 5 series, GPT-5.6 / GPT-6) removed temperature and
+ * top_p from their APIs and reject any request carrying custom values with a
+ * 400. They expose a discrete reasoning-effort level instead.
+ */
+enum class AIModelControl {
+    /** Legacy sampling knobs: temperature + top_p. */
+    SAMPLING,
+
+    /** Discrete reasoning effort. Sending temperature/top_p to these models is a 400. */
+    EFFORT
+}
+
+/**
+ * Reasoning depth for models using EFFORT control.
+ *
+ * Anthropic (output_config.effort) and OpenAI (reasoning_effort) share the same
+ * five level names, so one type covers both providers.
+ */
+enum class AIEffort(val apiValue: String, val displayName: String, val summary: String) {
+    LOW("low", "Low", "Fastest and cheapest - simple scenes"),
+    MEDIUM("medium", "Medium", "Light reasoning for routine edits"),
+    HIGH("high", "High", "Balanced depth and cost (recommended)"),
+    XHIGH("xhigh", "Extra High", "Deeper reasoning for complex scenes"),
+    MAX("max", "Maximum", "Maximum depth - highest cost and latency");
+
+    companion object {
+        fun fromApiValue(value: String?): AIEffort =
+            entries.firstOrNull { it.apiValue == value } ?: HIGH
+    }
 }
 
 /**
@@ -93,11 +129,76 @@ object AIModels {
 
     // ============= OPENAI MODELS =============
 
-    // GPT-5.2 Series (Latest - December 2025)
+    // GPT-6 / GPT-5.6 Series (current generation)
+    val GPT_6_ASTRA = AIModel(
+        id = "gpt-6-astra",
+        displayName = "GPT-6 Astra",
+        description = "Most capable model, built for the hardest end-to-end work - 1.05M context",
+        provider = "OpenAI",
+        pricing = "$10.00/$50.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
+    )
+
+    val GPT_5_6_SOL = AIModel(
+        id = "gpt-5.6-sol",
+        displayName = "GPT-5.6 Sol",
+        description = "Flagship for complex professional work - 1.05M context",
+        provider = "OpenAI",
+        pricing = "$4.00/$20.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
+    )
+
+    val GPT_5_6_TERRA = AIModel(
+        id = "gpt-5.6-terra",
+        displayName = "GPT-5.6 Terra",
+        description = "Balances intelligence and cost - 1.05M context",
+        provider = "OpenAI",
+        pricing = "$2.00/$12.00 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
+    )
+
+    val GPT_5_6_LUNA = AIModel(
+        id = "gpt-5.6-luna",
+        displayName = "GPT-5.6 Luna",
+        description = "Optimized for cost-sensitive workloads - 1.05M context",
+        provider = "OpenAI",
+        pricing = "$0.20/$1.20 per 1M tokens",
+        capabilities = setOf(
+            AICapability.TEXT_GENERATION,
+            AICapability.CODE_GENERATION,
+            AICapability.STREAMING,
+            AICapability.FUNCTION_CALLING
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
+    )
+
+    // GPT-5.2 (previous generation - kept as fallback)
     val GPT_5_2 = AIModel(
         id = "gpt-5.2",
         displayName = "GPT-5.2",
-        description = "Best model for coding and agentic tasks - 400K context",
+        description = "Previous-generation coding and agentic model - 400K context",
         provider = "OpenAI",
         pricing = "$1.75/$14.00 per 1M tokens",
         capabilities = setOf(
@@ -105,116 +206,99 @@ object AIModels {
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.SAMPLING,
+        maxOutputTokens = 64_000
     )
 
-    val GPT_5_2_PRO = AIModel(
-        id = "gpt-5.2-pro",
-        displayName = "GPT-5.2 Pro",
-        description = "Smartest and most trustworthy - highest accuracy - 400K context",
-        provider = "OpenAI",
-        pricing = "Premium tier",
+    // ============= ANTHROPIC MODELS =============
+
+    // Claude 5 Series (current generation)
+    val CLAUDE_FABLE_5_1 = AIModel(
+        id = "claude-fable-5-1",
+        displayName = "Claude Fable 5.1",
+        description = "Most capable model for the hardest reasoning and agentic work - 1M context",
+        provider = "Anthropic",
+        pricing = "$10.00/$50.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
     )
 
-    val GPT_5_2_CHAT_LATEST = AIModel(
-        id = "gpt-5.2-chat-latest",
-        displayName = "GPT-5.2 Chat (Latest)",
-        description = "Latest ChatGPT model - automatically updates - 128K context",
-        provider = "OpenAI",
-        pricing = "$1.75/$14.00 per 1M tokens",
+    val CLAUDE_OPUS_5 = AIModel(
+        id = "claude-opus-5",
+        displayName = "Claude Opus 5",
+        description = "Frontier intelligence for agents and coding - 1M context",
+        provider = "Anthropic",
+        pricing = "$5.00/$25.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
     )
 
-    // o-series Reasoning Models (2024-2025)
-    val O1 = AIModel(
-        id = "o1-2024-12-17",
-        displayName = "o1",
-        description = "Advanced reasoning model for complex problems",
-        provider = "OpenAI",
-        pricing = "Premium tier",
+    val CLAUDE_SONNET_5 = AIModel(
+        id = "claude-sonnet-5",
+        displayName = "Claude Sonnet 5",
+        description = "Best combination of speed, cost and intelligence - 1M context",
+        provider = "Anthropic",
+        pricing = "$2.00/$10.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.EFFORT,
+        maxOutputTokens = 64_000
     )
 
-    val O3_MINI = AIModel(
-        id = "o3-mini-2025-01-31",
-        displayName = "o3-mini",
-        description = "Latest reasoning model with enhanced reasoning abilities",
-        provider = "OpenAI",
-        pricing = "Economy tier",
+    val CLAUDE_HAIKU_4_5 = AIModel(
+        id = "claude-haiku-4-5",
+        displayName = "Claude Haiku 4.5",
+        description = "Fastest model with near-frontier intelligence - 200K context",
+        provider = "Anthropic",
+        pricing = "$1.00/$5.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.SAMPLING,
+        maxOutputTokens = 32_000
     )
 
-    // GPT-4o Series (Still Supported)
-    val GPT_4O = AIModel(
-        id = "gpt-4o",
-        displayName = "GPT-4o",
-        description = "Versatile high-intelligence flagship model - text and image inputs",
-        provider = "OpenAI",
-        pricing = "$2.50/$10.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val GPT_4O_MINI = AIModel(
-        id = "gpt-4o-mini",
-        displayName = "GPT-4o Mini",
-        description = "Fast and affordable small model for focused tasks",
-        provider = "OpenAI",
-        pricing = "$0.15/$0.60 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-    
-    // ============= ANTHROPIC CLAUDE MODELS =============
-
-    // Claude 4.6 Series (Latest - 2026)
+    // Claude 4.6 Series (previous generation - kept as fallback)
     val CLAUDE_OPUS_4_6 = AIModel(
         id = "claude-opus-4-6",
         displayName = "Claude Opus 4.6",
-        description = "Most capable Claude model for complex tasks - 200K context",
+        description = "Previous-generation flagship - 200K/1M context",
         provider = "Anthropic",
-        pricing = "$15.00/$75.00 per 1M tokens",
+        pricing = "$5.00/$25.00 per 1M tokens",
         capabilities = setOf(
             AICapability.TEXT_GENERATION,
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.SAMPLING,
+        maxOutputTokens = 64_000
     )
 
     val CLAUDE_SONNET_4_6 = AIModel(
         id = "claude-sonnet-4-6",
         displayName = "Claude Sonnet 4.6",
-        description = "Smartest model for complex agents and coding - 200K context",
+        description = "Previous-generation balanced model - 200K/1M context",
         provider = "Anthropic",
         pricing = "$3.00/$15.00 per 1M tokens",
         capabilities = setOf(
@@ -222,166 +306,9 @@ object AIModels {
             AICapability.CODE_GENERATION,
             AICapability.STREAMING,
             AICapability.FUNCTION_CALLING
-        )
-    )
-
-    // Claude 4.5 Series (Latest - 2025)
-    val CLAUDE_SONNET_4_5 = AIModel(
-        id = "claude-sonnet-4-5-20250929",
-        displayName = "Claude Sonnet 4.5",
-        description = "Smartest model for complex agents and coding - 200K context",
-        provider = "Anthropic",
-        pricing = "$3.00/$15.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_HAIKU_4_5 = AIModel(
-        id = "claude-haiku-4-5-20251001",
-        displayName = "Claude Haiku 4.5",
-        description = "Fastest model with near-frontier intelligence - 200K context",
-        provider = "Anthropic",
-        pricing = "$0.25/$1.25 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    // Claude 4.1 Series
-    val CLAUDE_OPUS_4_1 = AIModel(
-        id = "claude-opus-4-1-20250805",
-        displayName = "Claude Opus 4.1",
-        description = "Exceptional model for specialized reasoning tasks - 200K context",
-        provider = "Anthropic",
-        pricing = "$15.00/$75.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    // Claude 4 Series (May 2025)
-    val CLAUDE_SONNET_4 = AIModel(
-        id = "claude-sonnet-4-20250514",
-        displayName = "Claude Sonnet 4",
-        description = "Previous Sonnet 4 version - 200K context",
-        provider = "Anthropic",
-        pricing = "$3.00/$15.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_OPUS_4 = AIModel(
-        id = "claude-opus-4-20250514",
-        displayName = "Claude Opus 4",
-        description = "Previous Opus 4 version - 200K context",
-        provider = "Anthropic",
-        pricing = "$15.00/$75.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    // Claude 3.5 Series (Legacy - 2024)
-    val CLAUDE_3_5_SONNET_OCT = AIModel(
-        id = "claude-3-5-sonnet-20241022",
-        displayName = "Claude 3.5 Sonnet (Oct 2024)",
-        description = "Previous generation high-performance model",
-        provider = "Anthropic",
-        pricing = "$3.00/$15.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_3_5_SONNET_JUNE = AIModel(
-        id = "claude-3-5-sonnet-20240620",
-        displayName = "Claude 3.5 Sonnet (June 2024)",
-        description = "Earlier 3.5 Sonnet version",
-        provider = "Anthropic",
-        pricing = "$3.00/$15.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_3_5_HAIKU = AIModel(
-        id = "claude-3-5-haiku-20241022",
-        displayName = "Claude 3.5 Haiku",
-        description = "Fast and affordable legacy model",
-        provider = "Anthropic",
-        pricing = "$0.25/$1.25 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    // Claude 3 Series (Legacy - Early 2024)
-    val CLAUDE_3_OPUS = AIModel(
-        id = "claude-3-opus-20240229",
-        displayName = "Claude 3 Opus",
-        description = "Original powerful model",
-        provider = "Anthropic",
-        pricing = "$15.00/$75.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_3_SONNET = AIModel(
-        id = "claude-3-sonnet-20240229",
-        displayName = "Claude 3 Sonnet",
-        description = "Balanced legacy model",
-        provider = "Anthropic",
-        pricing = "$3.00/$15.00 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
-    )
-
-    val CLAUDE_3_HAIKU = AIModel(
-        id = "claude-3-haiku-20240307",
-        displayName = "Claude 3 Haiku",
-        description = "Fastest legacy model",
-        provider = "Anthropic",
-        pricing = "$0.25/$1.25 per 1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING,
-            AICapability.FUNCTION_CALLING
-        )
+        ),
+        control = AIModelControl.SAMPLING,
+        maxOutputTokens = 64_000
     )
 
     // ============= XAI (GROK) MODELS =============
@@ -524,29 +451,20 @@ object AIModels {
         LLAMA_3_1_8B_TURBO,
         QWEN_2_5_7B_TURBO,
 
-        // OpenAI models (8 models - Updated December 2025)
+        // OpenAI models (5 models)
+        GPT_6_ASTRA,
+        GPT_5_6_SOL,
+        GPT_5_6_TERRA,
+        GPT_5_6_LUNA,
         GPT_5_2,
-        GPT_5_2_PRO,
-        GPT_5_2_CHAT_LATEST,
-        O1,
-        O3_MINI,
-        GPT_4O,
-        GPT_4O_MINI,
 
-        // Anthropic models (14 models)
+        // Anthropic models (6 models)
+        CLAUDE_FABLE_5_1,
+        CLAUDE_OPUS_5,
+        CLAUDE_SONNET_5,
+        CLAUDE_HAIKU_4_5,
         CLAUDE_OPUS_4_6,
         CLAUDE_SONNET_4_6,
-        CLAUDE_SONNET_4_5,
-        CLAUDE_HAIKU_4_5,
-        CLAUDE_OPUS_4_1,
-        CLAUDE_SONNET_4,
-        CLAUDE_OPUS_4,
-        CLAUDE_3_5_SONNET_OCT,
-        CLAUDE_3_5_SONNET_JUNE,
-        CLAUDE_3_5_HAIKU,
-        CLAUDE_3_OPUS,
-        CLAUDE_3_SONNET,
-        CLAUDE_3_HAIKU,
 
         // xAI (Grok) models (5 models)
         GROK_4,

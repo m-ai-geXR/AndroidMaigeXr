@@ -2,6 +2,7 @@ package com.xraiassistant.data.repositories
 
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.local.SettingsDataStore
+import com.xraiassistant.data.models.AIEffort
 import com.xraiassistant.data.models.AIImageContent
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -36,7 +37,8 @@ class AIProviderRepository @Inject constructor(
         model: String,
         temperature: Double,
         topP: Double,
-        systemPrompt: String
+        systemPrompt: String,
+        effort: AIEffort = AIEffort.HIGH
     ): String {
         val provider = getProviderForModel(model)
         val apiKey = getAPIKeyForProvider(provider)
@@ -52,7 +54,8 @@ class AIProviderRepository @Inject constructor(
             prompt = prompt,
             systemPrompt = systemPrompt,
             temperature = temperature,
-            topP = topP
+            topP = topP,
+            effort = effort
         )
     }
 
@@ -68,6 +71,7 @@ class AIProviderRepository @Inject constructor(
         temperature: Double,
         topP: Double,
         systemPrompt: String,
+        effort: AIEffort = AIEffort.HIGH,
         images: List<AIImageContent> = emptyList()
     ): kotlinx.coroutines.flow.Flow<String> {
         val provider = getProviderForModel(model)
@@ -85,6 +89,7 @@ class AIProviderRepository @Inject constructor(
             systemPrompt = systemPrompt,
             temperature = temperature,
             topP = topP,
+            effort = effort,
             images = images
         )
     }
@@ -147,7 +152,7 @@ class AIProviderRepository @Inject constructor(
      */
     private fun getProviderForModel(model: String): String {
         return when {
-            model.startsWith("gpt-") || model.startsWith("o1-") || model.startsWith("o3-") -> PROVIDER_OPENAI
+            model.startsWith("gpt-") -> PROVIDER_OPENAI
             model.startsWith("claude-") -> PROVIDER_ANTHROPIC
             model.startsWith("gemini-") -> PROVIDER_GOOGLE
             model.startsWith("grok-") -> PROVIDER_XAI

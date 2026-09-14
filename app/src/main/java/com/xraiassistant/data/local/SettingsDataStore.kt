@@ -36,6 +36,7 @@ class SettingsDataStore @Inject constructor(
         private val SELECTED_MODEL = stringPreferencesKey("selected_model")
         private val TEMPERATURE = doublePreferencesKey("temperature")
         private val TOP_P = doublePreferencesKey("top_p")
+        private val EFFORT = stringPreferencesKey("effort")
         private val SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
         private val SELECTED_LIBRARY_ID = stringPreferencesKey("selected_library_id")
         
@@ -68,6 +69,7 @@ class SettingsDataStore @Inject constructor(
             preferences[SELECTED_MODEL] = settings.selectedModel
             preferences[TEMPERATURE] = settings.temperature
             preferences[TOP_P] = settings.topP
+            preferences[EFFORT] = settings.effort
             preferences[SYSTEM_PROMPT] = settings.systemPrompt
             settings.selectedLibraryId?.let { 
                 preferences[SELECTED_LIBRARY_ID] = it 
@@ -97,6 +99,7 @@ class SettingsDataStore @Inject constructor(
                 selectedModel = migratedModel,
                 temperature = preferences[TEMPERATURE] ?: AppSettings().temperature,
                 topP = preferences[TOP_P] ?: AppSettings().topP,
+                effort = preferences[EFFORT] ?: AppSettings().effort,
                 systemPrompt = preferences[SYSTEM_PROMPT] ?: AppSettings().systemPrompt,
                 selectedLibraryId = preferences[SELECTED_LIBRARY_ID] ?: AppSettings().selectedLibraryId
             )
@@ -118,11 +121,27 @@ class SettingsDataStore @Inject constructor(
             // Gemini 3.1 Pro migration (released February 2026)
             "gemini-3-pro-preview" -> "gemini-3.1-pro-preview"
 
-            // Anthropic 4.x → 4.6 migrations
-            "claude-sonnet-4-5-20250929" -> "claude-sonnet-4-6"
-            "claude-opus-4-1-20250805"   -> "claude-opus-4-6"
-            "claude-sonnet-4-20250514"   -> "claude-sonnet-4-6"
-            "claude-opus-4-20250514"     -> "claude-opus-4-6"
+            // Anthropic: retired 4.x snapshots to the Claude 5 series
+            "claude-sonnet-4-5-20250929" -> "claude-sonnet-5"
+            "claude-sonnet-4-5"          -> "claude-sonnet-5"
+            "claude-sonnet-4-20250514"   -> "claude-sonnet-5"
+            "claude-opus-4-1-20250805"   -> "claude-opus-5"
+            "claude-opus-4-20250514"     -> "claude-opus-5"
+            "claude-3-5-sonnet-20241022" -> "claude-sonnet-5"
+            "claude-3-5-sonnet-20240620" -> "claude-sonnet-5"
+            "claude-3-5-haiku-20241022"  -> "claude-haiku-4-5"
+            "claude-haiku-4-5-20251001"  -> "claude-haiku-4-5"
+            "claude-3-opus-20240229"     -> "claude-opus-5"
+            "claude-3-sonnet-20240229"   -> "claude-sonnet-5"
+            "claude-3-haiku-20240307"    -> "claude-haiku-4-5"
+
+            // OpenAI: o-series shuts down 2026-10-23, GPT-4o superseded
+            "o1-2024-12-17"       -> "gpt-5.6-sol"
+            "o3-mini-2025-01-31"  -> "gpt-5.6-terra"
+            "gpt-4o"              -> "gpt-5.6-terra"
+            "gpt-4o-mini"         -> "gpt-5.6-luna"
+            "gpt-5.2-pro"         -> "gpt-6-astra"
+            "gpt-5.2-chat-latest" -> "gpt-5.6-sol"
 
             // If no migration needed, return original
             else -> oldId

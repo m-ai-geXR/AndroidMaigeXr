@@ -1,6 +1,7 @@
 package com.xraiassistant.data.repositories
 
 import com.xraiassistant.data.local.SettingsDataStore
+import com.xraiassistant.data.models.AIEffort
 import com.xraiassistant.data.models.AIModels
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,13 +25,15 @@ class SettingsRepository @Inject constructor(
         temperature: Double,
         topP: Double,
         systemPrompt: String,
-        selectedLibraryId: String?
+        selectedLibraryId: String?,
+        effort: String = AIEffort.HIGH.apiValue
     ) {
         settingsDataStore.saveSettings(
             AppSettings(
                 selectedModel = selectedModel,
                 temperature = temperature,
                 topP = topP,
+                effort = effort,
                 systemPrompt = systemPrompt,
                 selectedLibraryId = selectedLibraryId
             )
@@ -59,6 +62,7 @@ data class AppSettings(
     val selectedModel: String = AIModels.DEEPSEEK_R1_70B.id,
     val temperature: Double = 0.7,
     val topP: Double = 0.9,
+    val effort: String = AIEffort.HIGH.apiValue,
     val systemPrompt: String = "",
     val selectedLibraryId: String? = "babylonjs"
 )

@@ -13,6 +13,15 @@ import retrofit2.http.Streaming
  *
  * Endpoint: https://api.openai.com
  * Documentation: https://platform.openai.com/docs/api-reference/chat
+ *
+ * Supported Models:
+ * - GPT-6 Astra (gpt-6-astra) - Most capable, 1.05M context, effort-based
+ * - GPT-5.6 Sol / Terra / Luna - Current generation, 1.05M context, effort-based
+ * - GPT-5.2 (gpt-5.2) - Previous generation, sampling-based
+ *
+ * IMPORTANT: GPT-5.6 and GPT-6 accept only the default temperature and top_p and
+ * return 400 on any other value. They take reasoning_effort and
+ * max_completion_tokens instead of temperature/top_p and max_tokens.
  */
 interface OpenAIService {
 
@@ -25,9 +34,11 @@ interface OpenAIService {
      *   -H "Authorization: Bearer YOUR_API_KEY" \
      *   -H "Content-Type: application/json" \
      *   -d '{
-     *     "model": "gpt-4o",
+     *     "model": "gpt-5.6-sol",
      *     "messages": [{"role": "user", "content": "Hello"}],
-     *     "stream": true
+     *     "stream": true,
+     *     "reasoning_effort": "high",
+     *     "max_completion_tokens": 64000
      *   }'
      * ```
      */

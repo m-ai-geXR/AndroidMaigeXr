@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xraiassistant.R
+import com.xraiassistant.data.models.AIEffort
 import com.xraiassistant.data.models.AIModel
 import com.xraiassistant.domain.models.Library3D
 import com.xraiassistant.ui.theme.*
@@ -575,23 +576,36 @@ private fun ModelSettingsSection(
                 viewModel = viewModel
             )
             
-            // Temperature Slider
-            TemperatureSliderView(
-                temperature = temperature,
-                onTemperatureChange = onTemperatureChange
-            )
-            
-            // Top-P Slider
-            TopPSliderView(
-                topP = topP,
-                onTopPChange = onTopPChange
-            )
-            
+            val usesEffort by viewModel.usesEffortControl.collectAsStateWithLifecycle()
+            val effort by viewModel.effortFlow.collectAsStateWithLifecycle()
+
+            if (usesEffort) {
+                // Claude 5 series and GPT-5.6/GPT-6 reject temperature and top_p.
+                EffortPickerView(
+                    effort = effort,
+                    onEffortChange = { viewModel.effort = it }
+                )
+            } else {
+                TemperatureSliderView(
+                    temperature = temperature,
+                    onTemperatureChange = onTemperatureChange
+                )
+
+                TopPSliderView(
+                    topP = topP,
+                    onTopPChange = onTopPChange
+                )
+            }
+
             // Parameter Summary
-            ParameterSummaryView(
-                temperature = temperature,
-                topP = topP
-            )
+            if (usesEffort) {
+                EffortSummaryView(effort = effort)
+            } else {
+                ParameterSummaryView(
+                    temperature = temperature,
+                    topP = topP
+                )
+            }
         }
     }
 }
@@ -933,6 +947,98 @@ private fun LibrarySelectionView(
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EffortPickerView(
+    effort: AIEffort,
+    onEffortChange: (AIEffort) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Reasoning Effort",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = NeonBlue.copy(alpha = 0.1f)
+                )
+            ) {
+                Text(
+                    text = effort.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NeonBlue,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            AIEffort.entries.forEachIndexed { index, level ->
+                SegmentedButton(
+                    selected = level == effort,
+                    onClick = { onEffortChange(level) },
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = AIEffort.entries.size
+                    )
+                ) {
+                    Text(
+                        text = level.displayName,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+
+        Text(
+            text = effort.summary,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = "This model sets reasoning depth instead of temperature and top-p.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun EffortSummaryView(effort: AIEffort) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Current Mode",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = NeonPurple.copy(alpha = 0.1f)
+            )
+        ) {
+            Text(
+                text = "${effort.displayName} Reasoning - ${effort.summary}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = NeonPurple,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            )
         }
     }
 }
