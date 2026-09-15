@@ -92,7 +92,10 @@ object NetworkModule {
         val builder = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
+            // Reasoning models can think for minutes before emitting a first token,
+            // and readTimeout measures the gap between reads, so 120s trips during
+            // that silence.
+            .readTimeout(600, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
 
         // Configure SSL for Android emulator compatibility
