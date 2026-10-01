@@ -38,7 +38,7 @@ This project follows modern Android development best practices with a three-laye
 ### **Key Components**
 
 - **`ChatViewModel`** - Main AI integration hub using StateFlow for reactive state
-- **`Library3DRepository`** - 3D framework management (Babylon.js, Three.js, A-Frame, R3F, Reactylon)
+- **`Library3DRepository`** - 3D framework management (Babylon.js, Three.js, A-Frame, R3F, Reactylon, Nova64)
 - **`AIProviderRepository`** - Multi-provider API client (Together.ai, OpenAI, Anthropic)
 - **`SettingsRepository`** - Encrypted settings persistence with DataStore
 - **`ConversationRepository`** - Chat history management with Room database
@@ -204,6 +204,11 @@ class ChatViewModel @Inject constructor(
 3. **A-Frame v1.7.0** - WebXR VR/AR framework
 4. **React Three Fiber 8.15.0** - Declarative React + Three.js with postprocessing
 5. ~~**Reactylon 3.2.1**~~ - DISABLED (CodeSandbox TypeScript worker unstable - see Known Issues)
+6. **Nova64 v0.5.2** - Retro 3D fantasy console (N64/PS1-era low-poly, built on Three.js)
+   - Carts are `init()` / `update(dt)` / `draw()` with **no `export` keyword**
+   - Grouped `nova64.*` API; rendered by embedding Nova64's hosted studio runner
+     in `assets/playground-nova64.html` and pushing cart source over postMessage
+   - Direct injection, no build step; docs at https://nova64.io/docs/api-3d
 
 Each library provides:
 - Custom system prompts optimized for that framework
