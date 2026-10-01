@@ -3,6 +3,7 @@ package com.xraiassistant.data.repositories
 import com.xraiassistant.domain.models.AFrameLibrary
 import com.xraiassistant.domain.models.BabylonJSLibrary
 import com.xraiassistant.domain.models.Library3D
+import com.xraiassistant.domain.models.Nova64Library
 import com.xraiassistant.domain.models.ReactThreeFiberLibrary
 import com.xraiassistant.domain.models.ReactylonLibrary
 import com.xraiassistant.domain.models.ThreeJSLibrary
@@ -23,7 +24,8 @@ class Library3DRepository @Inject constructor() {
         ThreeJSLibrary(),
         ReactThreeFiberLibrary(),
         // ReactylonLibrary(), // DISABLED: CodeSandbox TypeScript worker unstable - see REACTYLON_CODESANDBOX_ISSUES.md
-        AFrameLibrary()
+        AFrameLibrary(),
+        Nova64Library()
     )
     
     private val defaultLibraryId = "babylonjs"
@@ -68,6 +70,7 @@ class Library3DRepository @Inject constructor() {
         return when (library.id) {
             "babylonjs" -> FrameworkKind.BABYLON
             "threejs" -> null // Three.js uses direct injection
+            "nova64" -> null // Nova64 renders via its own studio runner
             "aframe" -> FrameworkKind.AFRAME
             "reactThreeFiber" -> FrameworkKind.REACT_THREE_FIBER
             "reactylon" -> FrameworkKind.REACTYLON

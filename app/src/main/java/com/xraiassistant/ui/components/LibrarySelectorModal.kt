@@ -173,6 +173,7 @@ private fun LibraryCard(
                     library.id.contains("babylon") -> "WebGL Engine"
                     library.id.contains("three") -> "WebGL Library"
                     library.id.contains("aframe") -> "WebXR Framework"
+                    library.id.contains("nova64") -> "Fantasy Console"
                     library.id.contains("r3f") -> "React + Three.js"
                     library.id.contains("reactylon") -> "React + Babylon.js"
                     else -> "3D Library"

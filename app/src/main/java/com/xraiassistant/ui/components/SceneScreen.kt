@@ -610,9 +610,26 @@ private fun PlaygroundWebView(
                     println("📄 Loaded HTML from assets: ${playgroundHtml.length} characters")
                     println("🔍 HTML preview (first 200 chars): ${playgroundHtml.take(200)}")
 
-                    // CRITICAL: Use null base URL to allow all CDN resources to load
+                    // Nova64's studio runner answers us with
+                    // postMessage(msg, event.origin). A document with a null base URL
+                    // has an opaque origin that serialises to the string "null", which
+                    // is not a parseable URL — so that call throws inside the runner's
+                    // EXECUTE_CODE handler BEFORE it evaluates the cart, and the scene
+                    // just stays blank with no useful error. An https base URL gives the
+                    // page a real origin and makes it same-origin with the runner, so the
+                    // runner's replies arrive. playground-nova64.html is fully
+                    // self-contained for this reason — an https document cannot load
+                    // file:///android_asset/ subresources.
+                    val playgroundBaseUrl = if (playgroundTemplate.contains("nova64")) {
+                        "https://nova64.io/maigexr-playground/"
+                    } else {
+                        // Every other playground keeps the null base URL so CDN resources
+                        // and file:///android_asset/ helpers both load without CORS trouble.
+                        null
+                    }
+
                     loadDataWithBaseURL(
-                        null,  // Allow Monaco (unpkg.com) and CDN resources without CORS
+                        playgroundBaseUrl,
                         playgroundHtml,
                         "text/html",
                         "UTF-8",
