@@ -1,5 +1,6 @@
 package com.xraiassistant.data.remote
 
+import com.xraiassistant.data.models.AIEffort
 import com.xraiassistant.data.models.AIImageContent
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -12,6 +13,11 @@ import javax.inject.Singleton
  * with the existing interface while providing real HTTP calls to AI providers.
  *
  * ✅ UPDATED: Now uses real API calls instead of stub implementation
+ *
+ * NOTE: Every delegation below uses named arguments. RealAIProviderService has
+ * several trailing parameters with defaults (effort, images), so positional
+ * delegation silently shifts arguments into the wrong slots whenever a new
+ * parameter is inserted. See AIProviderServiceTest for the regression guard.
  */
 @Singleton
 class AIProviderService @Inject constructor(
@@ -31,10 +37,18 @@ class AIProviderService @Inject constructor(
         prompt: String,
         systemPrompt: String,
         temperature: Double,
-        topP: Double
+        topP: Double,
+        effort: AIEffort = AIEffort.HIGH
     ): String {
         return realAIProviderService.generateResponse(
-            provider, apiKey, model, prompt, systemPrompt, temperature, topP
+            provider = provider,
+            apiKey = apiKey,
+            model = model,
+            prompt = prompt,
+            systemPrompt = systemPrompt,
+            temperature = temperature,
+            topP = topP,
+            effort = effort
         )
     }
 
@@ -62,10 +76,19 @@ class AIProviderService @Inject constructor(
         systemPrompt: String,
         temperature: Double,
         topP: Double,
+        effort: AIEffort = AIEffort.HIGH,
         images: List<AIImageContent> = emptyList()
     ): Flow<String> {
         return realAIProviderService.generateResponseStream(
-            provider, apiKey, model, prompt, systemPrompt, temperature, topP, images
+            provider = provider,
+            apiKey = apiKey,
+            model = model,
+            prompt = prompt,
+            systemPrompt = systemPrompt,
+            temperature = temperature,
+            topP = topP,
+            effort = effort,
+            images = images
         )
     }
 }
