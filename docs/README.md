@@ -70,6 +70,14 @@ Complete commit documentation for WebView crash prevention. Contains:
 - Files modified summary
 - Testing checklist and expected results
 
+## Session Documentation
+
+### COMMIT_MESSAGES.md
+Commit-ready messages for the current session, written without quotes or
+backticks so they paste straight into `git commit`. Mirrors the convention used
+in the iOS repository. Currently covers the Nova64 3D library integration
+(2026-10-01).
+
 ## Styling Documentation
 
 ### STYLING_PROGRESS.md
@@ -98,6 +106,7 @@ General development checklist (archived)
 ## Documentation Organization
 
 **Active Documentation** (frequently referenced):
+- COMMIT_MESSAGES.md - Current session change log
 - REACTYLON_FINAL_STATUS_COMMIT.md - Current Reactylon status
 - REACTYLON_CODESANDBOX_ISSUES.md - CodeSandbox failure analysis
 - WEBVIEW_CRASH_FIX_SUMMARY.md - Crash prevention quick reference
@@ -132,9 +141,14 @@ General development checklist (archived)
 ### Need to test Reactylon if re-enabled?
 → Use REACTYLON_TESTING_CHECKLIST.md
 
+### Need to understand the Nova64 integration?
+→ See COMMIT_MESSAGES.md here, the Nova64 section of ../CLAUDE.md, and the
+  cross-platform design notes in the WebMaigeXr repository at
+  docs/NOVA64_INTEGRATION.md
+
 ---
 
-**Note**: Main project documentation (CLAUDE.md, README.md) remains in root directory.
-**Commit messages**: See COMMIT_MESSAGE.md in root directory.
+**Note**: Main project documentation (CLAUDE.md, README.md) remains in the root directory.
+**Commit messages**: See COMMIT_MESSAGES.md in this folder.
 
-Last updated: 2025-12-21
+Last updated: 2026-10-01
