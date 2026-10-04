@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.xraiassistant.domain.errors.AIErrorClassifier
 
 /**
  * UI State for Chat screen
@@ -356,21 +357,11 @@ class ChatViewModel @Inject constructor(
                 println("   Error message: ${e.message}")
                 e.printStackTrace()
 
-                // User-friendly error messages matching iOS
-                val errorMsg = when {
-                    e.message?.contains("SSL") == true ->
-                        "⚠️ SSL Connection Error: ${e.message}\n\nPlease try again. If issue persists, check your internet connection."
-                    e.message?.contains("401") == true ->
-                        "⚠️ Invalid API Key: Please verify your API key in Settings"
-                    e.message?.contains("API key not configured") == true ->
-                        "⚠️ API Key Required: Please configure your API key in Settings"
-                    e.message?.contains("Cannot reach") == true ->
-                        "⚠️ Network Error: ${e.message}"
-                    e.message?.contains("timed out") == true ->
-                        "⚠️ Timeout Error: ${e.message}"
-                    else ->
-                        "Failed to get response: ${e.message ?: "Unknown error"}"
-                }
+                // Classified rather than matched ad hoc, so the user gets a
+                // cause and a next step instead of exception text. Shared
+                // taxonomy with the web and iOS clients.
+                val info = AIErrorClassifier.classify(e, currentProviderName())
+                val errorMsg = info.asMessage()
                 _errorMessage.value = errorMsg
 
                 // Also add error message to chat for visibility
@@ -1258,6 +1249,11 @@ class ChatViewModel @Inject constructor(
     /**
      * Get display name for model ID
      */
+    /** Provider behind the selected model, for error messages. */
+    private fun currentProviderName(): String =
+        AIModels.ALL_MODELS.firstOrNull { it.id == _selectedModel.value }?.provider
+            ?: "The AI provider"
+
     fun getModelDisplayName(modelId: String): String {
         return AIModels.ALL_MODELS.find { it.id == modelId }?.displayName ?: modelId
     }
