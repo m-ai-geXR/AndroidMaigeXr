@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -66,9 +67,9 @@ fun ChatMessageCard(
             Box(
                 modifier = Modifier
                     .glassCard(
-                        backgroundColor = GlassCyberpunkDarkGray,  // 35% opacity glass effect
+                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant,  // 35% opacity glass effect
                         blurRadius = 10.dp,
-                        borderGlow = if (message.isUser) NeonBlue else NeonCyan,
+                        borderGlow = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                         shape = bubbleShape
                     )
                     .gradientBorder(
@@ -88,13 +89,13 @@ fun ChatMessageCard(
                         Icon(
                             imageVector = if (message.isUser) Icons.Default.Person else Icons.Default.SmartToy,
                             contentDescription = if (message.isUser) "User" else "AI",
-                            tint = if (message.isUser) NeonBlue else NeonCyan,
+                            tint = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = if (message.isUser) "You" else (message.model ?: "m{ai}geXR"),
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (message.isUser) NeonBlue else NeonCyan,
+                            color = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -112,7 +113,7 @@ fun ChatMessageCard(
                         // User messages: Plain text
                         Text(
                             text = message.content,
-                            color = CyberpunkWhite,
+                            color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -132,7 +133,7 @@ fun ChatMessageCard(
                 Text(
                     text = formatTime(message.timestamp),
                     style = MaterialTheme.typography.bodySmall,
-                    color = CyberpunkGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Light
                 )
 
@@ -145,10 +146,10 @@ fun ChatMessageCard(
                         onClick = { onRunDemo(message.libraryId) },
                         modifier = Modifier
                             .height(28.dp)
-                            .neonButtonGlow(NeonPurpleGlow),
+                            .neonButtonGlow(MaterialTheme.colorScheme.surfaceVariant),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonPurple,
-                            contentColor = CyberpunkBlack
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.background
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
@@ -172,10 +173,10 @@ fun ChatMessageCard(
                         onClick = { onRunScene(extractedCode, message.libraryId) },
                         modifier = Modifier
                             .height(28.dp)
-                            .neonButtonGlow(NeonGreenGlow),
+                            .neonButtonGlow(MaterialTheme.colorScheme.surfaceVariant),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonGreen,
-                            contentColor = CyberpunkBlack
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.background
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {

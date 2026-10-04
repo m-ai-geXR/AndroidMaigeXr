@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -209,7 +210,7 @@ fun ThreadedMessageView(
                                 Icon(
                                     imageVector = if (isFavorited) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                     contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
-                                    tint = if (isFavorited) NeonPink else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (isFavorited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -245,7 +246,7 @@ fun ThreadedMessageView(
                         onClick = { onRunDemo(message.libraryId) },
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF9C27B0),
+                            containerColor = MaterialTheme.colorScheme.secondary,
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
@@ -267,7 +268,7 @@ fun ThreadedMessageView(
                         onClick = { onRunScene(extractedCode, message.libraryId) },
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50),
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
@@ -422,7 +423,7 @@ fun ThreadReplyView(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "Run Scene",
                                 modifier = Modifier.size(14.dp),
-                                tint = if (hasCode) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                                tint = if (hasCode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
