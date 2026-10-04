@@ -275,7 +275,8 @@ class ChatViewModel @Inject constructor(
                     content = "",
                     model = getModelDisplayName(_selectedModel.value),
                     libraryId = _currentLibrary.value?.id,  // Track which library this message is for
-                    threadParentId = parentId  // AI reply goes in same thread
+                    threadParentId = parentId,  // AI reply goes in same thread
+                    isStreaming = true  // Suppress Run Scene until the response lands
                 )
                 _messages.value = _messages.value + placeholderMessage
                 val messageIndex = _messages.value.lastIndex
@@ -314,9 +315,17 @@ class ChatViewModel @Inject constructor(
                         content = fullResponse.toString(),
                         model = getModelDisplayName(_selectedModel.value),
                         libraryId = _currentLibrary.value?.id,
-                        threadParentId = parentId
+                        threadParentId = parentId,
+                        isStreaming = true
                     )
                     _messages.value = updatedMessages
+                }
+
+                // Streaming finished: settle the message so Run Scene can appear.
+                _messages.value = _messages.value.toMutableList().also { settled ->
+                    settled.getOrNull(messageIndex)?.let { streamed ->
+                        settled[messageIndex] = streamed.copy(isStreaming = false)
+                    }
                 }
 
                 // Process complete response for code extraction

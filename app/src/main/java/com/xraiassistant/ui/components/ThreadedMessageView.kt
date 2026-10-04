@@ -58,6 +58,7 @@ fun ThreadedMessageView(
     // Extract code from message if it contains code blocks
     val extractedCode = extractCodeFromMessage(message.content)
     val hasCode = extractedCode != null && !message.isUser
+    val showRunScene = shouldShowRunScene(message, onRunScene != null)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -261,15 +262,12 @@ fun ThreadedMessageView(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                } else if (!message.isUser && onRunScene != null) {
+                } else if (showRunScene && extractedCode != null && onRunScene != null) {
                     Button(
-                        onClick = {
-                            val code = extractedCode ?: message.content
-                            onRunScene(code, message.libraryId)
-                        },
+                        onClick = { onRunScene(extractedCode, message.libraryId) },
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (hasCode) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                            containerColor = Color(0xFF4CAF50),
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
@@ -444,40 +442,6 @@ fun ThreadReplyView(
  * Looks for code between ```javascript (or similar) and ```
  * Returns null if no valid code block found
  */
-private fun extractCodeFromMessage(content: String): String? {
-    // Look for code between triple backticks
-    val possibleStarts = listOf("```javascript", "```typescript", "```js", "```ts", "```jsx", "```html", "```")
-
-    for (marker in possibleStarts) {
-        val startIndex = content.indexOf(marker)
-        if (startIndex != -1) {
-            // Find the closing triple backticks
-            val codeStart = startIndex + marker.length
-            val endIndex = content.indexOf("```", codeStart)
-
-            if (endIndex != -1) {
-                // Extract code between markers
-                var code = content.substring(codeStart, endIndex).trim()
-
-                // Remove any trailing artifacts
-                val artifacts = listOf("[/INSERT_CODE]", "[RUN_SCENE]", "```")
-                for (artifact in artifacts) {
-                    if (code.endsWith(artifact)) {
-                        code = code.substring(0, code.length - artifact.length).trim()
-                    }
-                }
-
-                // Sanity check: ignore if too short
-                if (code.length >= 10) {
-                    return code
-                }
-            }
-        }
-    }
-
-    return null
-}
-
 private fun formatTime(date: Date): String {
     val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     return formatter.format(date)

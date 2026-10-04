@@ -35,7 +35,7 @@ fun ChatMessageCard(
 ) {
     // Extract code from message if it contains code blocks
     val extractedCode = extractCodeFromMessage(message.content)
-    val hasCode = extractedCode != null && !message.isUser
+    val showRunScene = shouldShowRunScene(message, onRunScene != null)
 
     Row(
         modifier = modifier,
@@ -164,7 +164,7 @@ fun ChatMessageCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                } else if (hasCode && extractedCode != null && onRunScene != null) {
+                } else if (showRunScene && extractedCode != null && onRunScene != null) {
                     // Show "Run Scene" button for AI messages with code
                     Spacer(modifier = Modifier.width(12.dp))
 
@@ -199,45 +199,6 @@ fun ChatMessageCard(
             Spacer(modifier = Modifier.weight(0.2f))
         }
     }
-}
-
-/**
- * Extract code from message content
- * Looks for code between ```javascript (or similar) and ```
- * Returns null if no valid code block found
- */
-private fun extractCodeFromMessage(content: String): String? {
-    // Look for code between triple backticks
-    val possibleStarts = listOf("```javascript", "```typescript", "```js", "```ts", "```jsx", "```html", "```")
-
-    for (marker in possibleStarts) {
-        val startIndex = content.indexOf(marker)
-        if (startIndex != -1) {
-            // Find the closing triple backticks
-            val codeStart = startIndex + marker.length
-            val endIndex = content.indexOf("```", codeStart)
-
-            if (endIndex != -1) {
-                // Extract code between markers
-                var code = content.substring(codeStart, endIndex).trim()
-
-                // Remove any trailing artifacts
-                val artifacts = listOf("[/INSERT_CODE]", "[RUN_SCENE]", "```")
-                for (artifact in artifacts) {
-                    if (code.endsWith(artifact)) {
-                        code = code.substring(0, code.length - artifact.length).trim()
-                    }
-                }
-
-                // Sanity check: ignore if too short
-                if (code.length >= 10) {
-                    return code
-                }
-            }
-        }
-    }
-
-    return null
 }
 
 private fun formatTime(date: Date): String {
