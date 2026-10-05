@@ -7,7 +7,7 @@ package com.xraiassistant.domain.models
  * 3D library: it boots its own runtime and then accepts "carts". The playground
  * embeds Nova64's hosted studio runner and pushes cart source into it over
  * postMessage, so carts must be plain init/update/draw declarations with no
- * export keyword - the runner evaluates them with new Function().
+ * export keyword - studio evaluates carts as a script, not a module.
  *
  * Kotlin port of iOS Nova64Library.
  */
@@ -15,7 +15,7 @@ class Nova64Library : Library3D {
     override val id = "nova64"
     override val displayName = "Nova64"
     override val description = "Retro 3D fantasy console - N64/PS1-era games in JavaScript"
-    override val version = "v0.5.2"
+    override val version = "v0.5.6"
     override val playgroundTemplate = "playground-nova64.html"
     override val codeLanguage = CodeLanguage.JAVASCRIPT
     override val iconName = "sports_esports"
@@ -49,9 +49,10 @@ code here
             function init() { }        // once, for setup - may be async
             function update(dt) { }    // every frame, dt in seconds
             function draw() { }        // optional 2D HUD overlay
-        - NEVER use the export keyword. The studio runner evaluates your code with
-          new Function(), so "export function init()" is a syntax error. The Nova64
-          README shows that form for file-based carts - it does NOT work here.
+        - Do NOT use the export keyword. Studio evaluates carts as a script, so the
+          plain declaration form is the one to write. Since nova64 0.5.6 a top-level
+          export is stripped rather than rejected, so it no longer breaks the cart -
+          but import still cannot work in a script.
         - Declare mutable state with let at the top level, assign it inside init().
         - Create meshes in init(); only transform them in update().
 
@@ -110,7 +111,7 @@ code here
     override val defaultSceneCode = """
         // Nova64 cart - retro 3D fantasy console
         // Lifecycle: init() once, update(dt) every frame, draw() for the 2D HUD.
-        // No export keyword - the studio runner evaluates this with new Function().
+        // No export keyword - studio evaluates carts as a script, not a module.
 
         let cubeId;
         let orbId;
