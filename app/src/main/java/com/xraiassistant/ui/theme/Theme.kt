@@ -6,6 +6,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -103,7 +105,7 @@ private val BrandLightColorScheme = lightColorScheme(
  */
 @Composable
 fun XRAiAssistantTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = resolveDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) BrandDarkColorScheme else BrandLightColorScheme
@@ -129,4 +131,18 @@ fun XRAiAssistantTheme(
         typography = Typography,
         content = content
     )
+}
+
+
+/**
+ * Whether to use the dark scheme, honouring the user's choice over the system.
+ */
+@Composable
+private fun resolveDarkTheme(): Boolean {
+    val mode by AppearanceStore.mode.collectAsState()
+    return when (mode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
 }

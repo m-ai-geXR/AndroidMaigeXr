@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.xraiassistant.monetization.AdManager
 import com.xraiassistant.ui.components.SplashScreen
 import com.xraiassistant.ui.screens.MainScreen
+import com.xraiassistant.ui.theme.AppearanceStore
 import com.xraiassistant.ui.theme.XRAiAssistantTheme
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -57,6 +58,9 @@ class MainActivity : ComponentActivity() {
                 // Splash screen state (matching iOS implementation)
                 var showSplash by remember { mutableStateOf(true) }
 
+                // Loaded before first composition so the app does not flash the
+                // wrong theme while a ViewModel spins up.
+                AppearanceStore.load(this)
                 XRAiAssistantTheme {
                     Log.d("XRAiAssistant", "XRAiAssistantTheme started")
 

@@ -33,6 +33,15 @@ import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.xraiassistant.ui.theme.ThemeMode
+import com.xraiassistant.ui.theme.AppearanceStore
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 /**
  * Settings Screen - Exact recreation of iOS ContentView settings implementation
@@ -211,6 +220,9 @@ fun SettingsScreen(
                 viewModel = viewModel
             )
             
+            // Appearance Section
+            AppearanceSection()
+
             // Model & Library Settings Section
             ModelSettingsSection(
                 selectedModel = selectedModel,
@@ -1611,5 +1623,56 @@ private fun getParameterDescription(temperature: Float, topP: Float): String {
         temperature in 0.4f..0.8f && topP in 0.6f..0.9f -> "Balanced Creativity - Ideal for most scenes"
         temperature in 0.9f..2.0f && topP in 0.9f..1.0f -> "Experimental Mode - Maximum innovation"
         else -> "Custom Configuration"
+    }
+}
+
+/**
+ * Theme choice. Matches the desktop client's Appearance setting; the native
+ * clients previously had no way to override the system.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppearanceSection() {
+    val context = LocalContext.current
+    val mode by AppearanceStore.mode.collectAsState()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Appearance",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ThemeMode.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = mode == option,
+                        onClick = { AppearanceStore.set(context, option) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ThemeMode.entries.size
+                        )
+                    ) {
+                        Text(option.displayName)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "System follows your device setting. The splash screen is always dark.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
