@@ -16,7 +16,14 @@ object FavoriteTitle {
     private val heading = Regex("""^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$""", RegexOption.MULTILINE)
     private val boldLead = Regex("""^\s*\*\*(.+?)\*\*""")
 
-    fun from(messageContent: String?, code: String): String {
+    fun from(messageContent: String?, code: String): String =
+        fromProse(messageContent) ?: fromCode(code)
+
+    /**
+     * The name the AI gave the scene in its prose, from a markdown heading or a
+     * bold lead sentence, or null if it named none. Also titles history rows.
+     */
+    fun fromProse(messageContent: String?): String? {
         val prose = messageContent
             ?.substringBefore("```")
             ?.replace("[INSERT_CODE]", "")
@@ -26,10 +33,8 @@ object FavoriteTitle {
             ?.let { return clamp(it) }
 
         val firstLine = prose.lineSequence().firstOrNull { it.isNotBlank() }
-        firstLine?.let { boldLead.find(it) }?.groupValues?.get(1)?.let(::clean)?.takeIf { it.isNotEmpty() }
-            ?.let { return clamp(it) }
-
-        return fromCode(code)
+        return firstLine?.let { boldLead.find(it) }?.groupValues?.get(1)?.let(::clean)
+            ?.takeIf { it.isNotEmpty() }?.let(::clamp)
     }
 
     /** First line of code that is not blank or a comment; matches iOS generateFavoriteTitle. */

@@ -2,6 +2,7 @@ package com.xraiassistant.data.repositories
 
 import com.xraiassistant.data.local.dao.ConversationDao
 import com.xraiassistant.data.local.entities.ConversationEntity
+import com.xraiassistant.data.local.entities.ConversationSummary
 import com.xraiassistant.data.local.entities.MessageEntity
 import com.xraiassistant.data.models.ChatMessage
 import kotlinx.coroutines.flow.Flow
@@ -138,6 +139,9 @@ class ConversationRepository @Inject constructor(
      *
      * @return Flow of conversation list
      */
+    fun getConversationSummaries(): Flow<List<ConversationSummary>> =
+        conversationDao.getConversationSummaries()
+
     fun getAllConversations(): Flow<List<ConversationEntity>> {
         return conversationDao.getAllConversations()
     }

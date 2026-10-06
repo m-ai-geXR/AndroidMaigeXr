@@ -2,6 +2,7 @@ package com.xraiassistant.data.local.dao
 
 import androidx.room.*
 import com.xraiassistant.data.local.entities.ConversationEntity
+import com.xraiassistant.data.local.entities.ConversationSummary
 import com.xraiassistant.data.local.entities.MessageEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -23,6 +24,21 @@ interface ConversationDao {
 
     @Query("SELECT * FROM conversations ORDER BY updatedAt DESC")
     fun getAllConversations(): Flow<List<ConversationEntity>>
+
+    /** History rows: message count and first reply, welcome messages excluded. */
+    @Query(
+        """
+        SELECT c.*,
+            (SELECT COUNT(*) FROM messages m
+                WHERE m.conversationId = c.id AND m.isWelcomeMessage = 0) AS messageCount,
+            (SELECT m.content FROM messages m
+                WHERE m.conversationId = c.id AND m.isUser = 0 AND m.isWelcomeMessage = 0
+                ORDER BY m.timestamp ASC LIMIT 1) AS firstReply
+        FROM conversations c
+        ORDER BY c.updatedAt DESC
+        """
+    )
+    fun getConversationSummaries(): Flow<List<ConversationSummary>>
 
     @Query("SELECT * FROM conversations WHERE id = :conversationId")
     suspend fun getConversationById(conversationId: String): ConversationEntity?
