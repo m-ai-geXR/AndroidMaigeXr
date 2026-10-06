@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.data.models.ChatMessage
+import com.xraiassistant.data.models.FavoriteTitle
 import com.xraiassistant.data.models.getReplies
 import java.text.SimpleDateFormat
 import java.util.*
@@ -201,7 +202,7 @@ fun ThreadedMessageView(
                             IconButton(
                                 onClick = {
                                     val code = extractedCode ?: message.content
-                                    val title = code.lines().firstOrNull()?.take(50) ?: "Untitled"
+                                    val title = FavoriteTitle.from(message.content, code)
                                     onToggleFavorite(message.id, title, code, message.libraryId)
                                 },
                                 modifier = Modifier.size(28.dp)
