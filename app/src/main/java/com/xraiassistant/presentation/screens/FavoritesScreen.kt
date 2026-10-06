@@ -406,6 +406,10 @@ class FavoritesViewModel @Inject constructor(
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    init {
+        viewModelScope.launch { favoriteRepository.renameLegacyTitles() }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }

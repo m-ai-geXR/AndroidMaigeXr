@@ -1,6 +1,8 @@
 package com.xraiassistant.data.repositories
 
+import com.xraiassistant.data.local.dao.ConversationDao
 import com.xraiassistant.data.local.dao.FavoriteDao
+import com.xraiassistant.data.models.FavoriteTitle
 import com.xraiassistant.data.local.entities.FavoriteEntity
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
@@ -15,8 +17,24 @@ import javax.inject.Singleton
  */
 @Singleton
 class FavoriteRepository @Inject constructor(
-    private val favoriteDao: FavoriteDao
+    private val favoriteDao: FavoriteDao,
+    private val conversationDao: ConversationDao
 ) {
+
+    /**
+     * Renames favorites saved under the old rule, which titled them with the first
+     * line of code (for example "let S;"). The new title comes from the original
+     * AI message when it is still stored, otherwise from the code. Titles the user
+     * or the new rule produced are left alone. Safe to call repeatedly.
+     */
+    suspend fun renameLegacyTitles() {
+        for (favorite in favoriteDao.getAllFavoritesOnce()) {
+            if (favorite.title != FavoriteTitle.legacy(favorite.codeContent)) continue
+            val message = conversationDao.getMessageContent(favorite.messageId)
+            val title = FavoriteTitle.from(message, favorite.codeContent)
+            if (title != favorite.title) favoriteDao.updateFavorite(favorite.copy(title = title))
+        }
+    }
 
     /**
      * Get all favorites as a reactive Flow
