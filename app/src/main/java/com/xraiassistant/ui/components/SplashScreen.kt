@@ -46,8 +46,9 @@ fun SplashScreen(
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
-                allowFileAccess = true
-                allowContentAccess = true
+                // The page is a bundled asset, which loads without file access.
+                allowFileAccess = false
+                allowContentAccess = false
                 mediaPlaybackRequiresUserGesture = false
                 cacheMode = WebSettings.LOAD_NO_CACHE
 
