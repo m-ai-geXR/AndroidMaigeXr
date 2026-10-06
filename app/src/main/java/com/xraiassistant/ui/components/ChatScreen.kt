@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +24,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -241,15 +247,16 @@ private fun ChatHeader(
     onOpenFavorites: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 8.dp)
             ) {
             // Top bar, laid out like the iOS chat toolbar: History on the left,
             // the brand centred, Favorites and more options on the right.
@@ -294,70 +301,36 @@ private fun ChatHeader(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Model and Library selector row
+            // Model and library pills, and the library docs, like the iOS header.
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Model selector
-                Icon(
-                    imageVector = Icons.Default.Computer,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Model:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-
                 ModelSelector(
                     chatViewModel = chatViewModel,
                     selectedModel = selectedModel
                 )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Library selector
-                Icon(
-                    imageVector = Icons.Default.ViewInAr,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Library:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                
                 LibrarySelector(
                     chatViewModel = chatViewModel,
                     currentLibrary = currentLibrary
                 )
-
                 Spacer(modifier = Modifier.weight(1f))
+                val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
+                IconButton(onClick = { uriHandler.openUri(library.documentationURL) }) {
+                    Icon(
+                        Icons.AutoMirrored.Outlined.MenuBook,
+                        contentDescription = "${library.displayName} documentation",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
             }
 
-            // Gradient divider line (cyan fade to transparent)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .gradientBackground(
-                        colors = CyanFadeGradient,
-                        angle = 0f,  // Horizontal fade
-                        shape = RoundedCornerShape(0.dp)
-                    )
-            )
+            Hairline()
         }
     }
 }
@@ -473,12 +446,14 @@ private fun ChatInputField(
     val selectedImages by chatViewModel.selectedImages.collectAsState()
 
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = MaterialTheme.colorScheme.background,
         modifier = modifier
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
+            Hairline()
+
             // Image preview row
             if (selectedImages.isNotEmpty()) {
                 ImagePreviewRow(
@@ -490,14 +465,15 @@ private fun ChatInputField(
                 )
             }
 
-            // Input row
+            // Input row: attach on the left, then one rounded field with the send
+            // button inside it, matching the iOS input.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Bottom
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Image picker button
                 ImagePickerButton(
                     selectedImages = selectedImages,
                     onImagesSelected = { images ->
@@ -506,62 +482,53 @@ private fun ChatInputField(
                     maxImages = 5
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = onValueChange,
+                val canSend = value.isNotBlank() && enabled
+                Row(
                     modifier = Modifier
                         .weight(1f)
-                        .neonInputGlow(MaterialTheme.colorScheme.primary),  // Keep the neon glow
-                    placeholder = {
-                        Text(stringResource(R.string.chat_input_hint))
-                    },
-                    enabled = enabled,
-                    singleLine = true,  // CRITICAL: Prevents newline, enables Enter to send
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Send
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onSend = { if (enabled) onSend() }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        cursorColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                FloatingActionButton(
-                    onClick = onSend,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .then(
-                            // Apply strong neon glow when button is active
-                            if (value.isNotBlank() && enabled) {
-                                Modifier.neonButtonGlow(MaterialTheme.colorScheme.primary)
-                            } else {
-                                Modifier
-                            }
-                        ),
-                    containerColor = if (value.isBlank() || !enabled) {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.primary  // Use neon pink for active send button
-                    }
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(start = 4.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Filled.Send,
-                        contentDescription = "Send",
-                        tint = if (value.isBlank() || !enabled) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            MaterialTheme.colorScheme.background  // Dark icon on bright button
-                        }
+                    TextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text(stringResource(R.string.chat_input_hint)) },
+                        enabled = enabled,
+                        singleLine = true,  // Enter sends
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { if (canSend) onSend() }),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        )
                     )
+                    IconButton(onClick = onSend, enabled = canSend) {
+                        Box(
+                            modifier = Modifier
+                                .size(Metrics.control)
+                                .clip(CircleShape)
+                                .background(
+                                    if (canSend) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Filled.ArrowUpward,
+                                contentDescription = "Send",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -575,33 +542,13 @@ private fun ModelSelector(
 ) {
     var showModal by remember { mutableStateOf(false) }
 
-    // Model selector button
-    Card(
+    val modelName = chatViewModel.getModelDisplayName(selectedModel)
+    PillLabel(
+        icon = Icons.Outlined.Memory,
+        text = modelName,
         onClick = { showModal = true },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        ),
-        shape = RoundedCornerShape(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = chatViewModel.getModelDisplayName(selectedModel),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 12.sp
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(14.dp)
-            )
-        }
-    }
+        contentDescription = "Change model, currently $modelName"
+    )
 
     // Show modal when button is clicked
     if (showModal) {
@@ -621,33 +568,12 @@ private fun LibrarySelector(
     var showModal by remember { mutableStateOf(false) }
     val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
 
-    // Library selector button
-    Card(
+    PillLabel(
+        icon = Icons.Outlined.ViewInAr,
+        text = library.displayName,
         onClick = { showModal = true },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        ),
-        shape = RoundedCornerShape(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = library.displayName,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 12.sp
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(14.dp)
-            )
-        }
-    }
+        contentDescription = "Change 3D library, currently ${library.displayName}"
+    )
 
     // Show modal when button is clicked
     if (showModal) {

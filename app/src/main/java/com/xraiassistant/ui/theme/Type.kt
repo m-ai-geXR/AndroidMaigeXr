@@ -131,9 +131,10 @@ val Typography = Typography(
         letterSpacing = 0.5.sp
     ),
 
-    // labelSmall - Used for CODE and technical elements (monospace)
+    // labelSmall - small UI labels. Code sets FontFamily.Monospace itself, so
+    // metadata and badges read as interface text, not code.
     labelSmall = TextStyle(
-        fontFamily = FontFamily.Monospace,  // Monospace for code/tech
+        fontFamily = ExoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 16.sp,

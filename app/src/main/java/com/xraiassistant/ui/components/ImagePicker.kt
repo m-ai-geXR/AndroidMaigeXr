@@ -1,5 +1,6 @@
 package com.xraiassistant.ui.components
 
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -104,10 +105,10 @@ fun ImagePickerButton(
         modifier = modifier
     ) {
         Icon(
-            imageVector = Icons.Default.AddPhotoAlternate,
+            imageVector = Icons.Outlined.AddPhotoAlternate,
             contentDescription = "Add images",
             tint = if (selectedImages.size < maxImages) {
-                MaterialTheme.colorScheme.primary
+                MaterialTheme.colorScheme.onSurfaceVariant
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
             }

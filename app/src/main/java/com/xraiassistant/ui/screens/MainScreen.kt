@@ -70,7 +70,8 @@ fun MainScreen(
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
 
     // Settings bottom sheet
-    val settingsBottomSheetState = rememberModalBottomSheetState()
+    // Opens fully expanded: half height left Settings cramped on tablets.
+    val settingsBottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Ads: restraint signals and the one interstitial trigger.
     val activity = LocalContext.current as? android.app.Activity
@@ -255,17 +256,7 @@ private fun MainBottomNavigation(
         // AdMob banner — shown above nav bar for non-premium users
         AdBannerView(adManager = adManager)
 
-        // Gradient navigation divider (cyan → pink → purple)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .gradientBackground(
-                    colors = NavigationGradient,  // Cyan → Pink → Purple
-                    angle = 0f,
-                    shape = RoundedCornerShape(0.dp)
-                )
-        )
+        Hairline()
 
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.background,
