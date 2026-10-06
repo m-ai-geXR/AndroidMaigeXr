@@ -130,6 +130,12 @@ class ChatViewModel @Inject constructor(
     private val _lastGeneratedCode = MutableStateFlow("")
     val lastGeneratedCode: StateFlow<String> = _lastGeneratedCode.asStateFlow()
 
+    // The "AI code ready" notice under the chat. Raised when a response yields new
+    // code and cleared once the user opens the scene or dismisses it, so it does
+    // not linger for the rest of the session.
+    private val _codeReadyNotice = MutableStateFlow(false)
+    val codeReadyNotice: StateFlow<Boolean> = _codeReadyNotice.asStateFlow()
+
     // MARK: - CodeSandbox URL (for React Three Fiber builds)
     private val _sandboxUrl = MutableStateFlow<String?>(null)
     val sandboxUrl: StateFlow<String?> = _sandboxUrl.asStateFlow()
@@ -310,14 +316,13 @@ class ChatViewModel @Inject constructor(
                     // Append chunk to full response
                     fullResponse.append(chunk)
 
-                    // Update the message in real-time
+                    // Update the message in real-time. Copy the placeholder rather
+                    // than building a new message so the id stays stable: the chat
+                    // list keys rows by id, and a fresh id per chunk would rebuild
+                    // the row on every chunk.
                     val updatedMessages = _messages.value.toMutableList()
-                    updatedMessages[messageIndex] = ChatMessage.aiMessage(
-                        content = fullResponse.toString(),
-                        model = getModelDisplayName(_selectedModel.value),
-                        libraryId = _currentLibrary.value?.id,
-                        threadParentId = parentId,
-                        isStreaming = true
+                    updatedMessages[messageIndex] = placeholderMessage.copy(
+                        content = fullResponse.toString()
                     )
                     _messages.value = updatedMessages
                 }
@@ -742,6 +747,7 @@ class ChatViewModel @Inject constructor(
      */
     private fun injectCode(code: String, library: Library3D?) {
         _lastGeneratedCode.value = code
+        _codeReadyNotice.value = true
 
         if (library?.requiresBuild == true) {
             println("🏗️ Library requires build, calling onInsertCodeWithBuild")
@@ -1197,6 +1203,7 @@ class ChatViewModel @Inject constructor(
             currentConversationId = null
             hasShownFirstResponse = false
             _lastGeneratedCode.value = ""
+            _codeReadyNotice.value = false
 
             // Show welcome message for current library
             setupInitialMessage()
@@ -1253,6 +1260,10 @@ class ChatViewModel @Inject constructor(
     private fun currentProviderName(): String =
         AIModels.ALL_MODELS.firstOrNull { it.id == _selectedModel.value }?.provider
             ?: "The AI provider"
+
+    /** Provider name for a model id (as used by isProviderConfigured), or null if unknown. */
+    fun getModelProvider(modelId: String): String? =
+        AIModels.ALL_MODELS.find { it.id == modelId }?.provider
 
     fun getModelDisplayName(modelId: String): String {
         return AIModels.ALL_MODELS.find { it.id == modelId }?.displayName ?: modelId
@@ -1347,6 +1358,11 @@ class ChatViewModel @Inject constructor(
      */
     fun updateCurrentView(view: AppView) {
         _uiState.value = _uiState.value.copy(currentView = view)
+        if (view == AppView.SCENE) _codeReadyNotice.value = false
+    }
+
+    fun dismissCodeReadyNotice() {
+        _codeReadyNotice.value = false
     }
     
     /**

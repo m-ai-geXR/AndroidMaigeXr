@@ -8,6 +8,9 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,18 +23,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xraiassistant.ui.theme.StatusColors
 import com.xraiassistant.R
+import com.xraiassistant.data.local.PlaygroundPreferences
 import com.xraiassistant.ui.viewmodels.ChatViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 import org.json.JSONObject
 
 /**
@@ -66,6 +76,11 @@ fun SceneScreen(
     var webViewError by remember { mutableStateOf<String?>(null) }
     var lastInjectedCode by remember { mutableStateOf("") }
     var showExportSuccess by remember { mutableStateOf(false) }
+    var pageLoads by remember { mutableIntStateOf(0) }
+    val commandLineEnabled by PlaygroundPreferences.commandLineEnabled.collectAsStateWithLifecycle()
+    val commandLineScript = remember {
+        context.assets.open(COMMAND_LINE_ASSET).bufferedReader().use { it.readText() }
+    }
     var exportedFileUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val hasGeneratedCode = lastGeneratedCode.isNotEmpty()
@@ -100,11 +115,9 @@ fun SceneScreen(
                 println("📝 [SceneScreen] Using direct injection for ${currentLibrary?.displayName}")
                 // Start injection with retry - longer initial delay for Monaco to fully initialize
                 coroutineScope.launch {
-                    // Give Monaco more time: 5s for initial load, 1s if already confirmed ready
-                    val initialDelay = if (monacoReady) 1000L else 5000L
-                    println("⏰ Waiting ${initialDelay}ms before injection attempt...")
-                    delay(initialDelay)
-                    injectCodeWithRetry(webView!!, lastGeneratedCode, maxRetries = 5)
+                    // Inject as soon as the editor reports ready, rather than after a
+                    // fixed wait sized for the slowest CDN load.
+                    injectCodeWhenReady(webView!!, lastGeneratedCode)
 
                     // Wait 5 seconds after injection, then capture screenshot
                     println("📸 Waiting 5 seconds before capturing screenshot...")
@@ -138,6 +151,18 @@ fun SceneScreen(
         }
     }
 
+    // The scene command line: injected into each playground page as it loads, and
+    // shown or hidden when the Settings toggle changes. CodeSandbox previews are a
+    // third-party page, so they are left alone.
+    LaunchedEffect(pageLoads, commandLineEnabled, sandboxUrl) {
+        val view = webView ?: return@LaunchedEffect
+        if (pageLoads == 0 || sandboxUrl != null) return@LaunchedEffect
+        view.evaluateJavascript(
+            "$commandLineScript\n;window.maigeCommandLine && window.maigeCommandLine.setEnabled($commandLineEnabled);",
+            null
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         PlaygroundWebView(
             currentLibrary = currentLibrary,
@@ -148,6 +173,7 @@ fun SceneScreen(
             onWebViewLoaded = {
                 webViewLoaded = true
                 webViewError = null
+                pageLoads++
                 println("✅ WebView loaded successfully")
 
                 // Check Monaco readiness after page load
@@ -193,8 +219,13 @@ fun SceneScreen(
             modifier = Modifier.fillMaxSize()
         )
         
-        // Visual feedback for code injection
-        if (hasGeneratedCode && !webViewLoaded) {
+        // Visual feedback while the playground loads. Hidden when an error is up,
+        // so dismissing the error does not leave a spinner that never finishes.
+        AnimatedVisibility(
+            visible = hasGeneratedCode && !webViewLoaded && webViewError == null,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             CodeInjectionOverlay()
         }
 
@@ -300,13 +331,13 @@ private fun SceneToolbar(
                         Icon(
                             Icons.Default.CheckCircle,
                             contentDescription = "Code Ready",
-                            tint = Color(0xFF4CAF50),
+                            tint = StatusColors.success,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             "Code Ready",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF4CAF50)
+                            color = StatusColors.success
                         )
                     }
                 }
@@ -426,6 +457,9 @@ private fun PlaygroundWebView(
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         println("✅ WebView page finished loading")
+                        // Hardware keys go to the focused View; without this they stay
+                        // with Compose and never reach the playground.
+                        view?.requestFocus()
                         onWebViewLoaded()
                     }
 
@@ -577,8 +611,15 @@ private fun PlaygroundWebView(
                     domStorageEnabled = true
                 }
 
-                // Enable hardware acceleration for better performance
-                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                // No explicit hardware layer: WebView is already GPU-composited, and an
+                // extra layer copies every frame offscreen, which adds touch latency.
+
+                // Take focus on touch so keyboard input follows the user into the scene.
+                isFocusable = true
+                isFocusableInTouchMode = true
+                // No system focus box around the whole scene when it takes focus;
+                // the playground manages focus inside the page itself.
+                defaultFocusHighlightEnabled = false
 
                 // Add JavaScript interface for bidirectional communication (iOS WKScriptMessageHandler equivalent)
                 addJavascriptInterface(
@@ -614,16 +655,8 @@ private fun PlaygroundWebView(
                     // runner's replies arrive. playground-nova64.html is fully
                     // self-contained for this reason — an https document cannot load
                     // file:///android_asset/ subresources.
-                    val playgroundBaseUrl = if (playgroundTemplate.contains("nova64")) {
-                        "https://nova64.io/maigexr-playground/"
-                    } else {
-                        // Every other playground keeps the null base URL so CDN resources
-                        // and file:///android_asset/ helpers both load without CORS trouble.
-                        null
-                    }
-
                     loadDataWithBaseURL(
-                        playgroundBaseUrl,
+                        playgroundBaseUrlFor(playgroundTemplate),
                         playgroundHtml,
                         "text/html",
                         "UTF-8",
@@ -681,7 +714,7 @@ private fun PlaygroundWebView(
                     val playgroundHtml = context.assets.open(playgroundTemplate).bufferedReader().use { it.readText() }
 
                     webView.loadDataWithBaseURL(
-                        null,
+                        playgroundBaseUrlFor(playgroundTemplate),
                         playgroundHtml,
                         "text/html",
                         "UTF-8",
@@ -701,6 +734,14 @@ private fun PlaygroundWebView(
         // This ensures injection happens when user switches to Scene tab
     )
 }
+
+/**
+ * Base URL a playground document is loaded with. Nova64 needs a real https origin
+ * (see the note at the first load); every other playground keeps the null base URL
+ * so CDN resources and file:///android_asset/ helpers both load without CORS trouble.
+ */
+private fun playgroundBaseUrlFor(playgroundTemplate: String): String? =
+    if (playgroundTemplate.contains("nova64")) "https://nova64.io/maigexr-playground/" else null
 
 /**
  * Check if Monaco editor is ready
@@ -792,37 +833,41 @@ private fun CodeInjectionOverlay() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f)),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            shape = RoundedCornerShape(12.dp)
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp,
+            shadowElevation = 4.dp,
+            modifier = Modifier
+                .padding(32.dp)
+                .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
         ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color(0xFF4CAF50),
-                    strokeWidth = 4.dp
+                    modifier = Modifier.size(28.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 3.dp
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Injecting & Running AI Code...",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFF4CAF50),
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Code is being injected and automatically executed",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column {
+                    Text(
+                        text = "Loading scene",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Your code will run as soon as the playground is ready",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -853,14 +898,14 @@ private fun ErrorOverlay(
                 Icon(
                     Icons.Default.Error,
                     contentDescription = "Error",
-                    tint = Color(0xFFFF5722),
+                    tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "WebView Error",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFFFF5722),
+                    color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -917,103 +962,50 @@ class PlaygroundMessageHandler(
     }
 }
 
-/**
- * Inject code with retry logic - iOS parity implementation
- * Equivalent to iOS injectCodeWithRetry in ContentView.swift
- */
-private suspend fun injectCodeWithRetry(
-    webView: WebView,
-    code: String,
-    maxRetries: Int
-): Unit = withContext(Dispatchers.Main) {
-    println("")
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    println("🔄 INJECTION RETRY ATTEMPT")
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    println("⏱️  Retries remaining: $maxRetries")
-    println("📏 Code length: ${code.length} characters")
-    println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+/** Polling interval while waiting for the playground editor to come up. */
+private const val READINESS_POLL_MILLIS = 250L
 
-    // Check Monaco readiness (iOS equivalent)
-    val checkReadinessJS: String = """
-        (function() {
-            // Check Monaco editor readiness
-            const monacoReady = window.editor &&
-                               typeof window.editor.setValue === 'function' &&
-                               typeof window.editor.getValue === 'function' &&
-                               typeof window.editor.layout === 'function';
+/** Longest wait for the editor before injecting anyway (the old retry schedule's total). */
+private const val READINESS_TIMEOUT_MILLIS = 15_000L
 
-            // Check editor ready flag (set by all playground templates)
-            const editorFlagReady = window.editorReady === true;
+private val PLAYGROUND_READINESS_JS = """
+    (function() {
+        const monacoReady = window.editor &&
+                           typeof window.editor.setValue === 'function' &&
+                           typeof window.editor.getValue === 'function' &&
+                           typeof window.editor.layout === 'function';
+        const editorFlagReady = window.editorReady === true;
+        const domReady = document.readyState === 'complete';
+        return (monacoReady && editorFlagReady && domReady) ? "READY" : "NOT_READY";
+    })();
+""".trimIndent()
 
-            // Check if the DOM is fully loaded
-            const domReady = document.readyState === 'complete';
-
-            // Check if setFullEditorContent function exists (our injection function)
-            const injectionFuncReady = typeof window.setFullEditorContent === 'function';
-
-            console.log('Monaco readiness check:', {
-                monaco: monacoReady,
-                flag: editorFlagReady,
-                dom: domReady,
-                injection: injectionFuncReady
-            });
-
-            if (monacoReady && editorFlagReady && domReady) {
-                return "READY";
-            } else {
-                return "NOT_READY";
-            }
-        })();
-    """.trimIndent()
-
-    webView.evaluateJavascript(checkReadinessJS) { result: String? ->
-        val isReady: Boolean = result?.replace("\"", "") == "READY"
-
-        println("")
-        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        println("🔍 READINESS CHECK RESULT")
-        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        println("Result: ${result?.replace("\"", "")}")
-        println("Ready: $isReady")
-        println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
-        if (isReady) {
-            println("✅ Monaco editor is READY, proceeding with injection")
-            insertCodeInWebView(webView, code)
-        } else {
-            println("⏳ Monaco NOT ready yet")
-            println("🔍 Raw result: $result")
-            println("⏱️  Retries left: $maxRetries")
-
-            if (maxRetries > 0) {
-                // Retry after delay - progressive delays to allow Monaco full initialization time
-                val delayMs: Long = when (maxRetries) {
-                    5 -> 3000L  // First retry: 3 seconds (Monaco may still be loading from CDN)
-                    4 -> 2000L  // Second retry: 2 seconds
-                    3 -> 2000L  // Third retry: 2 seconds
-                    2 -> 1500L  // Fourth retry: 1.5 seconds
-                    else -> 1000L  // Final retries: 1 second
-                }
-                println("🔄 Will retry in ${delayMs}ms...")
-
-                CoroutineScope(Dispatchers.Main).launch {
-                    delay(delayMs)
-                    injectCodeWithRetry(webView, code, maxRetries - 1)
-                }
-            } else {
-                println("")
-                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-                println("❌ MAX RETRIES REACHED")
-                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-                println("🚨 Attempting EMERGENCY injection...")
-                println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-
-                // Emergency injection attempt - try even if not completely ready
-                insertCodeInWebView(webView, code)
-            }
+private suspend fun isPlaygroundReady(webView: WebView): Boolean =
+    suspendCancellableCoroutine { continuation ->
+        webView.evaluateJavascript(PLAYGROUND_READINESS_JS) { result ->
+            if (continuation.isActive) continuation.resume(result?.trim('"') == "READY")
         }
     }
+
+/**
+ * Inject code once the playground editor is ready, polling briefly instead of
+ * sleeping a fixed worst-case delay. Cancelled with the screen, and after the
+ * timeout it injects anyway, as the retry schedule it replaces did.
+ */
+private suspend fun injectCodeWhenReady(webView: WebView, code: String) = withContext(Dispatchers.Main) {
+    val started = System.currentTimeMillis()
+    val ready = withTimeoutOrNull(READINESS_TIMEOUT_MILLIS) {
+        while (!isPlaygroundReady(webView)) delay(READINESS_POLL_MILLIS)
+        true
+    } ?: false
+
+    val waited = System.currentTimeMillis() - started
+    if (ready) {
+        println("✅ Playground ready after ${waited}ms, injecting")
+    } else {
+        println("⏰ Playground not ready after ${waited}ms, attempting injection anyway")
+    }
+    insertCodeInWebView(webView, code)
 }
 
 /**
@@ -1077,9 +1069,8 @@ private fun insertCodeInWebView(webView: WebView, code: String) {
                     if (typeof window.editor.layout === 'function') {
                         window.editor.layout();
                     }
-                    if (typeof window.editor.focus === 'function') {
-                        window.editor.focus();
-                    }
+                    // Deliberately no editor.focus(): the editor is hidden behind the
+                    // scene, and focusing it would swallow the scene's keyboard input.
 
                     // Try to trigger auto-run if available
                     if (typeof runCode === 'function') {
@@ -1375,6 +1366,9 @@ private fun shareFile(
         e.printStackTrace()
     }
 }
+
+/** The shared scene command line, injected into every playground page. */
+private const val COMMAND_LINE_ASSET = "playground-commandline.js"
 
 enum class SceneLayout {
     SPLIT_HORIZONTAL,

@@ -8,12 +8,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.domain.models.Library3D
 import com.xraiassistant.ui.viewmodels.ChatViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Library Selector Modal Bottom Sheet
@@ -32,10 +34,13 @@ fun LibrarySelectorModal(
     val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
     val availableLibraries = chatViewModel.getAvailableLibraries()
 
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         modifier = modifier,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        sheetState = sheetState
     ) {
         Column(
             modifier = Modifier
@@ -66,13 +71,14 @@ fun LibrarySelectorModal(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(availableLibraries) { availableLibrary ->
+                items(availableLibraries, key = { it.id }) { availableLibrary ->
                     LibraryCard(
                         library = availableLibrary,
                         isSelected = library.id == availableLibrary.id,
                         onClick = {
                             chatViewModel.selectLibrary(availableLibrary.id)
-                            onDismiss()
+                            // Animate the sheet away before removing it.
+                            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                         }
                     )
                 }

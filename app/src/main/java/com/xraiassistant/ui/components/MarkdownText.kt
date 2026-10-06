@@ -45,7 +45,7 @@ fun MarkdownText(
         if (codeBlocks.isEmpty()) {
             // No code blocks, render as styled text
             Text(
-                text = buildStyledText(markdown),
+                text = remember(markdown) { buildStyledText(markdown) },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -58,7 +58,7 @@ fun MarkdownText(
                     val textBefore = markdown.substring(lastIndex, codeBlock.range.first)
                     if (textBefore.isNotBlank()) {
                         Text(
-                            text = buildStyledText(textBefore),
+                            text = remember(textBefore) { buildStyledText(textBefore) },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -81,7 +81,7 @@ fun MarkdownText(
                 val textAfter = markdown.substring(lastIndex)
                 if (textAfter.isNotBlank()) {
                     Text(
-                        text = buildStyledText(textAfter),
+                        text = remember(textAfter) { buildStyledText(textAfter) },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -242,7 +242,7 @@ fun CodeBlock(
                 .padding(12.dp)
         ) {
             Text(
-                text = highlightSyntax(code, language),
+                text = remember(code, language) { highlightSyntax(code, language) },
                 color = Color(0xFFE0E0E0),
                 fontSize = 14.sp,
                 fontFamily = FontFamily.Monospace,

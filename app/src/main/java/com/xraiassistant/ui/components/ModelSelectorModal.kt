@@ -6,16 +6,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.data.models.AIModel
 import com.xraiassistant.ui.viewmodels.ChatViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Model Selector Modal Bottom Sheet
@@ -31,10 +39,34 @@ fun ModelSelectorModal(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    var providerNeedingKey by remember { mutableStateOf<String?>(null) }
+
+    // Animate the sheet away before removing it, so a pick reads as a smooth
+    // close rather than the sheet vanishing mid-frame.
+    fun closeSheet(then: () -> Unit = {}) {
+        scope.launch { sheetState.hide() }.invokeOnCompletion {
+            onDismiss()
+            then()
+        }
+    }
+
+    providerNeedingKey?.let { provider ->
+        ApiKeyRequiredDialog(
+            providerName = provider,
+            onOpenSettings = {
+                providerNeedingKey = null
+                closeSheet { chatViewModel.showSettings() }
+            },
+            onDismiss = { providerNeedingKey = null }
+        )
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         modifier = modifier,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        sheetState = sheetState
     ) {
         Column(
             modifier = Modifier
@@ -68,22 +100,29 @@ fun ModelSelectorModal(
                 // Models organized by provider
                 chatViewModel.modelsByProvider.forEach { (provider, models) ->
                     // Provider header
-                    item {
+                    val isConfigured = chatViewModel.isProviderConfigured(provider)
+                    item(key = "provider-$provider") {
                         ProviderHeader(
                             provider = provider,
-                            isConfigured = chatViewModel.isProviderConfigured(provider)
+                            isConfigured = isConfigured,
+                            onAddKey = { providerNeedingKey = provider }
                         )
                     }
 
-                    // Models for this provider
-                    items(models) { model ->
+                    // Models for this provider. Unconfigured ones stay tappable and
+                    // explain what is missing, rather than silently ignoring the tap.
+                    items(models, key = { it.id }) { model ->
                         ModelCard(
                             model = model,
                             isSelected = selectedModel == model.id,
-                            isProviderConfigured = chatViewModel.isProviderConfigured(provider),
+                            isProviderConfigured = isConfigured,
                             onClick = {
-                                chatViewModel.selectedModel = model.id
-                                onDismiss()
+                                if (isConfigured) {
+                                    chatViewModel.selectedModel = model.id
+                                    closeSheet()
+                                } else {
+                                    providerNeedingKey = provider
+                                }
                             }
                         )
                     }
@@ -106,7 +145,7 @@ fun ModelSelectorModal(
                                 chatViewModel = chatViewModel,
                                 onClick = {
                                     chatViewModel.selectedModel = modelId
-                                    onDismiss()
+                                    closeSheet()
                                 }
                             )
                         }
@@ -121,12 +160,13 @@ fun ModelSelectorModal(
 private fun ProviderHeader(
     provider: String,
     isConfigured: Boolean,
+    onAddKey: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -134,25 +174,19 @@ private fun ProviderHeader(
             text = provider,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.semantics { heading() }
         )
 
         if (!isConfigured) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            TextButton(onClick = onAddKey) {
                 Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Not configured",
-                    tint = Color(0xFFFF9800),
+                    imageVector = Icons.Default.Key,
+                    contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
-                Text(
-                    text = "Configure in Settings",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFFF9800)
-                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Add API key")
             }
         }
     }
@@ -170,7 +204,6 @@ private fun ModelCard(
         modifier = modifier
             .fillMaxWidth(),
         onClick = onClick,
-        enabled = isProviderConfigured,
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) {
                 MaterialTheme.colorScheme.primaryContainer
@@ -193,7 +226,9 @@ private fun ModelCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .alpha(if (isProviderConfigured) 1f else 0.6f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Model name
@@ -243,6 +278,27 @@ private fun ModelCard(
                             }
                         )
                     }
+                }
+            }
+
+            if (!isProviderConfigured) {
+                // Full opacity on purpose: this is the part that tells you what to do.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Key,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Needs API key",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

@@ -26,6 +26,7 @@ import com.xraiassistant.monetization.BillingEntitlement
 import kotlinx.coroutines.launch
 import com.xraiassistant.ui.components.SplashScreen
 import com.xraiassistant.ui.screens.MainScreen
+import com.xraiassistant.data.local.PlaygroundPreferences
 import com.xraiassistant.ui.theme.AppearanceStore
 import com.xraiassistant.ui.theme.XRAiAssistantTheme
 import com.xraiassistant.ui.viewmodels.ChatViewModel
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 // Loaded before first composition so the app does not flash the
                 // wrong theme while a ViewModel spins up.
                 AppearanceStore.load(this)
+                PlaygroundPreferences.load(this)
                 XRAiAssistantTheme {
                     Log.d("XRAiAssistant", "XRAiAssistantTheme started")
 

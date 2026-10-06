@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.data.models.ChatMessage
 import com.xraiassistant.data.models.getReplies
-import com.xraiassistant.ui.theme.NeonPink
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -57,7 +56,7 @@ fun ThreadedMessageView(
     val hasReplies = replies.isNotEmpty()
 
     // Extract code from message if it contains code blocks
-    val extractedCode = extractCodeFromMessage(message.content)
+    val extractedCode = remember(message.content) { extractCodeFromMessage(message.content) }
     val hasCode = extractedCode != null && !message.isUser
     val showRunScene = shouldShowRunScene(message, onRunScene != null)
 
@@ -114,23 +113,23 @@ fun ThreadedMessageView(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(
-                                imageVector = if (message.isUser) Icons.Default.Person else Icons.Default.SmartToy,
-                                contentDescription = if (message.isUser) "User" else "AI",
-                                tint = if (message.isUser) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    Color(0xFF2196F3)
-                                },
-                                modifier = Modifier.size(14.dp)
-                            )
+                            if (message.isUser) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "User",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            } else {
+                                MaigeXRAvatar(size = 18.dp, contentDescription = "AI")
+                            }
                             Text(
                                 text = if (message.isUser) "You" else (message.model ?: "m{ai}geXR"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (message.isUser) {
                                     MaterialTheme.colorScheme.onPrimary
                                 } else {
-                                    Color(0xFF2196F3)
+                                    MaterialTheme.colorScheme.primary
                                 },
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -247,7 +246,7 @@ fun ThreadedMessageView(
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = Color.White
+                            contentColor = MaterialTheme.colorScheme.onSecondary
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
@@ -269,7 +268,7 @@ fun ThreadedMessageView(
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = Color.White
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
@@ -333,7 +332,7 @@ fun ThreadReplyView(
     onRunScene: ((code: String, libraryId: String?) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    val extractedCode = extractCodeFromMessage(message.content)
+    val extractedCode = remember(message.content) { extractCodeFromMessage(message.content) }
     val hasCode = extractedCode != null && !message.isUser
 
     Row(
@@ -345,7 +344,7 @@ fun ThreadReplyView(
             modifier = Modifier
                 .width(2.dp)
                 .height(64.dp)
-                .background(Color(0xFF2196F3).copy(alpha = 0.3f))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
         )
 
         Column(

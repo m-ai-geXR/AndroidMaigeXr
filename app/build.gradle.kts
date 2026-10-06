@@ -147,6 +147,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // mockk-android pulls in the JUnit 5 jars, which all ship these files;
+            // without this the androidTest APK cannot be packaged.
+            excludes += "/META-INF/{LICENSE.md,LICENSE-notice.md}"
         }
     }
 }

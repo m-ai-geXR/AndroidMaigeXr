@@ -1,15 +1,18 @@
 package com.xraiassistant.ui.theme
 
 import android.app.Activity
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -20,14 +23,14 @@ import androidx.core.view.WindowCompat
  * One cobalt accent over a neutral ground, per brand/brand.json. Both schemes
  * are defined so the app can follow the system setting; it was dark-only before.
  */
-private val BrandDarkColorScheme = darkColorScheme(
-    primary = BrandAccentDark,
-    onPrimary = Color.White,
+internal val BrandDarkColorScheme = darkColorScheme(
+    primary = BrandAccentOnDark,
+    onPrimary = BrandBgDark,
     primaryContainer = BrandAccent700,
     onPrimaryContainer = BrandTextDark,
 
-    secondary = BrandAccent2,
-    onSecondary = Color.White,
+    secondary = BrandAccent2OnDark,
+    onSecondary = BrandBgDark,
     secondaryContainer = BrandSurfaceDark,
     onSecondaryContainer = BrandTextDark,
 
@@ -43,10 +46,10 @@ private val BrandDarkColorScheme = darkColorScheme(
     surfaceVariant = BrandSurfaceDark,
     onSurfaceVariant = BrandMutedDark,
 
-    error = BrandError,
-    onError = Color.White,
+    error = BrandErrorOnDark,
+    onError = BrandBgDark,
     errorContainer = BrandSurfaceDark,
-    onErrorContainer = BrandError,
+    onErrorContainer = BrandErrorOnDark,
 
     outline = BrandMutedDark,
     outlineVariant = BrandDividerDark,
@@ -58,13 +61,13 @@ private val BrandDarkColorScheme = darkColorScheme(
     surfaceContainerLowest = BrandBgDark,
 )
 
-private val BrandLightColorScheme = lightColorScheme(
+internal val BrandLightColorScheme = lightColorScheme(
     primary = BrandAccent,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFDBE3FF),
     onPrimaryContainer = BrandAccent700,
 
-    secondary = BrandAccent2,
+    secondary = BrandAccent2OnLight,
     onSecondary = Color.White,
     secondaryContainer = BrandSurfaceLight,
     onSecondaryContainer = BrandTextLight,
@@ -81,10 +84,10 @@ private val BrandLightColorScheme = lightColorScheme(
     surfaceVariant = BrandSurfaceLight,
     onSurfaceVariant = BrandMutedLight,
 
-    error = BrandError,
+    error = BrandErrorOnLight,
     onError = Color.White,
     errorContainer = Color(0xFFFFE0D9),
-    onErrorContainer = BrandError,
+    onErrorContainer = BrandErrorOnLight,
 
     outline = BrandMutedLight,
     outlineVariant = BrandDividerLight,
@@ -146,3 +149,20 @@ private fun resolveDarkTheme(): Boolean {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
 }
+
+/**
+ * Success and warning colours for text and icons. Material has no slot for these,
+ * and a single hex cannot hold 4.5:1 contrast on both the light and dark grounds,
+ * so they follow the active scheme.
+ */
+object StatusColors {
+    val success: Color
+        @Composable @ReadOnlyComposable
+        get() = if (MaterialTheme.colorScheme.isDark()) BrandSuccessOnDark else BrandSuccess
+
+    val warning: Color
+        @Composable @ReadOnlyComposable
+        get() = if (MaterialTheme.colorScheme.isDark()) BrandWarningOnDark else BrandWarningOnLight
+}
+
+private fun ColorScheme.isDark(): Boolean = background.luminance() < 0.5f
