@@ -38,6 +38,10 @@ import kotlinx.coroutines.launch
 import com.xraiassistant.ui.theme.ThemeMode
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.ui.platform.LocalUriHandler
+import com.xraiassistant.config.AppConfig
 import com.xraiassistant.data.local.PlaygroundPreferences
 import com.xraiassistant.ui.theme.AppearanceStore
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -232,6 +236,8 @@ fun SettingsScreen(
 
             // Ads: the Remove Ads purchase, Restore, and privacy options
             RemoveAdsSection()
+
+            AboutSection()
 
             // Model & Library Settings Section
             ModelSettingsSection(
@@ -1728,6 +1734,42 @@ private fun getParameterDescription(temperature: Float, topP: Float): String {
         temperature in 0.4f..0.8f && topP in 0.6f..0.9f -> "Balanced Creativity - Ideal for most scenes"
         temperature in 0.9f..2.0f && topP in 0.9f..1.0f -> "Experimental Mode - Maximum innovation"
         else -> "Custom Configuration"
+    }
+}
+
+/** Legal links the stores require to be reachable from inside the app. */
+@Composable
+private fun AboutSection() {
+    val uriHandler = LocalUriHandler.current
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClickLabel = "Open the privacy policy in your browser",
+                    role = Role.Button
+                ) { uriHandler.openUri(AppConfig.PRIVACY_POLICY_URL) }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Privacy policy",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

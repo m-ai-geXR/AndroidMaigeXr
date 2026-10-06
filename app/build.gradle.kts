@@ -43,6 +43,16 @@ fun releaseAdId(key: String): String {
     return value ?: "unset"
 }
 
+/**
+ * Public privacy policy (maige_xr_site/privacy.html), linked from Settings.
+ * Not a secret: set the live domain here. A release build refuses the placeholder,
+ * because both stores reject an app whose policy link does not resolve.
+ */
+val privacyPolicyUrl = "https://example.invalid/privacy"
+if (isReleaseBuildRequested && privacyPolicyUrl.contains("example.invalid")) {
+    throw GradleException("Set privacyPolicyUrl in app/build.gradle.kts to the live privacy policy before a release build.")
+}
+
 android {
     namespace = "com.xraiassistant"
     compileSdk = 36
@@ -59,6 +69,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("String", "PRIVACY_POLICY_URL", "\"$privacyPolicyUrl\"")
 
         // AdMob manifest placeholder (overridden per buildType below)
         manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-3940256099942544~3347511713"
