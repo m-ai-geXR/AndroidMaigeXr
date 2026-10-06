@@ -1,7 +1,6 @@
 package com.xraiassistant.presentation.screens
 
-import android.graphics.BitmapFactory
-import android.util.Base64
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,7 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,13 +24,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.xraiassistant.data.local.entities.ConversationEntity
 import com.xraiassistant.data.repositories.ConversationRepository
-import com.xraiassistant.ui.theme.GlassCyberpunkDarkGray
-import com.xraiassistant.ui.theme.NeonCyan
+import com.xraiassistant.ui.components.PullToRefreshLayout
+import com.xraiassistant.ui.components.rememberBase64Thumbnail
 import com.xraiassistant.ui.theme.glassCard
 import com.xraiassistant.ui.theme.neonGlow
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -48,16 +54,16 @@ import javax.inject.Inject
  *
  * Equivalent to iOS chat history functionality
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ConversationHistoryScreen(
     onConversationSelected: (String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    conversationRepository: ConversationRepository = hiltViewModel<ConversationHistoryViewModel>().conversationRepository
+    viewModel: ConversationHistoryViewModel = hiltViewModel()
 ) {
-    val conversations by conversationRepository.getAllConversations().collectAsStateWithLifecycle(initialValue = emptyList())
-    val scope = rememberCoroutineScope()
+    // Null until the first load lands, so the empty state never flashes on open.
+    val conversations by viewModel.conversations.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -72,51 +78,54 @@ fun ConversationHistoryScreen(
         },
         modifier = modifier
     ) { paddingValues ->
-        if (conversations.isEmpty()) {
-            // Empty state
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "No Conversations Yet",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Start chatting to create conversation history",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        } else {
-            // Conversation list
+        PullToRefreshLayout(
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            val loaded = conversations ?: return@PullToRefreshLayout
+
+            // The empty state lives inside the list so the pull gesture still works.
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (loaded.isEmpty()) {
+                    item(key = "empty") {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "No Conversations Yet",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Start chatting to create conversation history",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
                 items(
-                    items = conversations,
+                    items = loaded,
                     key = { it.id }
                 ) { conversation ->
                     ConversationItem(
                         conversation = conversation,
                         onClick = { onConversationSelected(conversation.id) },
-                        onDelete = {
-                            scope.launch {
-                                conversationRepository.deleteConversation(conversation.id)
-                            }
-                        }
+                        onDelete = { viewModel.deleteConversation(conversation.id) },
+                        modifier = Modifier.animateItemPlacement()
                     )
                 }
             }
@@ -131,19 +140,20 @@ fun ConversationHistoryScreen(
 private fun ConversationItem(
     conversation: ConversationEntity,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .glassCard(
-                backgroundColor = GlassCyberpunkDarkGray,
+                backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                 blurRadius = 10.dp,
-                borderGlow = NeonCyan,
+                borderGlow = MaterialTheme.colorScheme.primary,
                 shape = RoundedCornerShape(14.dp)
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -257,38 +267,22 @@ private fun ConversationThumbnail(
     screenshotBase64: String?,
     modifier: Modifier = Modifier
 ) {
-    val bitmap = remember(screenshotBase64) {
-        if (screenshotBase64 != null && screenshotBase64.isNotEmpty()) {
-            try {
-                // Remove data URL prefix if present
-                val base64Data = screenshotBase64.removePrefix("data:image/jpeg;base64,")
-                    .removePrefix("data:image/png;base64,")
-
-                // Decode base64 to bitmap
-                val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            } catch (e: Exception) {
-                println("⚠️ Failed to decode screenshot: ${e.message}")
-                null
-            }
-        } else {
-            null
-        }
-    }
+    val bitmap = rememberBase64Thumbnail(screenshotBase64).value
 
     Box(
         modifier = modifier
             .size(80.dp)
             .clip(RoundedCornerShape(8.dp))
-            .border(1.5.dp, NeonCyan, RoundedCornerShape(8.dp))
-            .neonGlow(NeonCyan, 4.dp),
+            .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+            .neonGlow(MaterialTheme.colorScheme.primary, 4.dp),
         contentAlignment = Alignment.Center
     ) {
         if (bitmap != null) {
             // Display the screenshot
+            // Decorative: the card's title already describes the conversation.
             Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Scene preview",
+                bitmap = bitmap,
+                contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
@@ -296,8 +290,8 @@ private fun ConversationThumbnail(
             // Placeholder icon
             Icon(
                 Icons.Default.Image,
-                contentDescription = "No preview",
-                tint = NeonCyan.copy(alpha = 0.5f),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
                 modifier = Modifier.size(40.dp)
             )
         }
@@ -307,9 +301,29 @@ private fun ConversationThumbnail(
 /**
  * ViewModel for ConversationHistoryScreen
  *
- * Simple ViewModel that just provides access to ConversationRepository
+ * Owns the conversation query so it survives recomposition, and re-runs it on
+ * pull-to-refresh.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ConversationHistoryViewModel @Inject constructor(
-    val conversationRepository: ConversationRepository
-) : ViewModel()
+    private val conversationRepository: ConversationRepository
+) : ViewModel() {
+
+    private val refreshRequests = MutableStateFlow(0)
+
+    /** Null until the first query returns. */
+    val conversations: StateFlow<List<ConversationEntity>?> = refreshRequests
+        .flatMapLatest { conversationRepository.getAllConversations() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun refresh() {
+        refreshRequests.update { it + 1 }
+    }
+
+    fun deleteConversation(id: String) {
+        viewModelScope.launch {
+            conversationRepository.deleteConversation(id)
+        }
+    }
+}

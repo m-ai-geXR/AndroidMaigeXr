@@ -1,5 +1,10 @@
 package com.xraiassistant.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,10 +22,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,21 +59,45 @@ fun ChatScreen(
     val messages by chatViewModel.messages.collectAsStateWithLifecycle()
     val isLoading by chatViewModel.isLoading.collectAsStateWithLifecycle()
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
+    val codeReadyNotice by chatViewModel.codeReadyNotice.collectAsStateWithLifecycle()
     val currentLibrary by chatViewModel.currentLibrary.collectAsStateWithLifecycle()
-    val selectedModel = chatViewModel.selectedModel
+    // Collected, not read once: a plain read never recomposes, so the header kept
+    // showing the old model after a new one was picked.
+    val selectedModel by chatViewModel.selectedModelState.collectAsStateWithLifecycle()
     val favoritedMessages by chatViewModel.favoritedMessages.collectAsStateWithLifecycle()
-    
+
     var chatInput by remember { mutableStateOf("") }
+    var providerNeedingKey by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
-    
-    // Auto-scroll to bottom when new messages arrive
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+
+    // "Thinking…" only until the first streamed words arrive; after that the
+    // growing reply is its own progress indicator.
+    val lastMessage = messages.lastOrNull()
+    val awaitingFirstChunk = isLoading &&
+        !(lastMessage != null && !lastMessage.isUser && lastMessage.content.isNotEmpty())
+
+    // Follow the conversation: jump to a newly added message, and keep a streaming
+    // reply in view, unless the user has scrolled up to read something.
+    val isAtBottom by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf true
+            lastVisible.index >= info.totalItemsCount - 1
         }
     }
-    
+    LaunchedEffect(messages.size) {
+        val count = listState.layoutInfo.totalItemsCount
+        if (count > 0) listState.animateScrollToItem(count - 1)
+    }
+    LaunchedEffect(lastMessage?.content?.length) {
+        val count = listState.layoutInfo.totalItemsCount
+        if (lastMessage?.isStreaming == true && isAtBottom && count > 0) {
+            // An offset past the item's end is clamped to the end of the list.
+            listState.scrollToItem(count - 1, Int.MAX_VALUE)
+        }
+    }
+
     Column(
         modifier = modifier.fillMaxSize()
     ) {
@@ -88,7 +123,11 @@ fun ChatScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(topLevelMessages) { message ->
+            items(
+                items = topLevelMessages,
+                key = { it.id },
+                contentType = { if (it.isUser) "user" else "ai" }
+            ) { message ->
                 ThreadedMessageView(
                     message = message,
                     allMessages = messages,
@@ -119,19 +158,26 @@ fun ChatScreen(
                 )
             }
 
-            if (isLoading) {
-                item {
+            if (awaitingFirstChunk) {
+                item(key = "thinking", contentType = "thinking") {
                     LoadingIndicator()
                 }
             }
         }
-        
-        // AI Code Ready Banner
-        if (lastGeneratedCode.isNotEmpty()) {
+
+        // AI Code Ready notice: shows once per new piece of code, then gets out of the way.
+        AnimatedVisibility(
+            visible = codeReadyNotice && lastGeneratedCode.isNotEmpty(),
+            enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom)
+        ) {
             AICodeReadyBanner(
-                chatViewModel = chatViewModel,
-                codeLength = lastGeneratedCode.length,
-                selectedModel = selectedModel
+                modelName = chatViewModel.getModelDisplayName(selectedModel),
+                onRun = {
+                    chatViewModel.dismissCodeReadyNotice()
+                    onNavigateToScene()
+                },
+                onDismiss = { chatViewModel.dismissCodeReadyNotice() }
             )
         }
 
@@ -150,7 +196,12 @@ fun ChatScreen(
             value = chatInput,
             onValueChange = { chatInput = it },
             onSend = {
-                if (chatInput.isNotBlank()) {
+                val provider = chatViewModel.getModelProvider(selectedModel)
+                if (chatInput.isNotBlank() && provider != null && !chatViewModel.isProviderConfigured(provider)) {
+                    // Answer the tap up front and keep the draft, instead of sending
+                    // and replying with an error bubble.
+                    providerNeedingKey = provider
+                } else if (chatInput.isNotBlank()) {
                     chatViewModel.sendMessage(chatInput.trim())
                     chatInput = ""
                     chatViewModel.clearImages()  // Clear images after sending
@@ -160,6 +211,17 @@ fun ChatScreen(
             enabled = !isLoading,
             chatViewModel = chatViewModel,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+
+    providerNeedingKey?.let { provider ->
+        ApiKeyRequiredDialog(
+            providerName = provider,
+            onOpenSettings = {
+                providerNeedingKey = null
+                chatViewModel.showSettings()
+            },
+            onDismiss = { providerNeedingKey = null }
         )
     }
 }
@@ -187,12 +249,8 @@ private fun ChatHeader(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Psychology, // Brain icon
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                MaigeXRAvatar(size = 32.dp)
+                Spacer(modifier = Modifier.width(10.dp))
                 // Brand wordmark: only the {ai} segment is cobalt, the rest
                 // takes the foreground colour. See brand/brand.json.
                 Text(
@@ -294,7 +352,8 @@ private fun LoadingIndicator() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(16.dp)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -308,50 +367,81 @@ private fun LoadingIndicator() {
     }
 }
 
+/** How long the code-ready notice stays before tidying itself away. */
+private const val CODE_READY_NOTICE_MILLIS = 6_000L
+
 @Composable
 private fun AICodeReadyBanner(
-    chatViewModel: ChatViewModel,
-    codeLength: Int,
-    selectedModel: String
+    modelName: String,
+    onRun: () -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Card(
+    // Same timing rule as a Material snackbar: accessibility services can ask for
+    // longer (or no) timeouts on content that carries actions.
+    val accessibilityManager = LocalAccessibilityManager.current
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    LaunchedEffect(Unit) {
+        val timeout = accessibilityManager?.calculateRecommendedTimeoutMillis(
+            CODE_READY_NOTICE_MILLIS,
+            containsIcons = true,
+            containsText = true,
+            containsControls = true
+        ) ?: CODE_READY_NOTICE_MILLIS
+        if (timeout != Long.MAX_VALUE) {
+            delay(timeout)
+            currentOnDismiss()
+        }
+    }
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .neonCardGlow(MaterialTheme.colorScheme.surfaceVariant),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 2.dp
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics(mergeDescendants = true) {}
+            ) {
                 Text(
                     text = stringResource(R.string.ai_code_ready),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Generated by ${chatViewModel.getModelDisplayName(selectedModel)}",
+                    text = "Generated by $modelName",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Text(
-                text = "($codeLength chars)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            TextButton(onClick = onRun) {
+                Text("Run")
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -474,7 +564,7 @@ private fun ModelSelector(
     Card(
         onClick = { showModal = true },
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
         ),
         shape = RoundedCornerShape(6.dp)
     ) {
@@ -485,14 +575,14 @@ private fun ModelSelector(
             Text(
                 text = chatViewModel.getModelDisplayName(selectedModel),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF2196F3),
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 12.sp
             )
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
                 imageVector = Icons.Default.ExpandMore,
                 contentDescription = null,
-                tint = Color(0xFF2196F3),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(14.dp)
             )
         }

@@ -40,6 +40,24 @@ val BrandError = Color(0xFFD92D20)
 val BrandWarning = Color(0xFFB54708)
 val BrandSuccess = Color(0xFF067647)
 
+// Status hues lightened for the dark ground; the light-ground ones above fall
+// below 4.5:1 text contrast on BrandBgDark and BrandSurfaceDark.
+// Cobalt lifted for the dark ground so accent text holds 4.5:1 on it; buttons
+// filled with it take dark labels (white on it would fall short instead).
+val BrandAccentOnDark = Color(0xFF5B82F5)
+
+// Deeper error and warning for the light ground: BrandError and BrandWarning sit
+// just under 4.5:1 on the light background and cards.
+val BrandErrorOnLight = Color(0xFFB42318)
+val BrandWarningOnLight = Color(0xFF93370D)
+// Secondary cobalt per ground: BrandAccent2 carries white labels at only ~4.2:1.
+val BrandAccent2OnLight = Color(0xFF2F5AD6)
+val BrandAccent2OnDark = Color(0xFF6A8DF6)
+
+val BrandErrorOnDark = Color(0xFFF97066)
+val BrandSuccessOnDark = Color(0xFF47CD89)
+val BrandWarningOnDark = Color(0xFFFDB022)
+
 // ================================
 // LEGACY ALIASES
 // ================================

@@ -36,6 +36,9 @@ import com.xraiassistant.ui.viewmodels.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.xraiassistant.ui.theme.ThemeMode
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import com.xraiassistant.data.local.PlaygroundPreferences
 import com.xraiassistant.ui.theme.AppearanceStore
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -133,11 +136,11 @@ fun SettingsScreen(
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = null,
-                            tint = NeonCyan
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
                             "m{ai}geXR Settings",
-                            color = NeonCyan
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -146,7 +149,7 @@ fun SettingsScreen(
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Cancel",
-                            tint = CyberpunkGray
+                            tint = MaterialTheme.colorScheme.outline
                         )
                     }
                 },
@@ -181,18 +184,18 @@ fun SettingsScreen(
                                 onNavigateBack()
                             }
                         },
-                        modifier = Modifier.neonButtonGlow(NeonPink)
+                        modifier = Modifier.neonButtonGlow(MaterialTheme.colorScheme.primary)
                     ) {
                         Text(
                             "Save",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NeonPink
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = CyberpunkDarkGray
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             )
         }
@@ -224,6 +227,8 @@ fun SettingsScreen(
             
             // Appearance Section
             AppearanceSection()
+
+            PlaygroundSection()
 
             // Ads: the Remove Ads purchase, Restore, and privacy options
             RemoveAdsSection()
@@ -310,7 +315,7 @@ private fun ApiConfigurationSection(
             ProviderAPIKeyView(
                 provider = "Together.ai",
                 description = "Get your API key from together.ai",
-                color = Color(0xFF2196F3), // Blue
+                color = MaterialTheme.colorScheme.primary, // Blue
                 apiKey = togetherApiKey,
                 onApiKeyChange = onTogetherApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Together.ai")
@@ -320,7 +325,7 @@ private fun ApiConfigurationSection(
             ProviderAPIKeyView(
                 provider = "OpenAI",
                 description = "Get your API key from platform.openai.com",
-                color = Color(0xFF4CAF50), // Green
+                color = StatusColors.success, // Green
                 apiKey = openaiApiKey,
                 onApiKeyChange = onOpenaiApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("OpenAI")
@@ -379,7 +384,7 @@ private fun ProviderAPIKeyView(
             .fillMaxWidth()
             .neonCardGlow(color),
         colors = CardDefaults.cardColors(
-            containerColor = CyberpunkDarkGray
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(8.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, color)
@@ -414,7 +419,7 @@ private fun ProviderAPIKeyView(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = color,
-                    unfocusedBorderColor = CyberpunkGray,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                     cursorColor = color
                 )
             )
@@ -450,13 +455,13 @@ private fun ProviderAPIKeyView(
                         Icon(
                             Icons.Default.Warning,
                             contentDescription = "API key required",
-                            tint = Color(0xFFFF9800), // Orange
+                            tint = StatusColors.warning, // Orange
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             "API key required",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFFF9800)
+                            color = StatusColors.warning
                         )
                     }
                 }
@@ -470,13 +475,13 @@ private fun CodeSandboxAPIKeyView(
     apiKey: String,
     onApiKeyChange: (String) -> Unit
 ) {
-    val cardColor = Color(0xFFFF9800) // Orange
+    val cardColor = StatusColors.warning // Orange
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .neonCardGlow(cardColor),
         colors = CardDefaults.cardColors(
-            containerColor = CyberpunkDarkGray
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(8.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, cardColor)
@@ -511,7 +516,7 @@ private fun CodeSandboxAPIKeyView(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = cardColor,
-                    unfocusedBorderColor = CyberpunkGray,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                     cursorColor = cardColor
                 )
             )
@@ -535,25 +540,25 @@ private fun CodeSandboxAPIKeyView(
                         Icon(
                             Icons.Default.CheckCircle,
                             contentDescription = "Configured",
-                            tint = Color(0xFFFF9800),
+                            tint = StatusColors.warning,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             "Configured",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFFF9800)
+                            color = StatusColors.warning
                         )
                     } else {
                         Icon(
                             Icons.Default.Info,
                             contentDescription = "Optional",
-                            tint = Color(0xFF2196F3),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             "Optional - basic features work without API key",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF2196F3)
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -779,13 +784,13 @@ private fun ModelSelectionView(
                     Icon(
                         Icons.Default.Business,
                         contentDescription = "Provider",
-                        tint = Color(0xFF2196F3),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         "Provider: ${model.provider}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF2196F3)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
                 
@@ -793,14 +798,14 @@ private fun ModelSelectionView(
                     Icon(
                         Icons.Default.CheckCircle,
                         contentDescription = "Configured",
-                        tint = Color(0xFF4CAF50),
+                        tint = StatusColors.success,
                         modifier = Modifier.size(16.dp)
                     )
                 } else {
                     Icon(
                         Icons.Default.Warning,
                         contentDescription = "Not configured",
-                        tint = Color(0xFFFF9800),
+                        tint = StatusColors.warning,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -943,13 +948,13 @@ private fun LibrarySelectionView(
                 Icon(
                     Icons.Default.ViewInAr,
                     contentDescription = "Library",
-                    tint = Color(0xFF4CAF50),
+                    tint = StatusColors.success,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     "Library: ${currentLibrary.displayName}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF4CAF50)
+                    color = StatusColors.success
                 )
             }
             
@@ -987,13 +992,13 @@ private fun EffortPickerView(
             )
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = NeonBlue.copy(alpha = 0.1f)
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
             ) {
                 Text(
                     text = effort.displayName,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = NeonBlue,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
@@ -1047,13 +1052,13 @@ private fun EffortSummaryView(effort: AIEffort) {
         }
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = NeonPurple.copy(alpha = 0.1f)
+                containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
             )
         ) {
             Text(
                 text = "${effort.displayName} Reasoning - ${effort.summary}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = NeonPurple,
+                color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
@@ -1078,13 +1083,13 @@ private fun TemperatureSliderView(
             )
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
             ) {
                 Text(
                     text = String.format("%.1f", temperature),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF2196F3),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
@@ -1095,11 +1100,11 @@ private fun TemperatureSliderView(
             onValueChange = onTemperatureChange,
             valueRange = 0.0f..2.0f,
             steps = 19, // 20 steps total (0.1 increments)
-            modifier = Modifier.neonGlow(NeonBlue, blurRadius = 6.dp),
+            modifier = Modifier.neonGlow(MaterialTheme.colorScheme.primary, blurRadius = 6.dp),
             colors = SliderDefaults.colors(
-                thumbColor = NeonBlue,
-                activeTrackColor = NeonBlue,
-                inactiveTrackColor = CyberpunkGray
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.outline
             )
         )
         
@@ -1139,13 +1144,13 @@ private fun TopPSliderView(
             )
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                    containerColor = StatusColors.success.copy(alpha = 0.1f)
                 )
             ) {
                 Text(
                     text = String.format("%.1f", topP),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4CAF50),
+                    color = StatusColors.success,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
@@ -1156,11 +1161,11 @@ private fun TopPSliderView(
             onValueChange = onTopPChange,
             valueRange = 0.1f..1.0f,
             steps = 8, // 9 steps total (0.1 increments)
-            modifier = Modifier.neonGlow(NeonGreen, blurRadius = 6.dp),
+            modifier = Modifier.neonGlow(StatusColors.success, blurRadius = 6.dp),
             colors = SliderDefaults.colors(
-                thumbColor = NeonGreen,
-                activeTrackColor = NeonGreen,
-                inactiveTrackColor = CyberpunkGray
+                thumbColor = StatusColors.success,
+                activeTrackColor = StatusColors.success,
+                inactiveTrackColor = MaterialTheme.colorScheme.outline
             )
         )
         
@@ -1214,17 +1219,17 @@ private fun ParameterSummaryView(
         }
         
         Card(
-            modifier = Modifier.neonCardGlow(NeonPurple),
+            modifier = Modifier.neonCardGlow(MaterialTheme.colorScheme.secondary),
             colors = CardDefaults.cardColors(
-                containerColor = CyberpunkDarkGray
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             shape = RoundedCornerShape(8.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, NeonPurple)
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
         ) {
             Text(
                 text = parameterDescription,
                 style = MaterialTheme.typography.bodyMedium,
-                color = NeonPurple,
+                color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.padding(12.dp)
             )
         }
@@ -1248,7 +1253,7 @@ private fun SandboxSettingsSection(
                 Icon(
                     Icons.Default.Language,
                     contentDescription = "React Three Fiber Rendering",
-                    tint = Color(0xFFFF9800),
+                    tint = StatusColors.warning,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
@@ -1281,12 +1286,12 @@ private fun SandboxSettingsSection(
                 Switch(
                     checked = useSandpackForR3F,
                     onCheckedChange = onUseSandpackChange,
-                    modifier = if (useSandpackForR3F) Modifier.neonGlow(NeonCyan, blurRadius = 6.dp) else Modifier,
+                    modifier = if (useSandpackForR3F) Modifier.neonGlow(MaterialTheme.colorScheme.primary, blurRadius = 6.dp) else Modifier,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = NeonCyan,
-                        checkedTrackColor = NeonCyanGlow,
-                        uncheckedThumbColor = CyberpunkGray,
-                        uncheckedTrackColor = CyberpunkNavy
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
             }
@@ -1299,7 +1304,7 @@ private fun SandboxSettingsSection(
                 Icon(
                     if (useSandpackForR3F) Icons.Default.CloudCircle else Icons.Default.Computer,
                     contentDescription = if (useSandpackForR3F) "Online" else "Offline",
-                    tint = if (useSandpackForR3F) Color(0xFF2196F3) else Color(0xFF4CAF50),
+                    tint = if (useSandpackForR3F) MaterialTheme.colorScheme.primary else StatusColors.success,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
@@ -1309,7 +1314,7 @@ private fun SandboxSettingsSection(
                         "Offline: Fast local rendering, no network required"
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (useSandpackForR3F) Color(0xFF2196F3) else Color(0xFF4CAF50)
+                    color = if (useSandpackForR3F) MaterialTheme.colorScheme.primary else StatusColors.success
                 )
             }
             
@@ -1368,15 +1373,15 @@ private fun SystemPromptSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .neonInputGlow(NeonPurple),
+                    .neonInputGlow(MaterialTheme.colorScheme.secondary),
                 placeholder = { Text("Enter custom instructions for the AI assistant...") },
                 textStyle = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                 ),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = NeonPurple,
-                    unfocusedBorderColor = CyberpunkGray,
-                    cursorColor = NeonPurple
+                    focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    cursorColor = MaterialTheme.colorScheme.secondary
                 )
             )
             
@@ -1405,12 +1410,12 @@ private fun SaveSettingsSection(
                 Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = "Settings saved",
-                    tint = Color(0xFF4CAF50)
+                    tint = StatusColors.success
                 )
                 Text(
                     "Settings saved successfully!",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4CAF50)
+                    color = StatusColors.success
                 )
             }
         } else {
@@ -1422,7 +1427,7 @@ private fun SaveSettingsSection(
                     Icon(
                         Icons.Default.Info,
                         contentDescription = "Save Your Settings",
-                        tint = Color(0xFF2196F3)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Save Your Settings",
@@ -1455,12 +1460,12 @@ private fun DataPrivacySection(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .neonCardGlow(ErrorNeon),
+                    .neonCardGlow(MaterialTheme.colorScheme.error),
                 colors = CardDefaults.cardColors(
-                    containerColor = CyberpunkDarkGray
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 shape = RoundedCornerShape(8.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ErrorNeon)
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -1473,7 +1478,7 @@ private fun DataPrivacySection(
                         Icon(
                             Icons.Default.History,
                             contentDescription = "Chat History",
-                            tint = Color(0xFFF44336),
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
@@ -1493,9 +1498,9 @@ private fun DataPrivacySection(
                         onClick = onClearHistoryClick,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .neonButtonGlow(ErrorNeon),
+                            .neonButtonGlow(MaterialTheme.colorScheme.error),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ErrorNeon
+                            containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
                         Icon(
@@ -1517,13 +1522,13 @@ private fun DataPrivacySection(
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = "Cleared",
-                                tint = Color(0xFF4CAF50),
+                                tint = StatusColors.success,
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 "All chat history cleared successfully",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF4CAF50)
+                                color = StatusColors.success
                             )
                         }
                     }
@@ -1701,7 +1706,7 @@ private fun SettingsSection(
                     Icon(
                         it,
                         contentDescription = title,
-                        tint = NeonCyan,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1709,7 +1714,7 @@ private fun SettingsSection(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = NeonCyan
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -1723,6 +1728,54 @@ private fun getParameterDescription(temperature: Float, topP: Float): String {
         temperature in 0.4f..0.8f && topP in 0.6f..0.9f -> "Balanced Creativity - Ideal for most scenes"
         temperature in 0.9f..2.0f && topP in 0.9f..1.0f -> "Experimental Mode - Maximum innovation"
         else -> "Custom Configuration"
+    }
+}
+
+/**
+ * Playground options. The command line is the one-line JavaScript console at the
+ * bottom of the scene.
+ */
+@Composable
+private fun PlaygroundSection() {
+    val context = LocalContext.current
+    val commandLineEnabled by PlaygroundPreferences.commandLineEnabled.collectAsState()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = commandLineEnabled,
+                    role = Role.Switch,
+                    onValueChange = { PlaygroundPreferences.setCommandLineEnabled(context, it) }
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Scene command line",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "A one-line JavaScript console at the bottom of the scene. " +
+                        "Run code against the live scene, type globals() to see what it exposes, " +
+                        "Tab to complete, Esc to return to the scene.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            // The whole row toggles, so the switch itself takes no separate click.
+            Switch(checked = commandLineEnabled, onCheckedChange = null)
+        }
     }
 }
 

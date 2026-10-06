@@ -63,4 +63,6 @@
     <color name="md_theme_dark_surfaceTint">#80D5D4</color>
     <color name="md_theme_dark_outlineVariant">#3F4948</color>
     <color name="md_theme_dark_scrim">#000000</color>
+    <!-- Background of the m{ai}geXR avatar, used behind the launcher icon -->
+    <color name="ic_launcher_background">#154DEF</color>
 </resources>

@@ -86,12 +86,16 @@ fun ChatMessageCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(
-                            imageVector = if (message.isUser) Icons.Default.Person else Icons.Default.SmartToy,
-                            contentDescription = if (message.isUser) "User" else "AI",
-                            tint = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        if (message.isUser) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "User",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        } else {
+                            MaigeXRAvatar(size = 18.dp, contentDescription = "AI")
+                        }
                         Text(
                             text = if (message.isUser) "You" else (message.model ?: "m{ai}geXR"),
                             style = MaterialTheme.typography.labelSmall,
