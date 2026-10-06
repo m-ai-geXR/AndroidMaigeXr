@@ -117,6 +117,21 @@ class Nova64KeyboardFocusTest {
     }
 
     @Test
+    fun sceneScreenshotIsARealFrameNotBlack() {
+        assertTrue("editor never became ready", waitFor("window.editorReady === true", 60_000))
+        evaluate("loadExample('starter')")
+        assertTrue("console never became ready", waitFor("window.runnerReady === true", 60_000))
+
+        // The app calls this a few seconds after a cart starts; it must return a
+        // JPEG of what the console drew, not null and not a black frame.
+        val gotShot = waitFor(
+            "(function () { var s = captureCanvasScreenshot(); return typeof s === 'string' && s.indexOf('data:image/jpeg') === 0 && s.length > 2000; })()",
+            20_000
+        )
+        assertTrue("captureCanvasScreenshot() never returned a usable frame", gotShot)
+    }
+
+    @Test
     fun commandLineRunsCodeInTheConsoleAndListsItsGlobals() {
         assertTrue("editor never became ready", waitFor("window.editorReady === true", 60_000))
         evaluate("loadExample('starter')")
