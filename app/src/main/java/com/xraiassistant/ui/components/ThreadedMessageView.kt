@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,6 +59,7 @@ fun ThreadedMessageView(
     // Extract code from message if it contains code blocks
     val extractedCode = extractCodeFromMessage(message.content)
     val hasCode = extractedCode != null && !message.isUser
+    val showRunScene = shouldShowRunScene(message, onRunScene != null)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -208,7 +210,7 @@ fun ThreadedMessageView(
                                 Icon(
                                     imageVector = if (isFavorited) Icons.Filled.Star else Icons.Outlined.StarBorder,
                                     contentDescription = if (isFavorited) "Remove from favorites" else "Add to favorites",
-                                    tint = if (isFavorited) NeonPink else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = if (isFavorited) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -244,7 +246,7 @@ fun ThreadedMessageView(
                         onClick = { onRunDemo(message.libraryId) },
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF9C27B0),
+                            containerColor = MaterialTheme.colorScheme.secondary,
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
@@ -261,15 +263,12 @@ fun ThreadedMessageView(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                } else if (!message.isUser && onRunScene != null) {
+                } else if (showRunScene && extractedCode != null && onRunScene != null) {
                     Button(
-                        onClick = {
-                            val code = extractedCode ?: message.content
-                            onRunScene(code, message.libraryId)
-                        },
+                        onClick = { onRunScene(extractedCode, message.libraryId) },
                         modifier = Modifier.height(32.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (hasCode) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
@@ -424,7 +423,7 @@ fun ThreadReplyView(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "Run Scene",
                                 modifier = Modifier.size(14.dp),
-                                tint = if (hasCode) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                                tint = if (hasCode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
@@ -444,40 +443,6 @@ fun ThreadReplyView(
  * Looks for code between ```javascript (or similar) and ```
  * Returns null if no valid code block found
  */
-private fun extractCodeFromMessage(content: String): String? {
-    // Look for code between triple backticks
-    val possibleStarts = listOf("```javascript", "```typescript", "```js", "```ts", "```jsx", "```html", "```")
-
-    for (marker in possibleStarts) {
-        val startIndex = content.indexOf(marker)
-        if (startIndex != -1) {
-            // Find the closing triple backticks
-            val codeStart = startIndex + marker.length
-            val endIndex = content.indexOf("```", codeStart)
-
-            if (endIndex != -1) {
-                // Extract code between markers
-                var code = content.substring(codeStart, endIndex).trim()
-
-                // Remove any trailing artifacts
-                val artifacts = listOf("[/INSERT_CODE]", "[RUN_SCENE]", "```")
-                for (artifact in artifacts) {
-                    if (code.endsWith(artifact)) {
-                        code = code.substring(0, code.length - artifact.length).trim()
-                    }
-                }
-
-                // Sanity check: ignore if too short
-                if (code.length >= 10) {
-                    return code
-                }
-            }
-        }
-    }
-
-    return null
-}
-
 private fun formatTime(date: Date): String {
     val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     return formatter.format(date)

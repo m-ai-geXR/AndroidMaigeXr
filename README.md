@@ -280,6 +280,11 @@ app/src/main/
 - [docs/REACTYLON_FINAL_STATUS_COMMIT.md](docs/REACTYLON_FINAL_STATUS_COMMIT.md) — why Reactylon is off
 - [docs/STYLING_PROGRESS.md](docs/STYLING_PROGRESS.md) — theming progress
 - `WebMaigeXr/docs/NOVA64_INTEGRATION.md` — cross-platform Nova64 design notes
+- `WebMaigeXr/docs/CHAT_MARKDOWN_RENDERING.md` — how a markdown line becomes a
+  chat bubble across the clients. Android is already correct here: `MarkdownText`
+  builds one `AnnotatedString` and renders it with one `Text`. Do not refactor
+  that into a `Row` of `Text` composables — it would reintroduce the wrapping
+  bug that affected iOS.
 
 ---
 

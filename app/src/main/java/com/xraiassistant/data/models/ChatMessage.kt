@@ -16,7 +16,8 @@ data class ChatMessage(
     val libraryId: String? = null,  // Track which 3D library this message is for
     val isWelcomeMessage: Boolean = false,  // Mark as welcome message to show "Run Demo" button
     val threadParentId: String? = null,  // Reference to parent message for threading
-    val replies: List<String> = emptyList()  // Child message IDs
+    val replies: List<String> = emptyList(),  // Child message IDs
+    val isStreaming: Boolean = false  // True while chunks are still arriving
 ) {
     // Helper property: Check if this is a top-level message (not a reply)
     val isTopLevel: Boolean
@@ -38,14 +39,16 @@ data class ChatMessage(
             content: String,
             model: String? = null,
             libraryId: String? = null,
-            threadParentId: String? = null
+            threadParentId: String? = null,
+            isStreaming: Boolean = false
         ): ChatMessage {
             return ChatMessage(
                 content = content,
                 isUser = false,
                 model = model,
                 libraryId = libraryId,
-                threadParentId = threadParentId
+                threadParentId = threadParentId,
+                isStreaming = isStreaming
             )
         }
     }

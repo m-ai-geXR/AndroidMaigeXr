@@ -29,10 +29,21 @@ import com.xraiassistant.R
 import com.xraiassistant.data.models.AIEffort
 import com.xraiassistant.data.models.AIModel
 import com.xraiassistant.domain.models.Library3D
+import com.xraiassistant.monetization.BillingEntitlement
+import com.xraiassistant.monetization.RemoveAdsViewModel
 import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.xraiassistant.ui.theme.ThemeMode
+import com.xraiassistant.ui.theme.AppearanceStore
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 /**
  * Settings Screen - Exact recreation of iOS ContentView settings implementation
@@ -211,6 +222,12 @@ fun SettingsScreen(
                 viewModel = viewModel
             )
             
+            // Appearance Section
+            AppearanceSection()
+
+            // Ads: the Remove Ads purchase, Restore, and privacy options
+            RemoveAdsSection()
+
             // Model & Library Settings Section
             ModelSettingsSection(
                 selectedModel = selectedModel,
@@ -1573,6 +1590,101 @@ private fun ClearAllHistoryDialog(
     )
 }
 
+/**
+ * The one purchase this app sells. Restore stays visible after purchase so a user
+ * on a second device can find it. States the whole deal plainly: every feature
+ * stays available on the free tier, so this must not imply otherwise.
+ */
+@Composable
+private fun RemoveAdsSection(viewModel: RemoveAdsViewModel = hiltViewModel()) {
+    val activity = LocalContext.current as? android.app.Activity
+    val isEntitled by viewModel.isEntitled.collectAsStateWithLifecycle()
+    val product by viewModel.product.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val privacyOptionsRequired by viewModel.privacyOptionsRequired.collectAsStateWithLifecycle()
+
+    val busy = state == BillingEntitlement.State.Purchasing ||
+        state == BillingEntitlement.State.Restoring ||
+        state == BillingEntitlement.State.LoadingProduct
+
+    SettingsSection(title = "Ads", icon = Icons.Default.Block) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (isEntitled) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Column {
+                            Text("Ads removed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Thank you for supporting m{ai}geXR.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    Text("Remove ads", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "A one-off purchase that removes banner and full-screen ads. Everything else in the app is unchanged. Nothing is locked behind it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(
+                        onClick = { activity?.let(viewModel::buy) },
+                        enabled = !busy && product != null && activity != null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            when {
+                                state == BillingEntitlement.State.Purchasing -> "Purchasing…"
+                                viewModel.displayPrice != null -> "Remove ads — ${viewModel.displayPrice}"
+                                state == BillingEntitlement.State.LoadingProduct -> "Loading…"
+                                else -> "Unavailable"
+                            }
+                        )
+                    }
+                }
+
+                TextButton(onClick = viewModel::restore, enabled = !busy) {
+                    Text(if (state == BillingEntitlement.State.Restoring) "Restoring…" else "Restore Purchases")
+                }
+
+                when (val current = state) {
+                    is BillingEntitlement.State.Failed -> Text(
+                        current.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    BillingEntitlement.State.Pending -> Text(
+                        "Your purchase is waiting for approval. Ads will switch off automatically once it completes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    else -> Unit
+                }
+
+                // A standing control, not a one-time prompt: when UMP requires
+                // privacy options, the user must be able to change their mind.
+                if (privacyOptionsRequired && activity != null) {
+                    TextButton(onClick = { viewModel.presentPrivacyOptions(activity) }) {
+                        Text("Privacy options")
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SettingsSection(
     title: String,
@@ -1611,5 +1723,56 @@ private fun getParameterDescription(temperature: Float, topP: Float): String {
         temperature in 0.4f..0.8f && topP in 0.6f..0.9f -> "Balanced Creativity - Ideal for most scenes"
         temperature in 0.9f..2.0f && topP in 0.9f..1.0f -> "Experimental Mode - Maximum innovation"
         else -> "Custom Configuration"
+    }
+}
+
+/**
+ * Theme choice. Matches the desktop client's Appearance setting; the native
+ * clients previously had no way to override the system.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppearanceSection() {
+    val context = LocalContext.current
+    val mode by AppearanceStore.mode.collectAsState()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Appearance",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                ThemeMode.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = mode == option,
+                        onClick = { AppearanceStore.set(context, option) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = ThemeMode.entries.size
+                        )
+                    ) {
+                        Text(option.displayName)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "System follows your device setting. The splash screen is always dark.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

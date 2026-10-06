@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xraiassistant.R
-import com.xraiassistant.monetization.AdManager
 import com.xraiassistant.ui.viewmodels.ChatViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,11 +48,9 @@ import org.json.JSONObject
 @Composable
 fun SceneScreen(
     chatViewModel: ChatViewModel,
-    adManager: AdManager,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val activity = context as? android.app.Activity
     val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
     val currentLibrary by chatViewModel.currentLibrary.collectAsStateWithLifecycle()
@@ -94,9 +91,6 @@ fun SceneScreen(
             println("🚀 Starting auto-injection with retry logic...")
 
             lastInjectedCode = lastGeneratedCode
-
-            // Trigger interstitial ad check on each scene run (frequency-capped by AdManager)
-            activity?.let { adManager.onSceneRun(it) }
 
             // IMPORTANT: Use CodeSandbox for React-based libraries (React Three Fiber, Reactylon), direct injection for others
             if (currentLibrary?.id == "reactThreeFiber" || currentLibrary?.id == "reactylon") {

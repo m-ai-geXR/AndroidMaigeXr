@@ -10,11 +10,13 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,7 @@ import com.xraiassistant.presentation.screens.FavoritesScreen
 import com.xraiassistant.presentation.screens.SettingsScreen
 import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
+import kotlinx.coroutines.delay
 
 /**
  * App views for navigation
@@ -59,6 +62,27 @@ fun MainScreen(
 
     // Settings bottom sheet
     val settingsBottomSheetState = rememberModalBottomSheetState()
+
+    // Ads: restraint signals and the one interstitial trigger.
+    val activity = LocalContext.current as? android.app.Activity
+    val isGenerating by chatViewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by chatViewModel.errorMessage.collectAsStateWithLifecycle()
+    LaunchedEffect(isGenerating) { adManager.setGenerationInFlight(isGenerating) }
+    LaunchedEffect(errorMessage) { adManager.setErrorVisible(errorMessage != null) }
+
+    // Interstitials only ever appear on the way out of a scene: the user has
+    // already seen the result they asked for. Watching the view state rather
+    // than one button catches every route out. The short wait lets the
+    // transition finish, and is cancelled if the user goes straight back.
+    var previousView by remember { mutableStateOf(uiState.currentView) }
+    LaunchedEffect(uiState.currentView) {
+        val leftScene = previousView == AppView.SCENE && uiState.currentView != AppView.SCENE
+        previousView = uiState.currentView
+        if (leftScene) {
+            delay(350)
+            adManager.onSceneRun(activity)
+        }
+    }
 
     // Setup code injection callbacks (matching iOS ContentView)
     LaunchedEffect(Unit) {
@@ -96,7 +120,7 @@ fun MainScreen(
 
 
     Scaffold(
-        containerColor = CyberpunkBlack,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             MainBottomNavigation(
                 currentView = uiState.currentView,
@@ -127,7 +151,6 @@ fun MainScreen(
             AppView.SCENE -> {
                 SceneScreen(
                     chatViewModel = chatViewModel,
-                    adManager = adManager,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
@@ -236,9 +259,9 @@ private fun MainBottomNavigation(
 
         NavigationBar(
             containerColor = androidx.compose.ui.graphics.Color.Transparent,  // Transparent for glass effect
-            contentColor = CyberpunkGray,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.glassCard(
-                backgroundColor = GlassCyberpunkBlack,  // 25% opacity glass
+                backgroundColor = MaterialTheme.colorScheme.background,  // 25% opacity glass
                 blurRadius = 8.dp,
                 borderGlow = null,
                 shape = RoundedCornerShape(0.dp)
@@ -250,23 +273,23 @@ private fun MainBottomNavigation(
                 Icon(
                     Icons.Outlined.Code,
                     contentDescription = stringResource(R.string.nav_chat),
-                    tint = if (currentView == AppView.CHAT) NeonCyan else CyberpunkGray
+                    tint = if (currentView == AppView.CHAT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             label = {
                 Text(
                     stringResource(R.string.nav_chat),
-                    color = if (currentView == AppView.CHAT) NeonCyan else CyberpunkGray
+                    color = if (currentView == AppView.CHAT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             selected = currentView == AppView.CHAT,
             onClick = { onViewChange(AppView.CHAT) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonCyan,
-                selectedTextColor = NeonCyan,
-                indicatorColor = NeonCyanGlow,
-                unselectedIconColor = CyberpunkGray,
-                unselectedTextColor = CyberpunkGray
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
         
@@ -277,7 +300,7 @@ private fun MainBottomNavigation(
                     Icon(
                         Icons.Filled.PlayArrow,
                         contentDescription = stringResource(R.string.nav_scene),
-                        tint = if (currentView == AppView.SCENE) NeonPink else CyberpunkGray
+                        tint = if (currentView == AppView.SCENE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     // Notification dot for generated code with neon glow
@@ -286,7 +309,7 @@ private fun MainBottomNavigation(
                             modifier = Modifier
                                 .size(8.dp)
                                 .background(
-                                    NeonPink,
+                                    MaterialTheme.colorScheme.primary,
                                     CircleShape
                                 )
                                 .offset(x = 8.dp, y = (-8).dp)
@@ -297,17 +320,17 @@ private fun MainBottomNavigation(
             label = {
                 Text(
                     stringResource(R.string.nav_scene),
-                    color = if (currentView == AppView.SCENE) NeonPink else CyberpunkGray
+                    color = if (currentView == AppView.SCENE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             selected = currentView == AppView.SCENE,
             onClick = { onViewChange(AppView.SCENE) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonPink,
-                selectedTextColor = NeonPink,
-                indicatorColor = NeonPinkGlow,
-                unselectedIconColor = CyberpunkGray,
-                unselectedTextColor = CyberpunkGray
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
@@ -317,23 +340,23 @@ private fun MainBottomNavigation(
                 Icon(
                     Icons.Filled.History,
                     contentDescription = "History",
-                    tint = if (currentView == AppView.HISTORY) NeonBlue else CyberpunkGray
+                    tint = if (currentView == AppView.HISTORY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             label = {
                 Text(
                     "History",
-                    color = if (currentView == AppView.HISTORY) NeonBlue else CyberpunkGray
+                    color = if (currentView == AppView.HISTORY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             selected = currentView == AppView.HISTORY,
             onClick = { onViewChange(AppView.HISTORY) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonBlue,
-                selectedTextColor = NeonBlue,
-                indicatorColor = NeonBlueGlow,
-                unselectedIconColor = CyberpunkGray,
-                unselectedTextColor = CyberpunkGray
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
@@ -343,23 +366,23 @@ private fun MainBottomNavigation(
                 Icon(
                     Icons.Filled.Star,
                     contentDescription = "Favorites",
-                    tint = if (currentView == AppView.FAVORITES) NeonPink else CyberpunkGray
+                    tint = if (currentView == AppView.FAVORITES) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             label = {
                 Text(
                     "Favorites",
-                    color = if (currentView == AppView.FAVORITES) NeonPink else CyberpunkGray
+                    color = if (currentView == AppView.FAVORITES) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             selected = currentView == AppView.FAVORITES,
             onClick = { onViewChange(AppView.FAVORITES) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonPink,
-                selectedTextColor = NeonPink,
-                indicatorColor = NeonPinkGlow,
-                unselectedIconColor = CyberpunkGray,
-                unselectedTextColor = CyberpunkGray
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
 
@@ -369,23 +392,23 @@ private fun MainBottomNavigation(
                 Icon(
                     Icons.Filled.Settings,
                     contentDescription = stringResource(R.string.nav_settings),
-                    tint = CyberpunkGray
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             label = {
                 Text(
                     stringResource(R.string.nav_settings),
-                    color = CyberpunkGray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             selected = false, // Settings is a modal, not a view
             onClick = onSettingsClick,
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = NeonPurple,
-                selectedTextColor = NeonPurple,
-                indicatorColor = NeonPurpleGlow,
-                unselectedIconColor = CyberpunkGray,
-                unselectedTextColor = CyberpunkGray
+                selectedIconColor = MaterialTheme.colorScheme.secondary,
+                selectedTextColor = MaterialTheme.colorScheme.secondary,
+                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
         )
         }

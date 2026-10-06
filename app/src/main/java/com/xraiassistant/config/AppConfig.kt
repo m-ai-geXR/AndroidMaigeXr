@@ -20,7 +20,7 @@ object AppConfig {
     /** Master ad switch. False in debug, true in release. */
     val adsEnabled: Boolean get() = BuildConfig.ADS_ENABLED
 
-    /** Bypass all ads (for testing premium UX). Never true in release. */
+    /** Treat the user as having bought Remove Ads. Debug only; false in release. */
     val forcePremiumMode: Boolean get() = BuildConfig.FORCE_PREMIUM
 
     /** Log ad lifecycle events to Logcat. */
@@ -32,7 +32,6 @@ object AppConfig {
 
     val admobBannerId: String get() = BuildConfig.ADMOB_BANNER_ID
     val admobInterstitialId: String get() = BuildConfig.ADMOB_INTERSTITIAL_ID
-    val admobRewardedId: String get() = BuildConfig.ADMOB_REWARDED_ID
 
     // -------------------------------------------------------------------------
     // Frequency Caps
@@ -48,11 +47,8 @@ object AppConfig {
     // Feature Flags
     // -------------------------------------------------------------------------
 
-    /** Premium subscription available to unlock ad-free experience. */
-    val premiumSubscriptionEnabled: Boolean = true
-
-    /** Cloud sync available in release only (infrastructure not yet implemented). */
-    val cloudSyncEnabled: Boolean = !BuildConfig.DEBUG
+    /** Cloud sync is not implemented. Kept false so nothing advertises it. */
+    val cloudSyncEnabled: Boolean = false
 
     // -------------------------------------------------------------------------
     // Diagnostics
@@ -66,7 +62,6 @@ object AppConfig {
             Log.d("AppConfig", "showAdDebugLogs     = $showAdDebugLogs")
             Log.d("AppConfig", "bannerId            = $admobBannerId")
             Log.d("AppConfig", "interstitialId      = $admobInterstitialId")
-            Log.d("AppConfig", "rewardedId          = $admobRewardedId")
             Log.d("AppConfig", "interstitialInterval= ${interstitialMinIntervalSeconds}s")
             Log.d("AppConfig", "scenesBeforeAd      = $scenesBeforeInterstitial")
             Log.d("AppConfig", "cloudSyncEnabled    = $cloudSyncEnabled")

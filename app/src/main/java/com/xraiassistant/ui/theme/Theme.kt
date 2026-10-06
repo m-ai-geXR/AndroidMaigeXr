@@ -2,8 +2,12 @@ package com.xraiassistant.ui.theme
 
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -11,84 +15,113 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Neon Cyberpunk Dark Color Scheme
- * Based on m{ai}geXR branding guide - vaporwave/cyberpunk aesthetic
+ * m{ai}geXR colour schemes.
+ *
+ * One cobalt accent over a neutral ground, per brand/brand.json. Both schemes
+ * are defined so the app can follow the system setting; it was dark-only before.
  */
-private val NeonCyberpunkColorScheme = darkColorScheme(
-    // Primary colors (neon cyan for main UI elements)
-    primary = NeonCyan,
-    onPrimary = CyberpunkBlack,  // Dark text on bright neon buttons
-    primaryContainer = NeonCyanGlow,
-    onPrimaryContainer = CyberpunkWhite,
+private val BrandDarkColorScheme = darkColorScheme(
+    primary = BrandAccentDark,
+    onPrimary = Color.White,
+    primaryContainer = BrandAccent700,
+    onPrimaryContainer = BrandTextDark,
 
-    // Secondary colors (neon purple for accents)
-    secondary = NeonPurple,
-    onSecondary = CyberpunkBlack,
-    secondaryContainer = NeonPurpleGlow,
-    onSecondaryContainer = CyberpunkWhite,
+    secondary = BrandAccent2,
+    onSecondary = Color.White,
+    secondaryContainer = BrandSurfaceDark,
+    onSecondaryContainer = BrandTextDark,
 
-    // Tertiary colors (neon pink for highlights)
-    tertiary = NeonPink,
-    onTertiary = CyberpunkBlack,
-    tertiaryContainer = NeonPinkGlow,
-    onTertiaryContainer = CyberpunkWhite,
+    tertiary = BrandAccent400,
+    onTertiary = BrandBgDark,
+    tertiaryContainer = BrandSurfaceDark,
+    onTertiaryContainer = BrandTextDark,
 
-    // Background & Surface (dark cyberpunk backgrounds)
-    background = CyberpunkBlack,
-    onBackground = CyberpunkWhite,
-    surface = CyberpunkDarkGray,
-    onSurface = CyberpunkWhite,
-    surfaceVariant = CyberpunkDarkGray,
-    onSurfaceVariant = CyberpunkGray,
+    background = BrandBgDark,
+    onBackground = BrandTextDark,
+    surface = BrandBgDark,
+    onSurface = BrandTextDark,
+    surfaceVariant = BrandSurfaceDark,
+    onSurfaceVariant = BrandMutedDark,
 
-    // Status colors (neon versions)
-    error = ErrorNeon,
-    onError = CyberpunkWhite,
-    errorContainer = Color(0x33FF0055),  // Error glow
-    onErrorContainer = ErrorNeon,
+    error = BrandError,
+    onError = Color.White,
+    errorContainer = BrandSurfaceDark,
+    onErrorContainer = BrandError,
 
-    // Outlines & borders
-    outline = CyberpunkGray,
-    outlineVariant = CyberpunkDimGray,
+    outline = BrandMutedDark,
+    outlineVariant = BrandDividerDark,
 
-    // Container colors
-    surfaceContainer = CyberpunkDarkGray,
-    surfaceContainerHigh = CyberpunkDarkGray,
-    surfaceContainerHighest = CyberpunkDarkGray,
-    surfaceContainerLow = CyberpunkBlack,
-    surfaceContainerLowest = CyberpunkBlack,
+    surfaceContainer = BrandSurfaceDark,
+    surfaceContainerHigh = BrandSurfaceDark,
+    surfaceContainerHighest = BrandSurfaceDark,
+    surfaceContainerLow = BrandBgDark,
+    surfaceContainerLowest = BrandBgDark,
+)
+
+private val BrandLightColorScheme = lightColorScheme(
+    primary = BrandAccent,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFDBE3FF),
+    onPrimaryContainer = BrandAccent700,
+
+    secondary = BrandAccent2,
+    onSecondary = Color.White,
+    secondaryContainer = BrandSurfaceLight,
+    onSecondaryContainer = BrandTextLight,
+
+    tertiary = BrandAccent700,
+    onTertiary = Color.White,
+    tertiaryContainer = BrandSurfaceLight,
+    onTertiaryContainer = BrandTextLight,
+
+    background = BrandBgLight,
+    onBackground = BrandTextLight,
+    surface = BrandBgLight,
+    onSurface = BrandTextLight,
+    surfaceVariant = BrandSurfaceLight,
+    onSurfaceVariant = BrandMutedLight,
+
+    error = BrandError,
+    onError = Color.White,
+    errorContainer = Color(0xFFFFE0D9),
+    onErrorContainer = BrandError,
+
+    outline = BrandMutedLight,
+    outlineVariant = BrandDividerLight,
+
+    surfaceContainer = BrandSurfaceLight,
+    surfaceContainerHigh = BrandSurfaceLight,
+    surfaceContainerHighest = BrandSurfaceLight,
+    surfaceContainerLow = BrandBgLight,
+    surfaceContainerLowest = BrandBgLight,
 )
 
 /**
- * m{ai}geXR Theme
+ * m{ai}geXR theme.
  *
- * Neon cyberpunk aesthetic with:
- * - DARK MODE ONLY (no light theme support)
- * - Vibrant neon colors (cyan, pink, purple, blue, green)
- * - Jet black backgrounds
- * - Futuristic typography (Exo 2 font)
- * - Subtle glow effects
+ * Follows the system light/dark setting. Dynamic colour is deliberately off:
+ * the cobalt accent is the brand, so letting the wallpaper pick the palette
+ * would defeat the point.
  */
 @Composable
 fun XRAiAssistantTheme(
+    darkTheme: Boolean = resolveDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    // ALWAYS use dark neon theme - no dynamic color, no light mode
-    val colorScheme = NeonCyberpunkColorScheme
+    val colorScheme = if (darkTheme) BrandDarkColorScheme else BrandLightColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            // Status bar: Cyberpunk black with light icons
-            window.statusBarColor = CyberpunkBlack.toArgb()
-            // Navigation bar: Match background
-            window.navigationBarColor = CyberpunkBlack.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
 
-            // Light icons on dark background
+            // Icon contrast has to invert with the ground, or the status bar
+            // disappears into it in light mode.
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
             }
         }
     }
@@ -98,4 +131,18 @@ fun XRAiAssistantTheme(
         typography = Typography,
         content = content
     )
+}
+
+
+/**
+ * Whether to use the dark scheme, honouring the user's choice over the system.
+ */
+@Composable
+private fun resolveDarkTheme(): Boolean {
+    val mode by AppearanceStore.mode.collectAsState()
+    return when (mode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
 }

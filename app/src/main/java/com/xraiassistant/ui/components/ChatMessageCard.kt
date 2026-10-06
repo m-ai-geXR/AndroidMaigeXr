@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,7 +36,7 @@ fun ChatMessageCard(
 ) {
     // Extract code from message if it contains code blocks
     val extractedCode = extractCodeFromMessage(message.content)
-    val hasCode = extractedCode != null && !message.isUser
+    val showRunScene = shouldShowRunScene(message, onRunScene != null)
 
     Row(
         modifier = modifier,
@@ -66,9 +67,9 @@ fun ChatMessageCard(
             Box(
                 modifier = Modifier
                     .glassCard(
-                        backgroundColor = GlassCyberpunkDarkGray,  // 35% opacity glass effect
+                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant,  // 35% opacity glass effect
                         blurRadius = 10.dp,
-                        borderGlow = if (message.isUser) NeonBlue else NeonCyan,
+                        borderGlow = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                         shape = bubbleShape
                     )
                     .gradientBorder(
@@ -88,13 +89,13 @@ fun ChatMessageCard(
                         Icon(
                             imageVector = if (message.isUser) Icons.Default.Person else Icons.Default.SmartToy,
                             contentDescription = if (message.isUser) "User" else "AI",
-                            tint = if (message.isUser) NeonBlue else NeonCyan,
+                            tint = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = if (message.isUser) "You" else (message.model ?: "m{ai}geXR"),
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (message.isUser) NeonBlue else NeonCyan,
+                            color = if (message.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -112,7 +113,7 @@ fun ChatMessageCard(
                         // User messages: Plain text
                         Text(
                             text = message.content,
-                            color = CyberpunkWhite,
+                            color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -132,7 +133,7 @@ fun ChatMessageCard(
                 Text(
                     text = formatTime(message.timestamp),
                     style = MaterialTheme.typography.bodySmall,
-                    color = CyberpunkGray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Light
                 )
 
@@ -145,10 +146,10 @@ fun ChatMessageCard(
                         onClick = { onRunDemo(message.libraryId) },
                         modifier = Modifier
                             .height(28.dp)
-                            .neonButtonGlow(NeonPurpleGlow),
+                            .neonButtonGlow(MaterialTheme.colorScheme.surfaceVariant),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonPurple,
-                            contentColor = CyberpunkBlack
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.background
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
@@ -164,7 +165,7 @@ fun ChatMessageCard(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                } else if (hasCode && extractedCode != null && onRunScene != null) {
+                } else if (showRunScene && extractedCode != null && onRunScene != null) {
                     // Show "Run Scene" button for AI messages with code
                     Spacer(modifier = Modifier.width(12.dp))
 
@@ -172,10 +173,10 @@ fun ChatMessageCard(
                         onClick = { onRunScene(extractedCode, message.libraryId) },
                         modifier = Modifier
                             .height(28.dp)
-                            .neonButtonGlow(NeonGreenGlow),
+                            .neonButtonGlow(MaterialTheme.colorScheme.surfaceVariant),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = NeonGreen,
-                            contentColor = CyberpunkBlack
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.background
                         ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                     ) {
@@ -199,45 +200,6 @@ fun ChatMessageCard(
             Spacer(modifier = Modifier.weight(0.2f))
         }
     }
-}
-
-/**
- * Extract code from message content
- * Looks for code between ```javascript (or similar) and ```
- * Returns null if no valid code block found
- */
-private fun extractCodeFromMessage(content: String): String? {
-    // Look for code between triple backticks
-    val possibleStarts = listOf("```javascript", "```typescript", "```js", "```ts", "```jsx", "```html", "```")
-
-    for (marker in possibleStarts) {
-        val startIndex = content.indexOf(marker)
-        if (startIndex != -1) {
-            // Find the closing triple backticks
-            val codeStart = startIndex + marker.length
-            val endIndex = content.indexOf("```", codeStart)
-
-            if (endIndex != -1) {
-                // Extract code between markers
-                var code = content.substring(codeStart, endIndex).trim()
-
-                // Remove any trailing artifacts
-                val artifacts = listOf("[/INSERT_CODE]", "[RUN_SCENE]", "```")
-                for (artifact in artifacts) {
-                    if (code.endsWith(artifact)) {
-                        code = code.substring(0, code.length - artifact.length).trim()
-                    }
-                }
-
-                // Sanity check: ignore if too short
-                if (code.length >= 10) {
-                    return code
-                }
-            }
-        }
-    }
-
-    return null
 }
 
 private fun formatTime(date: Date): String {
