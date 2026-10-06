@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xraiassistant.data.models.ChatMessage
 import com.xraiassistant.data.models.FavoriteTitle
+import com.xraiassistant.ui.theme.RunSceneButton
 import com.xraiassistant.data.models.getReplies
 import java.text.SimpleDateFormat
 import java.util.*
@@ -242,49 +243,16 @@ fun ThreadedMessageView(
 
                 // Run Demo / Run Scene on its own row so it is always fully visible
                 if (message.isWelcomeMessage && onRunDemo != null) {
-                    Button(
+                    RunSceneButton(
                         onClick = { onRunDemo(message.libraryId) },
-                        modifier = Modifier.height(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Run Demo",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Run Demo",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                        label = "Run demo",
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 } else if (showRunScene && extractedCode != null && onRunScene != null) {
-                    Button(
+                    RunSceneButton(
                         onClick = { onRunScene(extractedCode, message.libraryId) },
-                        modifier = Modifier.height(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Run Scene",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Run Scene",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
             }
 

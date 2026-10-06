@@ -7,6 +7,15 @@ package com.xraiassistant.data.models
 object MessagePreview {
     const val MAX_LENGTH = 160
 
+    /** A preview that does not repeat [droppingTitle] as its opening words. */
+    fun from(content: String?, droppingTitle: String?): String? {
+        val preview = from(content) ?: return null
+        if (droppingTitle.isNullOrEmpty() || !preview.startsWith(droppingTitle, ignoreCase = true)) return preview
+        return preview.drop(droppingTitle.length)
+            .dropWhile { it.isWhitespace() || it in ".:!—-–" }
+            .ifEmpty { null }
+    }
+
     fun from(content: String?): String? {
         val prose = content
             ?.substringBefore("```")

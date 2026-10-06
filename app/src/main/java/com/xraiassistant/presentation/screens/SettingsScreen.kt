@@ -42,6 +42,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.ui.platform.LocalUriHandler
 import com.xraiassistant.config.AppConfig
+import androidx.compose.material.icons.outlined.Circle
 import com.xraiassistant.data.local.PlaygroundPreferences
 import com.xraiassistant.ui.theme.AppearanceStore
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -51,6 +52,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.ExperimentalMaterial3Api
+
+/** Stored value meaning no key; shown as an empty field rather than masked dots. */
+private const val UNSET_API_KEY = "changeMe"
 
 /**
  * Settings Screen - Exact recreation of iOS ContentView settings implementation
@@ -98,12 +102,12 @@ fun SettingsScreen(
 
         // Load current settings into local state
         // CRITICAL FIX: Use getRawAPIKey() for editing, not getAPIKey() which returns masked version
-        togetherApiKey = viewModel.getRawAPIKey("Together.ai")
-        openaiApiKey = viewModel.getRawAPIKey("OpenAI")
-        anthropicApiKey = viewModel.getRawAPIKey("Anthropic")
-        googleApiKey = viewModel.getRawAPIKey("Google AI")
-        xaiApiKey = viewModel.getRawAPIKey("xAI")
-        codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox")
+        togetherApiKey = viewModel.getRawAPIKey("Together.ai").let { if (it == UNSET_API_KEY) "" else it }
+        openaiApiKey = viewModel.getRawAPIKey("OpenAI").let { if (it == UNSET_API_KEY) "" else it }
+        anthropicApiKey = viewModel.getRawAPIKey("Anthropic").let { if (it == UNSET_API_KEY) "" else it }
+        googleApiKey = viewModel.getRawAPIKey("Google AI").let { if (it == UNSET_API_KEY) "" else it }
+        xaiApiKey = viewModel.getRawAPIKey("xAI").let { if (it == UNSET_API_KEY) "" else it }
+        codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox").let { if (it == UNSET_API_KEY) "" else it }
         selectedLibrary = viewModel.currentLibraryId
         temperature = viewModel.temperature
         topP = viewModel.topP
@@ -132,21 +136,13 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                // Plain title, like the iOS settings sheet.
                 title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "m{ai}geXR Settings",
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -158,7 +154,7 @@ fun SettingsScreen(
                     }
                 },
                 actions = {
-                    TextButton(
+                    Button(
                         onClick = {
                             // Save all settings in a coroutine to ensure proper sequencing
                             coroutineScope.launch {
@@ -188,13 +184,14 @@ fun SettingsScreen(
                                 onNavigateBack()
                             }
                         },
-                        modifier = Modifier.neonButtonGlow(MaterialTheme.colorScheme.primary)
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .height(36.dp)
                     ) {
                         Text(
                             "Save",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 },
@@ -316,12 +313,16 @@ private fun ApiConfigurationSection(
         title = "AI Provider API Keys",
         icon = Icons.Default.Key
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Text(
+                "Keys stay on this device and are sent only to the provider they belong to.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             // Together.ai API Key
             ProviderAPIKeyView(
                 provider = "Together.ai",
                 description = "Get your API key from together.ai",
-                color = MaterialTheme.colorScheme.primary, // Blue
                 apiKey = togetherApiKey,
                 onApiKeyChange = onTogetherApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Together.ai")
@@ -331,7 +332,6 @@ private fun ApiConfigurationSection(
             ProviderAPIKeyView(
                 provider = "OpenAI",
                 description = "Get your API key from platform.openai.com",
-                color = StatusColors.success, // Green
                 apiKey = openaiApiKey,
                 onApiKeyChange = onOpenaiApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("OpenAI")
@@ -341,7 +341,6 @@ private fun ApiConfigurationSection(
             ProviderAPIKeyView(
                 provider = "Anthropic",
                 description = "Get your API key from console.anthropic.com",
-                color = Color(0xFF9C27B0), // Purple
                 apiKey = anthropicApiKey,
                 onApiKeyChange = onAnthropicApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Anthropic")
@@ -351,7 +350,6 @@ private fun ApiConfigurationSection(
             ProviderAPIKeyView(
                 provider = "Google AI",
                 description = "Get your API key from aistudio.google.com/apikey",
-                color = Color(0xFFEA4335), // Google Red
                 apiKey = googleApiKey,
                 onApiKeyChange = onGoogleApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("Google AI")
@@ -361,7 +359,6 @@ private fun ApiConfigurationSection(
             ProviderAPIKeyView(
                 provider = "xAI",
                 description = "Get your API key from console.x.ai",
-                color = Color(0xFFFF6B35), // xAI Orange
                 apiKey = xaiApiKey,
                 onApiKeyChange = onXaiApiKeyChange,
                 isConfigured = viewModel.isProviderConfigured("xAI")
@@ -376,103 +373,67 @@ private fun ApiConfigurationSection(
     }
 }
 
+/**
+ * One provider: name and status, the key field, where to get a key. Plain rows
+ * like the iOS grouped list; no per-provider colours or glows.
+ */
 @Composable
 private fun ProviderAPIKeyView(
     provider: String,
     description: String,
-    color: Color,
     apiKey: String,
     onApiKeyChange: (String) -> Unit,
-    isConfigured: Boolean
+    isConfigured: Boolean,
+    optional: Boolean = false
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .neonCardGlow(color),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "$provider API Key",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                provider,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            
-            val keyboardController = LocalSoftwareKeyboardController.current
-
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = onApiKeyChange,
-                placeholder = { Text("Enter your $provider API key") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .neonInputGlow(color),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { keyboardController?.hide() }
-                ),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = color,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    cursorColor = color
-                )
-            )
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (isConfigured) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Configured",
-                            tint = color,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            "Configured",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = color
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = "API key required",
-                            tint = StatusColors.warning, // Orange
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            "API key required",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = StatusColors.warning
-                        )
-                    }
-                }
+            if (optional) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Optional", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                if (isConfigured) Icons.Default.CheckCircle else Icons.Outlined.Circle,
+                contentDescription = null,
+                tint = if (isConfigured) StatusColors.success else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                if (isConfigured) "Configured" else "Not set",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isConfigured) StatusColors.success else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+
+        TextField(
+            value = apiKey,
+            onValueChange = onApiKeyChange,
+            placeholder = { Text("Paste your $provider key") },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.background,
+                unfocusedContainerColor = MaterialTheme.colorScheme.background,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -481,96 +442,14 @@ private fun CodeSandboxAPIKeyView(
     apiKey: String,
     onApiKeyChange: (String) -> Unit
 ) {
-    val cardColor = StatusColors.warning // Orange
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .neonCardGlow(cardColor),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, cardColor)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "CodeSandbox API Key (Optional)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            val keyboardController = LocalSoftwareKeyboardController.current
-
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = onApiKeyChange,
-                placeholder = { Text("Enter your CodeSandbox API key") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .neonInputGlow(cardColor),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { keyboardController?.hide() }
-                ),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = cardColor,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    cursorColor = cardColor
-                )
-            )
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Enables advanced CodeSandbox features and deployment",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (apiKey.isNotEmpty()) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Configured",
-                            tint = StatusColors.warning,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            "Configured",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = StatusColors.warning
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = "Optional",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            "Optional - basic features work without API key",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-        }
-    }
+    ProviderAPIKeyView(
+        provider = "CodeSandbox",
+        description = "Adds deployment features. React scenes build without it.",
+        apiKey = apiKey,
+        onApiKeyChange = onApiKeyChange,
+        isConfigured = apiKey.isNotBlank(),
+        optional = true
+    )
 }
 
 @Composable
@@ -1708,19 +1587,13 @@ private fun SettingsSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                icon?.let {
-                    Icon(
-                        it,
-                        contentDescription = title,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                // Quiet group header, like the iOS grouped list. The icon is
+                // kept in the signature but no longer drawn.
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

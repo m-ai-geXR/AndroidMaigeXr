@@ -1,5 +1,11 @@
 package com.xraiassistant.ui.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -163,6 +169,9 @@ private fun buildStyledText(text: String) = buildAnnotatedString {
  * - Copy button with feedback
  * - Horizontal scrolling
  */
+/** Code longer than this collapses to a preview, so a demo does not fill the screen. */
+private const val COLLAPSED_LINES = 12
+
 @Composable
 fun CodeBlock(
     code: String,
@@ -171,83 +180,118 @@ fun CodeBlock(
 ) {
     val context = LocalContext.current
     var showCopied by remember { mutableStateOf(false) }
+    var expanded by remember(code) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    val lines = remember(code) { code.lines() }
+    val isLong = lines.size > COLLAPSED_LINES
+    val shown = if (isLong && !expanded) lines.take(COLLAPSED_LINES).joinToString("\n") else code
+    val codeBackground = Color(0xFF14191F)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                color = Color(0xFF1E1E1E), // Dark background matching iOS
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(0.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(codeBackground)
     ) {
-        // Header with language label and copy button
+        // Header: language on the left, a quiet copy button on the right.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF2D3748)) // Darker header
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .background(Color(0xFF1C222B))
+                .padding(start = 12.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Language label
-            if (language != null) {
-                Text(
-                    text = language.uppercase(),
-                    color = Color(0xFF60A5FA), // Blue color matching iOS
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-            } else {
-                Spacer(modifier = Modifier.width(1.dp))
-            }
+            Text(
+                text = language?.uppercase().orEmpty(),
+                color = Color.White.copy(alpha = 0.55f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.6.sp
+            )
 
-            // Copy button
-            IconButton(
-                onClick = {
-                    copyToClipboard(context, code)
-                    showCopied = true
-                    scope.launch {
-                        delay(2000)
-                        showCopied = false
+            Row(
+                modifier = Modifier
+                    .height(26.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(Color.White.copy(alpha = if (showCopied) 0.18f else 0.10f))
+                    .clickable(onClickLabel = "Copy code") {
+                        copyToClipboard(context, code)
+                        showCopied = true
+                        scope.launch {
+                            delay(2000)
+                            showCopied = false
+                        }
                     }
-                },
-                modifier = Modifier.size(32.dp)
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (showCopied) {
-                    Text(
-                        text = "Copied!",
-                        color = Color(0xFF34D399), // Green success color
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copy code",
-                        tint = Color(0xFFE0E0E0),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Icon(
+                    imageVector = if (showCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = if (showCopied) "Copied" else "Copy",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
 
-        // Code content with syntax highlighting
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(12.dp)
-        ) {
-            Text(
-                text = remember(code, language) { highlightSyntax(code, language) },
-                color = Color(0xFFE0E0E0),
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Monospace,
-                lineHeight = 20.sp
-            )
+        // Code, with long blocks collapsed behind a fade until expanded.
+        Box {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = remember(shown, language) { highlightSyntax(shown, language) },
+                    color = Color(0xFFE0E0E0),
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 20.sp
+                )
+            }
+            if (isLong && !expanded) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(Brush.verticalGradient(listOf(codeBackground.copy(alpha = 0f), codeBackground)))
+                )
+            }
+        }
+
+        if (isLong) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClickLabel = if (expanded) "Collapse code" else "Expand code") { expanded = !expanded }
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (expanded) "Show less" else "Show all ${lines.size} lines",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }

@@ -173,10 +173,11 @@ private fun ConversationRow(
 ) {
     val conversation = summary.conversation
     // Name the row after the scene when the reply named it; prompts make poor titles.
-    val title = remember(summary.firstReply, conversation.title) {
-        FavoriteTitle.fromProse(summary.firstReply) ?: conversation.title
+    val sceneTitle = remember(summary.firstReply) { FavoriteTitle.fromProse(summary.firstReply) }
+    val title = sceneTitle ?: conversation.title
+    val preview = remember(summary.firstReply, sceneTitle) {
+        MessagePreview.from(summary.firstReply, droppingTitle = sceneTitle)
     }
-    val preview = remember(summary.firstReply) { MessagePreview.from(summary.firstReply) }
     val updated = remember(conversation.updatedAt) {
         DateUtils.getRelativeTimeSpanString(
             conversation.updatedAt,

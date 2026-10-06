@@ -1,6 +1,8 @@
 package com.xraiassistant.ui.components
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.util.Base64
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -28,6 +30,21 @@ fun rememberBase64Thumbnail(base64: String?): State<ImageBitmap?> =
         value = withContext(Dispatchers.Default) { decodeThumbnail(base64) }
     }
 
+/**
+ * True when the image is essentially one flat dark colour. A scene captured before
+ * its canvas drew anything comes back black; the placeholder reads better.
+ */
+private fun Bitmap.isBlank(): Boolean {
+    val steps = 6
+    var brightest = 0
+    for (i in 1 until steps) for (j in 1 until steps) {
+        val pixel = getPixel(width * i / steps, height * j / steps)
+        val luma = (299 * Color.red(pixel) + 587 * Color.green(pixel) + 114 * Color.blue(pixel)) / 1000
+        if (luma > brightest) brightest = luma
+    }
+    return brightest < 12
+}
+
 private fun decodeThumbnail(base64: String): ImageBitmap? = try {
     val bytes = Base64.decode(base64.substringAfter("base64,"), Base64.DEFAULT)
 
@@ -40,7 +57,9 @@ private fun decodeThumbnail(base64: String): ImageBitmap? = try {
     }
 
     val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        ?.takeUnless { it.isBlank() }
+        ?.asImageBitmap()
 } catch (e: Exception) {
     println("⚠️ Failed to decode thumbnail: ${e.message}")
     null
