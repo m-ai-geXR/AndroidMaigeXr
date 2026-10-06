@@ -166,15 +166,15 @@ fun SettingsScreen(
                                 viewModel.setAPIKey("xAI", xaiApiKey)
                                 viewModel.setAPIKey("CodeSandbox", codesandboxApiKey)
 
-                                // Update model settings
-                                viewModel.selectedModel = selectedModel
-                                viewModel.selectLibrary(selectedLibrary)
-                                viewModel.temperature = temperature
-                                viewModel.topP = topP
-                                viewModel.systemPrompt = systemPrompt
-
-                                // Save remaining settings
-                                viewModel.saveSettings()
+                                // Apply and save model settings in one step, so the
+                                // library switch cannot reset the prompt typed here.
+                                viewModel.applySettings(
+                                    model = selectedModel,
+                                    libraryId = selectedLibrary,
+                                    temperature = temperature,
+                                    topP = topP,
+                                    systemPrompt = systemPrompt
+                                )
 
                                 // Show success message
                                 settingsSaved = true

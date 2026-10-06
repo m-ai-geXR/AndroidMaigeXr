@@ -85,7 +85,16 @@ class ChatViewModel @Inject constructor(
     val selectedModelState: StateFlow<String> = _selectedModel.asStateFlow()
     var selectedModel: String
         get() = _selectedModel.value
-        set(value) { _selectedModel.value = value }
+        set(value) {
+            if (_selectedModel.value == value) return
+            _selectedModel.value = value
+            // Picks from the chat header are the user's choice too; keep them
+            // across launches instead of only when Settings is saved.
+            persistSettings()
+        }
+
+    /** True once saved settings are loaded; nothing is written back before then. */
+    private var settingsLoaded = false
 
     private val _temperature = MutableStateFlow(0.7f)
     var temperature: Float
@@ -960,7 +969,7 @@ class ChatViewModel @Inject constructor(
     }
 
     fun updateSelectedModel(modelId: String) {
-        _selectedModel.value = modelId
+        selectedModel = modelId
     }
 
     // MARK: - 3D Library Management
@@ -970,39 +979,47 @@ class ChatViewModel @Inject constructor(
      * Matches iOS selectLibrary() behavior
      */
     fun selectLibrary(libraryId: String) {
-        viewModelScope.launch {
-            val library = library3DRepository.getLibraryById(libraryId)
+        applyLibrary(libraryId, resetSystemPrompt = true)
+        persistSettings()
+    }
 
-            // Clear CodeSandbox URL when switching away from React Three Fiber
-            if (libraryId != "reactThreeFiber" && _sandboxUrl.value != null) {
-                _sandboxUrl.value = null
-                println("🧹 [selectLibrary] Cleared CodeSandbox URL when switching to ${library?.displayName}")
+    /**
+     * Switches library without touching storage. Synchronous on purpose: callers
+     * that restore a saved system prompt afterwards must not race a coroutine that
+     * resets it to the library default, which is how saved prompts were lost.
+     */
+    private fun applyLibrary(libraryId: String, resetSystemPrompt: Boolean) {
+        val library = library3DRepository.getLibraryById(libraryId)
+
+        // Clear CodeSandbox URL when switching away from React Three Fiber
+        if (libraryId != "reactThreeFiber" && _sandboxUrl.value != null) {
+            _sandboxUrl.value = null
+            println("🧹 [selectLibrary] Cleared CodeSandbox URL when switching to ${library?.displayName}")
+        }
+
+        _currentLibrary.value = library
+
+        library?.let {
+            // Update system prompt with library's default
+            if (resetSystemPrompt) _systemPrompt.value = it.systemPrompt
+
+            // Update welcome message if it exists
+            if (_messages.value.isNotEmpty()) {
+                val updatedMessages = _messages.value.toMutableList()
+                updatedMessages[0] = ChatMessage(
+                    id = updatedMessages[0].id,
+                    content = it.getWelcomeMessage(),
+                    isUser = false,
+                    timestamp = updatedMessages[0].timestamp,
+                    libraryId = it.id,  // FIXED: Preserve library ID
+                    isWelcomeMessage = true  // FIXED: Mark as welcome message
+                )
+                _messages.value = updatedMessages
+                println("📨 Updated welcome message: isWelcomeMessage=true, libraryId=${it.id}")
             }
 
-            _currentLibrary.value = library
-
-            library?.let {
-                // Update system prompt with library's default
-                _systemPrompt.value = it.systemPrompt
-
-                // Update welcome message if it exists
-                if (_messages.value.isNotEmpty()) {
-                    val updatedMessages = _messages.value.toMutableList()
-                    updatedMessages[0] = ChatMessage(
-                        id = updatedMessages[0].id,
-                        content = it.getWelcomeMessage(),
-                        isUser = false,
-                        timestamp = updatedMessages[0].timestamp,
-                        libraryId = it.id,  // FIXED: Preserve library ID
-                        isWelcomeMessage = true  // FIXED: Mark as welcome message
-                    )
-                    _messages.value = updatedMessages
-                    println("📨 Updated welcome message: isWelcomeMessage=true, libraryId=${it.id}")
-                }
-
-                println("🎯 Switched to ${it.displayName}")
-                println("📊 System prompt updated (${_systemPrompt.value.length} characters)")
-            }
+            println("🎯 Switched to ${it.displayName}")
+            println("📊 System prompt updated (${_systemPrompt.value.length} characters)")
         }
     }
 
@@ -1025,6 +1042,34 @@ class ChatViewModel @Inject constructor(
      * Save all settings to persistent storage
      * Equivalent to iOS saveSettings()
      */
+    /**
+     * Applies the values from the Settings screen in one step and saves them. The
+     * library is applied without resetting the system prompt, so the prompt the
+     * user typed is the one that is kept.
+     */
+    suspend fun applySettings(
+        model: String,
+        libraryId: String,
+        temperature: Float,
+        topP: Float,
+        systemPrompt: String
+    ) {
+        _selectedModel.value = model
+        if (libraryId.isNotEmpty() && libraryId != _currentLibrary.value?.id) {
+            applyLibrary(libraryId, resetSystemPrompt = false)
+        }
+        this.temperature = temperature
+        this.topP = topP
+        _systemPrompt.value = systemPrompt
+        saveSettings()
+    }
+
+    /** Saves current settings in the background, once saved ones have been loaded. */
+    private fun persistSettings() {
+        if (!settingsLoaded) return
+        viewModelScope.launch { saveSettings() }
+    }
+
     suspend fun saveSettings() {
         settingsRepository.saveSettings(
             selectedModel = _selectedModel.value,
@@ -1048,6 +1093,11 @@ class ChatViewModel @Inject constructor(
             _topP.value = settings.topP.toFloat()
             _effort.value = AIEffort.fromApiValue(settings.effort)
 
+            // Library first, so restoring it cannot overwrite the saved prompt below.
+            settings.selectedLibraryId?.let { libraryId ->
+                applyLibrary(libraryId, resetSystemPrompt = true)
+            }
+
             // Only override system prompt if a custom one was saved (matching iOS)
             if (settings.systemPrompt.isNotEmpty()) {
                 _systemPrompt.value = settings.systemPrompt
@@ -1056,10 +1106,7 @@ class ChatViewModel @Inject constructor(
                 println("📝 No custom system prompt saved, using library default (${_systemPrompt.value.length} characters)")
             }
 
-            settings.selectedLibraryId?.let { libraryId ->
-                selectLibrary(libraryId)
-            }
-
+            settingsLoaded = true
             println("✅ Settings loaded successfully")
         }
     }
