@@ -44,9 +44,20 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 
-# Keep data models
--keep class com.xrai.assistant.domain.model.** { *; }
--keep class com.xrai.assistant.data.remote.dto.** { *; }
+# Keep data models. The code lives under com.xraiassistant; the old rules named
+# com.xrai.assistant, which matched nothing. Moshi parses some of these through
+# KotlinJsonAdapterFactory (reflection), so their names and fields must survive.
+-keep class com.xraiassistant.data.models.** { *; }
+-keep class com.xraiassistant.data.local.entities.** { *; }
+-keep class com.xraiassistant.domain.models.** { *; }
+
+# Retrofit under R8 full mode (default since AGP 8): keep the generic signatures
+# that suspend service methods rely on, or calls fail at runtime with
+# "Response must include generic type".
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+-keep,allowobfuscation interface com.xraiassistant.data.remote.** { *; }
 
 # Keep Hilt generated classes
 -keep class * extends dagger.hilt.internal.GeneratedComponent { *; }

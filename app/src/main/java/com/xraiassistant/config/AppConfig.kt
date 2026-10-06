@@ -14,6 +14,13 @@ import com.xraiassistant.BuildConfig
 object AppConfig {
 
     // -------------------------------------------------------------------------
+    // Links
+    // -------------------------------------------------------------------------
+
+    /** Public privacy policy, required by both stores; set in app/build.gradle.kts. */
+    val PRIVACY_POLICY_URL: String get() = BuildConfig.PRIVACY_POLICY_URL
+
+    // -------------------------------------------------------------------------
     // Monetization
     // -------------------------------------------------------------------------
 
