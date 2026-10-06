@@ -1,256 +1,191 @@
 package com.xraiassistant.monetization
 
 import android.app.Activity
-import android.content.Context
 import android.util.Log
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.xraiassistant.config.AppConfig
-import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.launch
 
 /**
- * AdManager — centralized ad lifecycle controller.
- * Mirrors iOS AdManager.swift (singleton pattern, same reward types, same frequency logic).
- *
- * Manages:
- *  - Banner ads (returned as AdView for Compose AndroidView)
- *  - Interstitial ads with frequency capping (scene-count + time-based)
- *  - Rewarded video ads tied to premium feature unlocks
- *  - Premium user state (persisted in SharedPreferences)
+ * How often an interstitial may appear. Data rather than scattered [AppConfig]
+ * reads, so the rules can be stated and tested directly.
  */
-@Singleton
-class AdManager @Inject constructor(
-    @ApplicationContext private val context: Context
+data class AdPacing(
+    /** Scene runs that must happen before an interstitial is considered. */
+    val scenesBeforeInterstitial: Int,
+    /** Minimum time between two interstitials. */
+    val minimumIntervalMs: Long
 ) {
-    // -------------------------------------------------------------------------
-    // Reward types — mirrors iOS AdManager.RewardType enum
-    // -------------------------------------------------------------------------
-    enum class RewardType(val displayName: String) {
-        PREMIUM_MODEL_ACCESS("Premium AI Model Access"),
-        ADVANCED_EXPORT("Advanced Scene Export (GLB/FBX/USD)"),
-        CLOUD_SYNC("Cloud Sync — 24 hours"),
-        UNLIMITED_FAVORITES_24H("Unlimited Favorites — 24 hours")
+    companion object {
+        fun fromAppConfig() = AdPacing(
+            scenesBeforeInterstitial = AppConfig.scenesBeforeInterstitial,
+            minimumIntervalMs = AppConfig.interstitialMinIntervalSeconds * 1000L
+        )
     }
+}
 
-    // -------------------------------------------------------------------------
-    // State
-    // -------------------------------------------------------------------------
-    private val _isPremiumUser = MutableStateFlow(false)
-    val isPremiumUser: StateFlow<Boolean> = _isPremiumUser.asStateFlow()
+/**
+ * Decides whether an ad may appear, and how often. Not how to fetch one — that is
+ * the provider's job, behind [AdProvider]. Mirrors iOS AdManager.swift.
+ *
+ * This file must not import an ad SDK. [AdMobProvider] is the only place
+ * com.google.android.gms.ads appears; if that stops being true the abstraction
+ * has leaked.
+ *
+ * Three things live here rather than in a provider, because they must survive a
+ * network swap unchanged:
+ *
+ * 1. **Which provider to build.** Paid, consent-denied and ads-disabled all
+ *    collapse to [NoAdsProvider], so there is exactly one decision about
+ *    entitlement in the app.
+ * 2. **Pacing.** Scene counts and cooldowns.
+ * 3. **Restraint.** Never over a generation in flight, never over an error.
+ *
+ * Provided as a singleton by `MonetizationModule`. Call from the main thread.
+ */
+class AdManager(
+    private val entitlement: EntitlementSource,
+    private val scope: CoroutineScope,
+    private val adsEnabled: Boolean = AppConfig.adsEnabled,
+    private val pacing: AdPacing = AdPacing.fromAppConfig(),
+    private val buildProvider: (serveAds: Boolean) -> AdProvider,
+    private val now: () -> Long = System::currentTimeMillis,
+    private val log: (String) -> Unit = ::debugLog
+) {
+    /** True when a provider is live and may serve. */
+    private val _adsAreServing = MutableStateFlow(false)
+    val adsAreServing: StateFlow<Boolean> = _adsAreServing.asStateFlow()
 
-    private var interstitialAd: InterstitialAd? = null
-    private var rewardedAd: RewardedAd? = null
-    private var isLoadingInterstitial = false
-    private var isLoadingRewarded = false
+    private var provider: AdProvider = NoAdsProvider
+    private var consent = AdConsent.UNKNOWN
+    private var started = false
 
-    // Frequency tracking
-    private var sceneRunCount = 0
-    private var lastInterstitialShownMs = 0L
+    private var lastInterstitialAtMs: Long? = null
+    private var scenesSinceInterstitial = 0
+    private var generationInFlight = false
+    private var isShowingError = false
 
-    private val prefs by lazy {
-        context.getSharedPreferences("ad_prefs", Context.MODE_PRIVATE)
-    }
-
-    // -------------------------------------------------------------------------
-    // Initialization
-    // -------------------------------------------------------------------------
     init {
-        val savedPremium = prefs.getBoolean("is_premium", false)
-        _isPremiumUser.value = AppConfig.forcePremiumMode || savedPremium
-        if (AppConfig.adsEnabled) {
-            preloadInterstitial()
-            preloadRewardedAd()
+        // A purchase, restore or refund after launch swaps the provider. Changes
+        // before start() are ignored: rebuilding then would load ads before
+        // consent, and start() reads the current value anyway.
+        scope.launch {
+            entitlement.isEntitled.collect { entitled ->
+                if (started) {
+                    log(if (entitled) "entitled — ads off" else "entitlement state: not entitled")
+                    rebuildProvider()
+                }
+            }
         }
     }
 
-    // -------------------------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Lifecycle
+    // ---------------------------------------------------------------------
+
+    /**
+     * Start ads once consent has been resolved. Safe to call more than once.
+     * Nothing loads before this, and passing [AdConsent.UNKNOWN] keeps it that
+     * way: the consent decision gates the first request, not the first impression.
+     */
+    suspend fun start(consent: AdConsent) {
+        this.consent = consent
+        started = true
+        rebuildProvider()
+    }
+
+    /** The user revisited the privacy options form. */
+    suspend fun updateConsent(consent: AdConsent) {
+        if (consent == this.consent) return
+        this.consent = consent
+        rebuildProvider()
+    }
+
+    private suspend fun rebuildProvider() {
+        // The single decision about entitlement in the whole app.
+        val serveAds = adsEnabled && !entitlement.isEntitled.value && consent.allowsAds
+
+        provider = buildProvider(serveAds)
+        provider.initialize(consent)
+
+        _adsAreServing.value = provider.isAvailable
+        log("provider=${provider.name} serving=${provider.isAvailable} consent=$consent")
+
+        if (provider.isAvailable) provider.preload(AdFormat.INTERSTITIAL)
+    }
+
+    // ---------------------------------------------------------------------
     // Banner
-    // -------------------------------------------------------------------------
+    // ---------------------------------------------------------------------
+
+    /** The banner to place, or null when there is none. */
+    fun banner(): (@Composable (Modifier) -> Unit)? = provider.banner()
+
+    // ---------------------------------------------------------------------
+    // Restraint
+    // ---------------------------------------------------------------------
 
     /**
-     * Creates and loads a banner AdView.
-     * Called from AdBannerView composable via AndroidView factory.
+     * An interstitial landing on someone waiting on a slow reasoning model reads
+     * as a broken app, not as an ad. A flag rather than the iOS counter: Android
+     * has one generation at a time, driven by `ChatViewModel.isLoading`.
      */
-    fun createBannerAdView(): AdView {
-        return AdView(context).apply {
-            setAdSize(AdSize.BANNER)
-            adUnitId = AppConfig.admobBannerId
-            loadAd(AdRequest.Builder().build())
-            if (AppConfig.showAdDebugLogs) {
-                Log.d("AdManager", "Banner loading: $adUnitId")
-            }
-        }
+    fun setGenerationInFlight(inFlight: Boolean) {
+        generationInFlight = inFlight
     }
 
-    // -------------------------------------------------------------------------
-    // Interstitial
-    // -------------------------------------------------------------------------
-
-    fun preloadInterstitial() {
-        if (isLoadingInterstitial || interstitialAd != null) return
-        isLoadingInterstitial = true
-
-        InterstitialAd.load(
-            context,
-            AppConfig.admobInterstitialId,
-            AdRequest.Builder().build(),
-            object : InterstitialAdLoadCallback() {
-                override fun onAdLoaded(ad: InterstitialAd) {
-                    interstitialAd = ad
-                    isLoadingInterstitial = false
-                    log("Interstitial loaded")
-                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                        override fun onAdDismissedFullScreenContent() {
-                            interstitialAd = null
-                            preloadInterstitial()  // Preload next
-                        }
-                        override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                            interstitialAd = null
-                            preloadInterstitial()
-                            log("Interstitial failed to show: ${error.message}")
-                        }
-                        override fun onAdShowedFullScreenContent() {
-                            log("Interstitial shown")
-                        }
-                    }
-                }
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    interstitialAd = null
-                    isLoadingInterstitial = false
-                    log("Interstitial failed to load: ${error.message}")
-                }
-            }
-        )
+    /** An ad must never cover the explanation of what just went wrong. */
+    fun setErrorVisible(visible: Boolean) {
+        isShowingError = visible
     }
+
+    // ---------------------------------------------------------------------
+    // Interstitials
+    // ---------------------------------------------------------------------
 
     /**
-     * Called each time a scene is run. Shows an interstitial when:
-     *  - Ads are enabled AND user is not premium
-     *  - Scene run count >= scenesBeforeInterstitial threshold
-     *  - Enough time has passed since the last interstitial
+     * Count a completed scene, and show an interstitial if every pacing rule
+     * allows it. Called on the way out of a scene, so the user has already seen
+     * the result they asked for.
+     *
+     * @return true only when an ad was actually shown.
      */
-    fun onSceneRun(activity: Activity) {
-        if (!AppConfig.adsEnabled || _isPremiumUser.value) return
+    suspend fun onSceneRun(activity: Activity?): Boolean {
+        if (!_adsAreServing.value) return false
 
-        sceneRunCount++
-        val nowMs = System.currentTimeMillis()
-        val elapsedSeconds = (nowMs - lastInterstitialShownMs) / 1000
-
-        log("Scene run #$sceneRunCount, elapsed=${elapsedSeconds}s, threshold=${AppConfig.scenesBeforeInterstitial}")
-
-        if (sceneRunCount >= AppConfig.scenesBeforeInterstitial &&
-            elapsedSeconds >= AppConfig.interstitialMinIntervalSeconds
-        ) {
-            showInterstitial(activity)
-            sceneRunCount = 0
-            lastInterstitialShownMs = nowMs
+        scenesSinceInterstitial++
+        if (!isInterstitialDue()) {
+            log("scene $scenesSinceInterstitial/${pacing.scenesBeforeInterstitial}")
+            return false
         }
-    }
 
-    private fun showInterstitial(activity: Activity) {
-        val ad = interstitialAd
-        if (ad != null) {
-            log("Showing interstitial")
-            ad.show(activity)
+        val shown = provider.showInterstitial(activity)
+        if (shown) {
+            lastInterstitialAtMs = now()
+            scenesSinceInterstitial = 0
+            log("interstitial shown")
         } else {
-            log("Interstitial not ready — preloading")
-            preloadInterstitial()
+            // Not ready, or nothing to serve. The counter deliberately stays up
+            // so the next scene tries again instead of waiting a full cycle.
+            log("interstitial due but none available")
         }
+        return shown
     }
 
-    // -------------------------------------------------------------------------
-    // Rewarded
-    // -------------------------------------------------------------------------
-
-    fun preloadRewardedAd() {
-        if (isLoadingRewarded || rewardedAd != null) return
-        isLoadingRewarded = true
-
-        RewardedAd.load(
-            context,
-            AppConfig.admobRewardedId,
-            AdRequest.Builder().build(),
-            object : RewardedAdLoadCallback() {
-                override fun onAdLoaded(ad: RewardedAd) {
-                    rewardedAd = ad
-                    isLoadingRewarded = false
-                    log("Rewarded ad loaded")
-                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                        override fun onAdDismissedFullScreenContent() {
-                            rewardedAd = null
-                            preloadRewardedAd()
-                        }
-                        override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                            rewardedAd = null
-                            preloadRewardedAd()
-                            log("Rewarded failed to show: ${error.message}")
-                        }
-                    }
-                }
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    rewardedAd = null
-                    isLoadingRewarded = false
-                    log("Rewarded failed to load: ${error.message}")
-                }
-            }
-        )
+    /** Every rule that has to hold before an interstitial may appear. */
+    private fun isInterstitialDue(): Boolean {
+        if (generationInFlight || isShowingError) return false
+        if (scenesSinceInterstitial < pacing.scenesBeforeInterstitial) return false
+        val last = lastInterstitialAtMs ?: return true
+        return now() - last >= pacing.minimumIntervalMs
     }
+}
 
-    /**
-     * Shows a rewarded video ad. On successful reward, calls [onRewarded] with the [RewardType].
-     * If ad is not ready, calls [onNotReady] so the caller can show a message to the user.
-     */
-    fun showRewardedAd(
-        activity: Activity,
-        rewardType: RewardType,
-        onRewarded: (RewardType) -> Unit,
-        onNotReady: () -> Unit = {}
-    ) {
-        val ad = rewardedAd
-        if (ad == null) {
-            log("Rewarded ad not ready")
-            onNotReady()
-            preloadRewardedAd()
-            return
-        }
-        ad.show(activity) { _ ->
-            log("User earned reward: ${rewardType.displayName}")
-            onRewarded(rewardType)
-        }
-    }
-
-    val isRewardedAdReady: Boolean get() = rewardedAd != null
-
-    // -------------------------------------------------------------------------
-    // Premium
-    // -------------------------------------------------------------------------
-
-    fun setPremiumUser(isPremium: Boolean) {
-        _isPremiumUser.value = isPremium
-        prefs.edit().putBoolean("is_premium", isPremium).apply()
-        log("Premium user set to $isPremium")
-    }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    private fun log(message: String) {
-        if (AppConfig.showAdDebugLogs) {
-            Log.d("AdManager", message)
-        }
-    }
+private fun debugLog(message: String) {
+    if (AppConfig.showAdDebugLogs) Log.d("AdManager", message)
 }

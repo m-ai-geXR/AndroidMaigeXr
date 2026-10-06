@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,6 +31,7 @@ import com.xraiassistant.presentation.screens.FavoritesScreen
 import com.xraiassistant.presentation.screens.SettingsScreen
 import com.xraiassistant.ui.theme.*
 import com.xraiassistant.ui.viewmodels.ChatViewModel
+import kotlinx.coroutines.delay
 
 /**
  * App views for navigation
@@ -60,6 +62,27 @@ fun MainScreen(
 
     // Settings bottom sheet
     val settingsBottomSheetState = rememberModalBottomSheetState()
+
+    // Ads: restraint signals and the one interstitial trigger.
+    val activity = LocalContext.current as? android.app.Activity
+    val isGenerating by chatViewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by chatViewModel.errorMessage.collectAsStateWithLifecycle()
+    LaunchedEffect(isGenerating) { adManager.setGenerationInFlight(isGenerating) }
+    LaunchedEffect(errorMessage) { adManager.setErrorVisible(errorMessage != null) }
+
+    // Interstitials only ever appear on the way out of a scene: the user has
+    // already seen the result they asked for. Watching the view state rather
+    // than one button catches every route out. The short wait lets the
+    // transition finish, and is cancelled if the user goes straight back.
+    var previousView by remember { mutableStateOf(uiState.currentView) }
+    LaunchedEffect(uiState.currentView) {
+        val leftScene = previousView == AppView.SCENE && uiState.currentView != AppView.SCENE
+        previousView = uiState.currentView
+        if (leftScene) {
+            delay(350)
+            adManager.onSceneRun(activity)
+        }
+    }
 
     // Setup code injection callbacks (matching iOS ContentView)
     LaunchedEffect(Unit) {
@@ -128,7 +151,6 @@ fun MainScreen(
             AppView.SCENE -> {
                 SceneScreen(
                     chatViewModel = chatViewModel,
-                    adManager = adManager,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)

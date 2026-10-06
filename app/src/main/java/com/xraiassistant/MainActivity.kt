@@ -17,7 +17,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.lifecycleScope
+import com.xraiassistant.config.AppConfig
+import com.xraiassistant.monetization.AdConsent
+import com.xraiassistant.monetization.AdConsentStore
 import com.xraiassistant.monetization.AdManager
+import com.xraiassistant.monetization.BillingEntitlement
+import kotlinx.coroutines.launch
 import com.xraiassistant.ui.components.SplashScreen
 import com.xraiassistant.ui.screens.MainScreen
 import com.xraiassistant.ui.theme.AppearanceStore
@@ -41,6 +47,10 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var adManager: AdManager
+    @Inject lateinit var billing: BillingEntitlement
+    @Inject lateinit var consentStore: AdConsentStore
+
+    private var monetizationStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("XRAiAssistant", "MainActivity onCreate started")
@@ -88,6 +98,9 @@ class MainActivity : ComponentActivity() {
                                 onDismiss = {
                                     Log.d("XRAiAssistant", "Splash screen dismissed")
                                     showSplash = false
+                                    // After the splash, so the consent form is
+                                    // presented over the app rather than over it.
+                                    startMonetization()
                                 }
                             )
                         }
@@ -99,6 +112,26 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e("XRAiAssistant", "Error in MainActivity onCreate", e)
             throw e
+        }
+    }
+
+    /**
+     * Entitlement first, then consent, then ads. A user who has paid is never
+     * shown a consent form for ads they will not be served; for them consent
+     * stays UNKNOWN, which is not the same as being refused.
+     */
+    private fun startMonetization() {
+        if (monetizationStarted) return
+        monetizationStarted = true
+
+        lifecycleScope.launch {
+            billing.start()
+
+            if (!AppConfig.adsEnabled || billing.isEntitled.value) {
+                adManager.start(AdConsent.UNKNOWN)
+                return@launch
+            }
+            adManager.start(consentStore.resolve(this@MainActivity))
         }
     }
 }
