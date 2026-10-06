@@ -1,34 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-        Network Security Configuration for XRAiAssistant
+        HTTPS only, validated against the system certificate authorities.
 
-        This configuration ensures proper SSL/TLS certificate validation
-        for API calls to Together.ai, OpenAI, and Anthropic.
+        User-installed certificates are trusted in debug builds only (debug-overrides),
+        so a proxy can inspect traffic during development. Release builds ignore them:
+        trusting user CAs in release lets anyone who can install a certificate on the
+        device read API keys and prompts.
     -->
-
-    <!-- Base configuration for all connections -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
-            <!-- Trust system certificate authorities (includes root CAs for major APIs) -->
             <certificates src="system" />
-            <!-- Also trust user-installed certificates (useful for debugging with proxies) -->
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
 
-    <!--
-        Domain-specific configurations for AI providers
-        Ensures these domains always use HTTPS with proper certificate validation
-    -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">api.together.xyz</domain>
-        <domain includeSubdomains="true">api.openai.com</domain>
-        <domain includeSubdomains="true">api.anthropic.com</domain>
-        <domain includeSubdomains="true">codesandbox.io</domain>
+    <debug-overrides>
         <trust-anchors>
-            <certificates src="system" />
             <certificates src="user" />
         </trust-anchors>
-    </domain-config>
+    </debug-overrides>
 </network-security-config>

@@ -574,18 +574,26 @@ private fun PlaygroundWebView(
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
-                    allowFileAccess = true
-                    allowContentAccess = true
+                    // Scene code (often AI-written) runs here beside the JS bridge, so
+                    // it gets no file or content access. The file:///android_asset/
+                    // helper scripts did not load from this about:blank page even
+                    // with access on (scene export is broken for that reason; serve
+                    // them through WebViewAssetLoader to fix it), so nothing relies
+                    // on file access.
+                    allowFileAccess = false
+                    allowContentAccess = false
                     setSupportZoom(true)
                     builtInZoomControls = false
                     displayZoomControls = false
                     mediaPlaybackRequiresUserGesture = false
-                    allowFileAccessFromFileURLs = true
-                    allowUniversalAccessFromFileURLs = true
+                    allowFileAccessFromFileURLs = false
+                    allowUniversalAccessFromFileURLs = false
                     databaseEnabled = true
 
-                    // Enable mixed content for CodeSandbox embeds
-                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    // HTTPS pages may not pull in plain-HTTP scripts. Every CDN and the
+                    // CodeSandbox embed are HTTPS; compatibility mode only lets
+                    // passive content such as images through.
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
 
                     // Performance optimizations for heavy content like CodeSandbox
                     cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
