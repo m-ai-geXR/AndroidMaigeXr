@@ -9,7 +9,15 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import com.xraiassistant.ui.components.MaigeXRWordmark
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +35,7 @@ import com.xraiassistant.monetization.AdManager
 import com.xraiassistant.ui.components.ChatScreen
 import com.xraiassistant.ui.components.SceneScreen
 import com.xraiassistant.presentation.screens.ConversationHistoryScreen
+import com.xraiassistant.presentation.screens.ExamplesScreen
 import com.xraiassistant.presentation.screens.FavoritesScreen
 import com.xraiassistant.presentation.screens.SettingsScreen
 import com.xraiassistant.ui.theme.*
@@ -143,6 +152,8 @@ fun MainScreen(
                         // Switch to Scene tab when "Run Scene" button is clicked
                         chatViewModel.updateCurrentView(AppView.SCENE)
                     },
+                    onOpenHistory = { chatViewModel.updateCurrentView(AppView.HISTORY) },
+                    onOpenFavorites = { chatViewModel.updateCurrentView(AppView.FAVORITES) },
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
@@ -157,19 +168,18 @@ fun MainScreen(
                 )
             }
             AppView.EXAMPLES -> {
-                // Placeholder for Examples screen
-                Box(
+                val library by chatViewModel.currentLibrary.collectAsStateWithLifecycle()
+                ExamplesScreen(
+                    library = library ?: chatViewModel.getCurrentLibrary(),
+                    onExampleSelected = { example ->
+                        // Same path as Run Scene on a message: load the code, show the scene.
+                        chatViewModel.runCodeFromMessage(example.code, (library ?: chatViewModel.getCurrentLibrary()).id)
+                        chatViewModel.updateCurrentView(AppView.SCENE)
+                    },
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Examples Screen\n(Coming Soon)",
-                        style = MaterialTheme.typography.headlineMedium,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .padding(paddingValues)
+                )
             }
             AppView.HISTORY -> {
                 ConversationHistoryScreen(
@@ -258,162 +268,67 @@ private fun MainBottomNavigation(
         )
 
         NavigationBar(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,  // Transparent for glass effect
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.glassCard(
-                backgroundColor = MaterialTheme.colorScheme.background,  // 25% opacity glass
-                blurRadius = 8.dp,
-                borderGlow = null,
-                shape = RoundedCornerShape(0.dp)
-            )
+            containerColor = MaterialTheme.colorScheme.background,
+            tonalElevation = 0.dp
         ) {
-        // Code Tab (Chat)
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Outlined.Code,
-                    contentDescription = stringResource(R.string.nav_chat),
-                    tint = if (currentView == AppView.CHAT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            label = {
-                Text(
-                    stringResource(R.string.nav_chat),
-                    color = if (currentView == AppView.CHAT) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            selected = currentView == AppView.CHAT,
-            onClick = { onViewChange(AppView.CHAT) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        )
-        
-        // Run Scene Tab
-        NavigationBarItem(
-            icon = {
-                Box {
-                    Icon(
-                        Icons.Filled.PlayArrow,
-                        contentDescription = stringResource(R.string.nav_scene),
-                        tint = if (currentView == AppView.SCENE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            // Same four tabs as iOS. History and Favorites live in the chat
+            // header, so the chat tab stays selected while they are open.
+            val chatSelected = currentView == AppView.CHAT ||
+                currentView == AppView.HISTORY || currentView == AppView.FAVORITES
+
+            NavigationBarItem(
+                selected = chatSelected,
+                onClick = { onViewChange(AppView.CHAT) },
+                icon = { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) },
+                label = {
+                    MaigeXRWordmark(
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                        muted = !chatSelected
                     )
-
-                    // Notification dot for generated code with neon glow
-                    if (hasGeneratedCode && currentView != AppView.SCENE) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    CircleShape
-                                )
-                                .offset(x = 8.dp, y = (-8).dp)
-                        )
+                },
+                modifier = Modifier.semantics { contentDescription = "Chat" },
+                colors = navItemColors()
+            )
+            NavigationBarItem(
+                selected = currentView == AppView.SCENE,
+                onClick = { onViewChange(AppView.SCENE) },
+                icon = {
+                    BadgedBox(badge = {
+                        // New code waiting in the scene.
+                        if (hasGeneratedCode && currentView != AppView.SCENE) Badge()
+                    }) {
+                        Icon(Icons.Outlined.PlayCircle, contentDescription = null)
                     }
-                }
-            },
-            label = {
-                Text(
-                    stringResource(R.string.nav_scene),
-                    color = if (currentView == AppView.SCENE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            selected = currentView == AppView.SCENE,
-            onClick = { onViewChange(AppView.SCENE) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                label = { Text(stringResource(R.string.nav_scene)) },
+                colors = navItemColors()
             )
-        )
-
-        // History Tab
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Filled.History,
-                    contentDescription = "History",
-                    tint = if (currentView == AppView.HISTORY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            label = {
-                Text(
-                    "History",
-                    color = if (currentView == AppView.HISTORY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            selected = currentView == AppView.HISTORY,
-            onClick = { onViewChange(AppView.HISTORY) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            NavigationBarItem(
+                selected = currentView == AppView.EXAMPLES,
+                onClick = { onViewChange(AppView.EXAMPLES) },
+                icon = { Icon(Icons.Outlined.AutoStories, contentDescription = null) },
+                label = { Text("Examples") },
+                colors = navItemColors()
             )
-        )
-
-        // Favorites Tab
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Filled.Star,
-                    contentDescription = "Favorites",
-                    tint = if (currentView == AppView.FAVORITES) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            label = {
-                Text(
-                    "Favorites",
-                    color = if (currentView == AppView.FAVORITES) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            selected = currentView == AppView.FAVORITES,
-            onClick = { onViewChange(AppView.FAVORITES) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary,
-                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            NavigationBarItem(
+                selected = false, // Settings opens as a sheet, not a view
+                onClick = onSettingsClick,
+                icon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
+                label = { Text(stringResource(R.string.nav_settings)) },
+                colors = navItemColors()
             )
-        )
-
-        // Settings Tab
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Filled.Settings,
-                    contentDescription = stringResource(R.string.nav_settings),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            label = {
-                Text(
-                    stringResource(R.string.nav_settings),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            selected = false, // Settings is a modal, not a view
-            onClick = onSettingsClick,
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.secondary,
-                selectedTextColor = MaterialTheme.colorScheme.secondary,
-                indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        )
         }
     }
 }
+
+@Composable
+private fun navItemColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = MaterialTheme.colorScheme.primary,
+    selectedTextColor = MaterialTheme.colorScheme.primary,
+    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+)
 
 /**
  * Code injection loading overlay

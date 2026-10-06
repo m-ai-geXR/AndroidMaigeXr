@@ -54,6 +54,8 @@ import androidx.compose.ui.text.withStyle
 fun ChatScreen(
     chatViewModel: ChatViewModel,
     onNavigateToScene: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
+    onOpenFavorites: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val messages by chatViewModel.messages.collectAsStateWithLifecycle()
@@ -106,7 +108,9 @@ fun ChatScreen(
             chatViewModel = chatViewModel,
             selectedModel = selectedModel,
             currentLibrary = currentLibrary,
-            isLoading = isLoading
+            isLoading = isLoading,
+            onOpenHistory = onOpenHistory,
+            onOpenFavorites = onOpenFavorites
         )
         
         // Messages list
@@ -232,8 +236,11 @@ private fun ChatHeader(
     chatViewModel: ChatViewModel,
     selectedModel: String,
     currentLibrary: Library3D?,
-    isLoading: Boolean
+    isLoading: Boolean,
+    onOpenHistory: () -> Unit,
+    onOpenFavorites: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth()
@@ -244,38 +251,46 @@ private fun ChatHeader(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-            // Top row with title and loading indicator
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                MaigeXRAvatar(size = 32.dp)
-                Spacer(modifier = Modifier.width(10.dp))
-                // Brand wordmark: only the {ai} segment is cobalt, the rest
-                // takes the foreground colour. See brand/brand.json.
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.onBackground)) {
-                            append("m")
+            // Top bar, laid out like the iOS chat toolbar: History on the left,
+            // the brand centred, Favorites and more options on the right.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                IconButton(onClick = onOpenHistory, modifier = Modifier.align(Alignment.CenterStart)) {
+                    Icon(Icons.Default.History, contentDescription = "History")
+                }
+                Row(
+                    modifier = Modifier.align(Alignment.Center),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MaigeXRAvatar(size = 26.dp)
+                    MaigeXRWordmark(style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold))
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+                    IconButton(onClick = onOpenFavorites) {
+                        Icon(Icons.Default.StarBorder, contentDescription = "Favorites")
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
                         }
-                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                            append("{ai}")
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("New conversation") },
+                                leadingIcon = { Icon(Icons.Default.AddComment, contentDescription = null) },
+                                onClick = {
+                                    showMenu = false
+                                    chatViewModel.newConversation()
+                                }
+                            )
                         }
-                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.onBackground)) {
-                            append("geXR")
-                        }
-                    },
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    }
                 }
             }
 

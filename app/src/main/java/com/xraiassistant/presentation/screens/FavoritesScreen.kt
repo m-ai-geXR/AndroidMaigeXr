@@ -1,26 +1,21 @@
 package com.xraiassistant.presentation.screens
 
+import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,9 +25,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.xraiassistant.data.local.entities.FavoriteEntity
 import com.xraiassistant.data.repositories.FavoriteRepository
+import com.xraiassistant.ui.components.ListEmptyState
+import com.xraiassistant.ui.components.ListRow
+import com.xraiassistant.ui.components.ListSearchField
+import com.xraiassistant.ui.components.MetaPill
+import com.xraiassistant.ui.components.OverlayTopBar
 import com.xraiassistant.ui.components.PullToRefreshLayout
-import com.xraiassistant.ui.components.rememberBase64Thumbnail
-import com.xraiassistant.ui.theme.*
+import com.xraiassistant.ui.components.RowDivider
+import com.xraiassistant.ui.components.SceneThumbnail
+import com.xraiassistant.ui.components.SwipeToDeleteRow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,23 +47,16 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 import javax.inject.Inject
 
 /**
- * Favorites Screen
+ * Favorites
  *
- * Shows all bookmarked code snippets from AI responses.
- * Users can:
- * - View saved code favorites
- * - Load code into the scene
- * - Delete favorites
- * - Search by title or code content
- *
- * Matches iOS FavoritesScreen functionality
+ * Opened from the star in the chat header, like the iOS favorites sheet: search,
+ * one row per saved scene, tap to run it, swipe left to delete, Clear All in the
+ * overflow menu.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FavoritesScreen(
     onFavoriteSelected: (FavoriteEntity) -> Unit,
@@ -73,57 +67,38 @@ fun FavoritesScreen(
     // Null until the first load lands, so the empty state never flashes on open.
     val favorites by viewModel.favorites.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    var showClearDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Star,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text("Favorites")
+            OverlayTopBar(title = "Favorites", onClose = onNavigateBack) {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More options")
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Clear all favorites") },
+                            leadingIcon = { Icon(Icons.Filled.DeleteSweep, contentDescription = null) },
+                            enabled = !favorites.isNullOrEmpty(),
+                            onClick = {
+                                showMenu = false
+                                showClearDialog = true
+                            }
+                        )
                     }
                 }
-            )
+            }
         },
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Search bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search favorites...") },
-                leadingIcon = {
-                    Icon(Icons.Filled.Search, contentDescription = null)
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            ListSearchField(
+                query = searchQuery,
+                onQueryChange = viewModel::updateSearchQuery,
+                placeholder = "Search favorites"
             )
 
             PullToRefreshLayout(
@@ -135,240 +110,120 @@ fun FavoritesScreen(
                 // The empty state lives inside the list so the pull gesture still works.
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     if (loaded.isEmpty()) {
                         item(key = "empty") {
-                            FavoritesEmptyState(
-                                isSearching = searchQuery.isNotEmpty(),
+                            ListEmptyState(
+                                icon = Icons.Filled.StarBorder,
+                                title = if (searchQuery.isEmpty()) "No favorites yet" else "No matches",
+                                body = if (searchQuery.isEmpty())
+                                    "Tap the star on an AI reply with code to keep it here"
+                                else
+                                    "Try a different search term",
                                 modifier = Modifier.fillParentMaxSize()
                             )
                         }
                     }
 
-                    items(
-                        items = loaded,
-                        key = { it.id }
-                    ) { favorite ->
-                        FavoriteItem(
-                            favorite = favorite,
-                            onClick = { onFavoriteSelected(favorite) },
-                            onDelete = { viewModel.deleteFavorite(favorite.id) },
-                            modifier = Modifier.animateItemPlacement()
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FavoritesEmptyState(
-    isSearching: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                Icons.Filled.Star,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-            )
-            Text(
-                text = if (isSearching) "No Results Found" else "No Favorites Yet",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = if (isSearching)
-                    "Try a different search term"
-                else
-                    "Tap the star icon on AI code responses to save them here",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-/**
- * Individual favorite list item
- */
-@Composable
-private fun FavoriteItem(
-    favorite: FavoriteEntity,
-    onClick: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .glassCard(
-                backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                blurRadius = 10.dp,
-                borderGlow = MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(14.dp)
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Screenshot thumbnail (left side)
-            FavoriteThumbnail(
-                screenshotBase64 = favorite.screenshotBase64
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // Title
-                Text(
-                    text = favorite.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Code preview
-                Text(
-                    text = favorite.codeContent.take(100).replace("\n", " "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Metadata row
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Library chip
-                    favorite.libraryId?.let { libraryId ->
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(libraryId, style = MaterialTheme.typography.labelSmall) },
-                            modifier = Modifier.height(24.dp)
-                        )
-                    }
-
-                    // Model chip
-                    favorite.modelUsed?.let { model ->
-                        AssistChip(
-                            onClick = { },
-                            label = {
-                                Text(
-                                    text = model.take(15),
-                                    style = MaterialTheme.typography.labelSmall
+                    items(items = loaded, key = { it.id }) { favorite ->
+                        Column(modifier = Modifier.animateItemPlacement()) {
+                            SwipeToDeleteRow(
+                                deleteLabel = "Delete favorite",
+                                onDelete = { viewModel.deleteFavorite(favorite.id) }
+                            ) {
+                                FavoriteRow(
+                                    favorite = favorite,
+                                    onClick = { onFavoriteSelected(favorite) }
                                 )
-                            },
-                            modifier = Modifier.height(24.dp)
-                        )
+                            }
+                            RowDivider(startInset = 84.dp)
+                        }
                     }
                 }
-
-                // Timestamp
-                Text(
-                    text = dateFormat.format(Date(favorite.createdAt)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Delete button
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = "Delete favorite",
-                    tint = MaterialTheme.colorScheme.error
-                )
             }
         }
     }
 
-    // Delete confirmation dialog
-    if (showDeleteDialog) {
+    if (showClearDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Favorite?") },
-            text = { Text("This will remove the code snippet from your favorites.") },
+            onDismissRequest = { showClearDialog = false },
+            title = { Text("Clear all favorites?") },
+            text = { Text("This deletes every saved scene. This cannot be undone.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete()
-                        showDeleteDialog = false
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = {
+                    showClearDialog = false
+                    viewModel.clearAll()
+                }) {
+                    Text("Clear all", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showClearDialog = false }) { Text("Cancel") }
             }
         )
     }
 }
 
-/**
- * Favorite screenshot thumbnail
- * Decodes base64 image and displays it, or shows code icon placeholder
- */
 @Composable
-private fun FavoriteThumbnail(
-    screenshotBase64: String?,
-    modifier: Modifier = Modifier
+private fun FavoriteRow(
+    favorite: FavoriteEntity,
+    onClick: () -> Unit
 ) {
-    val bitmap = rememberBase64Thumbnail(screenshotBase64).value
+    val saved = remember(favorite.createdAt) {
+        DateUtils.getRelativeTimeSpanString(
+            favorite.createdAt,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE
+        ).toString()
+    }
+    val codePreview = remember(favorite.codeContent) {
+        favorite.codeContent.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("//") }
+            .take(3)
+            .joinToString("  ")
+    }
 
-    Box(
-        modifier = modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-            .neonGlow(MaterialTheme.colorScheme.primary, 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        if (bitmap != null) {
-            // Display the screenshot
-            // Decorative: the card's title already describes the favorite.
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+    ListRow(modifier = Modifier.clickable(onClick = onClick, onClickLabel = "Run scene")) {
+        SceneThumbnail(
+            screenshotBase64 = favorite.screenshotBase64,
+            placeholder = Icons.Filled.Code
+        )
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = favorite.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-        } else {
-            // Placeholder icon (code icon for favorites)
-            Icon(
-                Icons.Filled.Code,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                modifier = Modifier.size(40.dp)
+            Text(
+                text = codePreview,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 2.dp)
+            ) {
+                Text(
+                    text = listOfNotNull(saved, favorite.modelUsed).joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                favorite.libraryId?.let { MetaPill(it) }
+            }
         }
     }
 }
@@ -416,6 +271,10 @@ class FavoritesViewModel @Inject constructor(
 
     fun refresh() {
         refreshRequests.update { it + 1 }
+    }
+
+    fun clearAll() {
+        viewModelScope.launch { favoriteRepository.clearAllFavorites() }
     }
 
     fun deleteFavorite(id: String) {
