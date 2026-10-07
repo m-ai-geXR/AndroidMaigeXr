@@ -22,11 +22,11 @@ interface Library3D {
     val examples: List<CodeExample>  // Code examples for this library
 
     /**
-     * Generate welcome message with random example
-     * Matches iOS getWelcomeMessage() implementation
+     * Welcome message naming an example. Pass the example that Run demo and an
+     * empty Run Scene will play, so the message and the scene agree.
      */
-    fun getWelcomeMessage(): String {
-        if (examples.isEmpty()) {
+    fun getWelcomeMessage(example: CodeExample? = examples.randomOrNull()): String {
+        if (example == null) {
             return """
                 Welcome to $displayName!
 
@@ -35,12 +35,11 @@ interface Library3D {
             """.trimIndent()
         }
 
-        val randomExample = examples.random()
         return """
             Welcome to $displayName!
 
-            Try this example: ${randomExample.title}
-            ${randomExample.description}
+            Try this example: ${example.title}
+            ${example.description}
         """.trimIndent()
     }
 }
