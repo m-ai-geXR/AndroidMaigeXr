@@ -31,6 +31,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.xraiassistant.domain.errors.AIErrorClassifier
+import com.xraiassistant.domain.errors.InterruptedRequestQueue
+import com.xraiassistant.domain.errors.NetworkInterruption
 
 /**
  * UI State for Chat screen
@@ -254,8 +256,23 @@ class ChatViewModel @Inject constructor(
      *
      * Provides real-time feedback as AI generates response, matching iOS behavior.
      */
+    /** A request cut off by backgrounding or sleep, sent again when the app is back. */
+    private val interruptedRequests = InterruptedRequestQueue()
+    private var appInForeground = true
+
+    /** Called from the UI lifecycle: send any interrupted request once the app is in front. */
+    fun onAppForegroundChanged(inForeground: Boolean) {
+        appInForeground = inForeground
+        if (inForeground) interruptedRequests.resume()
+    }
+
     fun sendMessage(content: String, currentCode: String = "", threadParentId: String? = null) {
+        sendMessage(content, currentCode, threadParentId, isRetry = false)
+    }
+
+    private fun sendMessage(content: String, currentCode: String, threadParentId: String?, isRetry: Boolean) {
         if (content.isBlank()) return
+        val messagesBefore = _messages.value
 
         viewModelScope.launch {
             try {
@@ -373,6 +390,18 @@ class ChatViewModel @Inject constructor(
                 }
 
             } catch (e: Exception) {
+                if (!isRetry && e !is kotlinx.coroutines.CancellationException && NetworkInterruption.isInterruption(e)) {
+                    // The connection dropped (app backgrounded or device asleep).
+                    // Take back the half-made exchange and send it again once the
+                    // app is in front, instead of showing an error.
+                    Log.w("ChatViewModel", "Request interrupted (${e.message}); will send again")
+                    _messages.value = messagesBefore
+                    interruptedRequests.hold {
+                        sendMessage(content, currentCode, threadParentId, isRetry = true)
+                    }
+                    if (appInForeground) interruptedRequests.resume()
+                    return@launch
+                }
                 println("❌ ChatViewModel: Error in sendMessage")
                 println("   Error type: ${e.javaClass.simpleName}")
                 println("   Error message: ${e.message}")
