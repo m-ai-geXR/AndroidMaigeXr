@@ -137,6 +137,12 @@ class ChatViewModel @Inject constructor(
 
     // MARK: - Generated Code
     private val _lastGeneratedCode = MutableStateFlow("")
+
+    /** The example the welcome message names; Run demo and an empty Run Scene play it. */
+    private var welcomeExample: com.xraiassistant.domain.models.CodeExample? = null
+
+    /** Library the code in the scene was written for, to spot leftovers after a switch. */
+    private var lastCodeLibraryId: String? = null
     val lastGeneratedCode: StateFlow<String> = _lastGeneratedCode.asStateFlow()
 
     // The "AI code ready" notice under the chat. Raised when a response yields new
@@ -206,7 +212,8 @@ class ChatViewModel @Inject constructor(
         val defaultLibrary = library3DRepository.getDefaultLibrary()
         _currentLibrary.value = defaultLibrary
 
-        var welcomeContent = defaultLibrary.getWelcomeMessage()
+        welcomeExample = defaultLibrary.examples.randomOrNull()
+        var welcomeContent = defaultLibrary.getWelcomeMessage(welcomeExample)
 
         // Check if API key is configured
         val currentAPIKey = aiProviderRepository.getAPIKey("Together.ai")
@@ -756,6 +763,7 @@ class ChatViewModel @Inject constructor(
      */
     private fun injectCode(code: String, library: Library3D?) {
         _lastGeneratedCode.value = code
+        lastCodeLibraryId = library?.id
         _codeReadyNotice.value = true
 
         if (library?.requiresBuild == true) {
@@ -921,7 +929,7 @@ class ChatViewModel @Inject constructor(
         // Get a random example from the current library
         val examples = targetLibrary.examples
         if (examples.isNotEmpty()) {
-            val randomExample = examples.random()
+            val randomExample = welcomeExample?.takeIf { it in examples } ?: examples.random()
             println("✨ Selected random example: ${randomExample.title}")
 
             // Inject the example code
@@ -1000,6 +1008,8 @@ class ChatViewModel @Inject constructor(
         _currentLibrary.value = library
 
         library?.let {
+            welcomeExample = it.examples.randomOrNull()
+
             // Update system prompt with library's default
             if (resetSystemPrompt) _systemPrompt.value = it.systemPrompt
 
@@ -1008,7 +1018,7 @@ class ChatViewModel @Inject constructor(
                 val updatedMessages = _messages.value.toMutableList()
                 updatedMessages[0] = ChatMessage(
                     id = updatedMessages[0].id,
-                    content = it.getWelcomeMessage(),
+                    content = it.getWelcomeMessage(welcomeExample),
                     isUser = false,
                     timestamp = updatedMessages[0].timestamp,
                     libraryId = it.id,  // FIXED: Preserve library ID
@@ -1405,7 +1415,15 @@ class ChatViewModel @Inject constructor(
      */
     fun updateCurrentView(view: AppView) {
         _uiState.value = _uiState.value.copy(currentView = view)
-        if (view == AppView.SCENE) _codeReadyNotice.value = false
+        if (view == AppView.SCENE) {
+            _codeReadyNotice.value = false
+            // Nothing to show yet, or code left from another library (which that
+            // playground cannot run): play the welcome message's demo instead.
+            val library = _currentLibrary.value
+            if (library != null && (_lastGeneratedCode.value.isBlank() || lastCodeLibraryId != library.id)) {
+                loadRandomDemoExample(library.id)
+            }
+        }
     }
 
     fun dismissCodeReadyNotice() {
