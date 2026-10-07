@@ -24,7 +24,8 @@ class AIProviderRepositoryTest {
 
     private val service: AIProviderService = mockk()
     private val settingsDataStore: SettingsDataStore = mockk()
-    private val repository = AIProviderRepository(service, settingsDataStore)
+    private val localServerSettings: com.xraiassistant.data.local.LocalServerSettings = mockk(relaxed = true)
+    private val repository = AIProviderRepository(service, settingsDataStore, localServerSettings)
 
     private val image = AIImageContent(
         data = byteArrayOf(9, 8, 7),

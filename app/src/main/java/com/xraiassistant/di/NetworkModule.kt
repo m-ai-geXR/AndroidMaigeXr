@@ -11,6 +11,8 @@ import com.xraiassistant.data.remote.GeminiService
 import com.xraiassistant.data.remote.OpenAIService
 import com.xraiassistant.data.remote.TogetherAIService
 import com.xraiassistant.data.remote.XAIService
+import com.xraiassistant.data.remote.LocalLLMService
+import com.xraiassistant.domain.local.LocalServerConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -93,6 +95,16 @@ object NetworkModule {
             // that silence.
             .readTimeout(600, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
+            // Plain HTTP is allowed by the network security config only so the
+            // user's own model server on their network works (see Local in
+            // Settings). This keeps every other host on HTTPS.
+            .addInterceptor { chain ->
+                val url = chain.request().url
+                if (!url.isHttps && !LocalServerConfig.isLocalHost(url.host)) {
+                    throw java.io.IOException("Plain HTTP is only allowed to local network addresses: ${url.host}")
+                }
+                chain.proceed(chain.request())
+            }
 
         if (BuildConfig.DEBUG) {
             val keyInUrl = Regex("""([?&]key=)[^&\s]+""")
@@ -235,6 +247,16 @@ object NetworkModule {
     fun provideXAIService(
         @XAI retrofit: Retrofit
     ): XAIService = retrofit.create(XAIService::class.java)
+
+    /**
+     * The user's own model server. Calls pass a full URL, so any base works;
+     * the xAI Retrofit is reused for its client and converters.
+     */
+    @Provides
+    @Singleton
+    fun provideLocalLLMService(
+        @XAI retrofit: Retrofit
+    ): LocalLLMService = retrofit.create(LocalLLMService::class.java)
 
     /**
      * Retrofit for CodeSandbox

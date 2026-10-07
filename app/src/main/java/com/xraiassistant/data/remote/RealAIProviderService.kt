@@ -29,6 +29,8 @@ class RealAIProviderService @Inject constructor(
     private val anthropicService: AnthropicService,
     private val geminiService: GeminiService,
     private val xaiService: XAIService,
+    private val localLLMService: LocalLLMService,
+    private val localServerSettings: com.xraiassistant.data.local.LocalServerSettings,
     private val moshi: Moshi
 ) {
 
@@ -100,6 +102,10 @@ class RealAIProviderService @Inject constructor(
             }
             "xAI" -> {
                 streamXAI(apiKey, model, prompt, systemPrompt, temperature, topP, images)
+                    .collect { chunk -> emit(chunk) }
+            }
+            com.xraiassistant.domain.local.LocalServerConfig.PROVIDER -> {
+                streamLocal(apiKey, model, prompt, systemPrompt, temperature, topP)
                     .collect { chunk -> emit(chunk) }
             }
             else -> {
@@ -415,6 +421,42 @@ class RealAIProviderService @Inject constructor(
         parseServerSentEvents(response.body()!!).collect { chunk ->
             emit(chunk)
         }
+    }.flowOn(Dispatchers.IO)
+
+    /**
+     * Stream from the user's own OpenAI-compatible server (Settings > Local).
+     * The key is optional; images are not sent.
+     */
+    private suspend fun streamLocal(
+        apiKey: String,
+        model: String,
+        prompt: String,
+        systemPrompt: String,
+        temperature: Double,
+        topP: Double
+    ): Flow<String> = flow {
+        val url = localServerSettings.chatCompletionsUrl
+            ?: throw IllegalStateException("Local server address is not set. Add it in Settings.")
+        val messages = buildList<APIChatMessage> {
+            if (systemPrompt.isNotEmpty()) add(APIChatMessage(role = "system", content = systemPrompt))
+            add(APIChatMessage(role = "user", content = prompt))
+        }
+        val request = OpenAIRequest(
+            model = com.xraiassistant.domain.local.LocalServerConfig.serverModelName(model),
+            messages = messages,
+            temperature = temperature,
+            topP = topP,
+            stream = true,
+            maxTokens = 8192
+        )
+        val auth = apiKey.takeIf { it.isNotBlank() && it != "changeMe" }?.let { "Bearer $it" }
+        Log.d(TAG, "📡 Calling local model server")
+        val response = localLLMService.chatCompletion(url, auth, request)
+        if (!response.isSuccessful) {
+            val errorBody = response.errorBody()?.string()
+            throw Exception("Local server error: ${response.code()} - $errorBody")
+        }
+        parseServerSentEvents(response.body()!!).collect { chunk -> emit(chunk) }
     }.flowOn(Dispatchers.IO)
 
     /**
