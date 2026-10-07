@@ -69,6 +69,20 @@ fun MainScreen(
     val uiState by chatViewModel.uiState.collectAsStateWithLifecycle()
     val lastGeneratedCode by chatViewModel.lastGeneratedCode.collectAsStateWithLifecycle()
 
+    // A reply cut off while the app was in the background is sent again on return.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> chatViewModel.onAppForegroundChanged(true)
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> chatViewModel.onAppForegroundChanged(false)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Settings bottom sheet
     // Opens fully expanded: half height left Settings cramped on tablets.
     val settingsBottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
