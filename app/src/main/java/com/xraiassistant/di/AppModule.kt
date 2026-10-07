@@ -60,9 +60,10 @@ object AppModule {
     @Singleton
     fun provideAIProviderRepository(
         aiProviderService: AIProviderService,
-        settingsDataStore: SettingsDataStore
+        settingsDataStore: SettingsDataStore,
+        localServerSettings: com.xraiassistant.data.local.LocalServerSettings
     ): AIProviderRepository {
-        return AIProviderRepository(aiProviderService, settingsDataStore)
+        return AIProviderRepository(aiProviderService, settingsDataStore, localServerSettings)
     }
 
     // MARK: - Database Providers

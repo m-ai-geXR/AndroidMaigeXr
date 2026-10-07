@@ -17,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class AIProviderRepository @Inject constructor(
     private val aiProviderService: AIProviderService,
-    private val settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore,
+    private val localServerSettings: com.xraiassistant.data.local.LocalServerSettings
 ) {
     
     companion object {
@@ -27,7 +28,13 @@ class AIProviderRepository @Inject constructor(
         private const val PROVIDER_ANTHROPIC = "Anthropic"
         private const val PROVIDER_GOOGLE = "Google AI"
         private const val PROVIDER_XAI = "xAI"
+        private const val PROVIDER_LOCAL = com.xraiassistant.domain.local.LocalServerConfig.PROVIDER
     }
+
+    /** The user's own server model, listed under Local once address and model are set. */
+    fun localModel(): com.xraiassistant.data.models.AIModel? = localServerSettings.model()
+
+    val localServer: com.xraiassistant.data.local.LocalServerSettings get() = localServerSettings
     
     /**
      * Generate AI response using specified model and parameters (non-streaming)
@@ -77,7 +84,8 @@ class AIProviderRepository @Inject constructor(
         val provider = getProviderForModel(model)
         val apiKey = getAPIKeyForProvider(provider)
 
-        if (apiKey == DEFAULT_API_KEY) {
+        // A local server may not need a key; every other provider does.
+        if (apiKey == DEFAULT_API_KEY && provider != PROVIDER_LOCAL) {
             throw IllegalStateException("API key not configured for $provider")
         }
 
@@ -98,6 +106,7 @@ class AIProviderRepository @Inject constructor(
      * Check if provider is configured with valid API key
      */
     fun isProviderConfigured(provider: String): Boolean {
+        if (provider == PROVIDER_LOCAL) return localServerSettings.isConfigured
         val apiKey = getAPIKeyForProvider(provider)
         return apiKey != DEFAULT_API_KEY && apiKey.isNotBlank()
     }
@@ -152,6 +161,7 @@ class AIProviderRepository @Inject constructor(
      */
     private fun getProviderForModel(model: String): String {
         return when {
+            model.startsWith(com.xraiassistant.domain.local.LocalServerConfig.MODEL_PREFIX) -> PROVIDER_LOCAL
             model.startsWith("gpt-") -> PROVIDER_OPENAI
             model.startsWith("claude-") -> PROVIDER_ANTHROPIC
             model.startsWith("gemini-") -> PROVIDER_GOOGLE

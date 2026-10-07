@@ -1,5 +1,6 @@
 package com.xraiassistant.presentation.screens
 
+import com.xraiassistant.domain.local.LocalServerConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -85,6 +86,9 @@ fun SettingsScreen(
     var googleApiKey by remember { mutableStateOf("") }
     var xaiApiKey by remember { mutableStateOf("") }
     var codesandboxApiKey by remember { mutableStateOf("") }
+    var localServerUrl by remember { mutableStateOf("") }
+    var localModelName by remember { mutableStateOf("") }
+    var localApiKey by remember { mutableStateOf("") }
     var selectedModel by remember { mutableStateOf("") }
     var selectedLibrary by remember { mutableStateOf("") }
     var temperature by remember { mutableFloatStateOf(0.7f) }
@@ -108,6 +112,9 @@ fun SettingsScreen(
         googleApiKey = viewModel.getRawAPIKey("Google AI").let { if (it == UNSET_API_KEY) "" else it }
         xaiApiKey = viewModel.getRawAPIKey("xAI").let { if (it == UNSET_API_KEY) "" else it }
         codesandboxApiKey = viewModel.getRawAPIKey("CodeSandbox").let { if (it == UNSET_API_KEY) "" else it }
+        localServerUrl = viewModel.localServer.baseUrl
+        localModelName = viewModel.localServer.modelName
+        localApiKey = viewModel.getRawAPIKey(LocalServerConfig.PROVIDER).let { if (it == UNSET_API_KEY) "" else it }
         selectedLibrary = viewModel.currentLibraryId
         temperature = viewModel.temperature
         topP = viewModel.topP
@@ -165,6 +172,9 @@ fun SettingsScreen(
                                 viewModel.setAPIKey("Google AI", googleApiKey)
                                 viewModel.setAPIKey("xAI", xaiApiKey)
                                 viewModel.setAPIKey("CodeSandbox", codesandboxApiKey)
+                                viewModel.localServer.baseUrl = localServerUrl
+                                viewModel.localServer.modelName = localModelName
+                                viewModel.setAPIKey(LocalServerConfig.PROVIDER, localApiKey)
 
                                 // Apply and save model settings in one step, so the
                                 // library switch cannot reset the prompt typed here.
@@ -224,6 +234,15 @@ fun SettingsScreen(
                 codesandboxApiKey = codesandboxApiKey,
                 onCodesandboxApiKeyChange = { codesandboxApiKey = it },
                 viewModel = viewModel
+            )
+
+            LocalModelSection(
+                url = localServerUrl,
+                onUrlChange = { localServerUrl = it },
+                model = localModelName,
+                onModelChange = { localModelName = it },
+                apiKey = localApiKey,
+                onApiKeyChange = { localApiKey = it }
             )
             
             // Appearance Section
@@ -435,6 +454,79 @@ private fun ProviderAPIKeyView(
 
         Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+/**
+ * The user's own model server (Ollama, LM Studio, any OpenAI-compatible server).
+ * Once an address and model are saved, the model appears under Local in the
+ * model picker. The key is optional.
+ */
+@Composable
+private fun LocalModelSection(
+    url: String,
+    onUrlChange: (String) -> Unit,
+    model: String,
+    onModelChange: (String) -> Unit,
+    apiKey: String,
+    onApiKeyChange: (String) -> Unit
+) {
+    val ready = LocalServerConfig.chatCompletionsUrl(url) != null && model.isNotBlank()
+    SettingsSection(title = "Local Model", icon = Icons.Default.Computer) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Local server", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.weight(1f))
+                Icon(
+                    if (ready) Icons.Default.CheckCircle else Icons.Outlined.Circle,
+                    contentDescription = null,
+                    tint = if (ready) StatusColors.success else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(if (ready) "Configured" else "Not set", style = MaterialTheme.typography.labelMedium,
+                    color = if (ready) StatusColors.success else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            LocalField(url, onUrlChange, "Server address, e.g. http://192.168.1.20:11434", KeyboardType.Uri)
+            LocalField(model, onModelChange, "Model name, e.g. qwen2.5-coder:7b", KeyboardType.Ascii)
+            LocalField(apiKey, onApiKeyChange, "API key (optional)", KeyboardType.Password, secret = true)
+            Text(
+                "Use a model running on your own computer or network, such as Ollama or LM Studio. " +
+                    "Any server with an OpenAI-compatible API works. Save, then pick it under Local in the model menu.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocalField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    keyboardType: KeyboardType,
+    secret: Boolean = false
+) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = { Text(placeholder) },
+        modifier = Modifier.fillMaxWidth(),
+        visualTransformation = if (secret) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Done, autoCorrect = false),
+        keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+        singleLine = true,
+        shape = RoundedCornerShape(10.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.background,
+            unfocusedContainerColor = MaterialTheme.colorScheme.background,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            cursorColor = MaterialTheme.colorScheme.primary
+        )
+    )
 }
 
 @Composable

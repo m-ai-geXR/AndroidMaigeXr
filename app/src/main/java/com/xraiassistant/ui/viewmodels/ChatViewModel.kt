@@ -1352,14 +1352,20 @@ class ChatViewModel @Inject constructor(
         AIModels.ALL_MODELS.find { it.id == modelId }?.provider
 
     fun getModelDisplayName(modelId: String): String {
+        if (modelId.startsWith(com.xraiassistant.domain.local.LocalServerConfig.MODEL_PREFIX)) {
+            return com.xraiassistant.domain.local.LocalServerConfig.serverModelName(modelId)
+        }
         return AIModels.ALL_MODELS.find { it.id == modelId }?.displayName ?: modelId
     }
 
-    /**
-     * Get all available models grouped by provider
-     */
+    /** Address and model of the user's own server, edited in Settings. */
+    val localServer get() = aiProviderRepository.localServer
+
+    /** All available models grouped by provider, plus Local once it is set up. */
     val modelsByProvider: Map<String, List<AIModel>>
-        get() = AIModels.MODELS_BY_PROVIDER
+        get() = aiProviderRepository.localModel()
+            ?.let { AIModels.MODELS_BY_PROVIDER + (it.provider to listOf(it)) }
+            ?: AIModels.MODELS_BY_PROVIDER
     
     /**
      * Get all available models (flat list)

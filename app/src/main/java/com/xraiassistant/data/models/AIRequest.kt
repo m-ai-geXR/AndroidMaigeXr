@@ -25,7 +25,9 @@ data class TogetherAIRequest(
 
 @JsonClass(generateAdapter = true)
 data class TogetherAIResponse(
-    @Json(name = "id") val id: String,
+    // Optional: some OpenAI-compatible servers (local ones especially) omit it,
+    // and a required field made every streamed chunk fail to parse.
+    @Json(name = "id") val id: String? = null,
     @Json(name = "choices") val choices: List<Choice>,
     @Json(name = "usage") val usage: Usage? = null
 ) {
