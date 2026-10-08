@@ -510,20 +510,25 @@ private fun ChatInputField(
                             cursorColor = MaterialTheme.colorScheme.primary
                         )
                     )
-                    IconButton(onClick = onSend, enabled = canSend) {
+                    val replying by chatViewModel.isLoading.collectAsState()
+                    // While a reply is coming, the button stops it.
+                    IconButton(
+                        onClick = { if (replying) chatViewModel.stopReply() else onSend() },
+                        enabled = replying || canSend
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(Metrics.control)
                                 .clip(CircleShape)
                                 .background(
-                                    if (canSend) MaterialTheme.colorScheme.primary
+                                    if (replying || canSend) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Filled.ArrowUpward,
-                                contentDescription = "Send",
+                                if (replying) Icons.Filled.Stop else Icons.Filled.ArrowUpward,
+                                contentDescription = if (replying) "Stop reply" else "Send",
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
