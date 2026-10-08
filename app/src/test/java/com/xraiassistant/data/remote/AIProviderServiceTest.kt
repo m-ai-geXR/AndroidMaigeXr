@@ -74,7 +74,7 @@ class AIProviderServiceTest {
         service.generateResponseStream(
             provider = "Together.ai",
             apiKey = "together-test",
-            model = "deepseek-ai/DeepSeek-R1",
+            model = "deepseek-ai/DeepSeek-V4.1-Flash",
             prompt = "prompt",
             systemPrompt = "system",
             temperature = 0.7,
@@ -85,7 +85,7 @@ class AIProviderServiceTest {
             realService.generateResponseStream(
                 provider = "Together.ai",
                 apiKey = "together-test",
-                model = "deepseek-ai/DeepSeek-R1",
+                model = "deepseek-ai/DeepSeek-V4.1-Flash",
                 prompt = "prompt",
                 systemPrompt = "system",
                 temperature = 0.7,
@@ -138,7 +138,7 @@ class AIProviderServiceTest {
         service.generateResponse(
             provider = "Together.ai",
             apiKey = "together-test",
-            model = "deepseek-ai/DeepSeek-R1",
+            model = "deepseek-ai/DeepSeek-V4.1-Flash",
             prompt = "prompt",
             systemPrompt = "system",
             temperature = 0.7,

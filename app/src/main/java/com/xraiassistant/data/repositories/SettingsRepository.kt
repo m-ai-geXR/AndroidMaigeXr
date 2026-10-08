@@ -59,7 +59,7 @@ class SettingsRepository @Inject constructor(
  * App settings data class
  */
 data class AppSettings(
-    val selectedModel: String = AIModels.DEEPSEEK_R1_70B.id,
+    val selectedModel: String = com.xraiassistant.data.models.ModelMigrations.DEFAULT_MODEL,
     val temperature: Double = 0.7,
     val topP: Double = 0.9,
     val effort: String = AIEffort.HIGH.apiValue,

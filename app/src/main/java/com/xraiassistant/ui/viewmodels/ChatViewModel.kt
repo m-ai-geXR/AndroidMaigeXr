@@ -84,7 +84,7 @@ class ChatViewModel @Inject constructor(
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     // MARK: - AI Configuration
-    private val _selectedModel = MutableStateFlow(AIModels.DEEPSEEK_R1_70B.id)
+    private val _selectedModel = MutableStateFlow(com.xraiassistant.data.models.ModelMigrations.DEFAULT_MODEL)
     val selectedModelState: StateFlow<String> = _selectedModel.asStateFlow()
     var selectedModel: String
         get() = _selectedModel.value
@@ -1382,7 +1382,7 @@ class ChatViewModel @Inject constructor(
     private fun loadSettings() {
         viewModelScope.launch {
             val settings = settingsRepository.getSettings()
-            _selectedModel.value = settings.selectedModel
+            _selectedModel.value = com.xraiassistant.data.models.ModelMigrations.resolve(settings.selectedModel)
             _temperature.value = settings.temperature.toFloat()
             _topP.value = settings.topP.toFloat()
             _effort.value = AIEffort.fromApiValue(settings.effort)

@@ -17,6 +17,6 @@ class SamplingLimitsTest {
     @Test
     fun otherModelsKeepTheUsersValues() {
         assertEquals(0.9, SamplingLimits.topP(0.9, "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"), 0.0)
-        assertEquals(1.5, SamplingLimits.temperature(1.5, "Qwen/Qwen2.5-7B-Instruct-Turbo"), 0.0)
+        assertEquals(1.5, SamplingLimits.temperature(1.5, "Qwen/Qwen3.8-Flash"), 0.0)
     }
 }
