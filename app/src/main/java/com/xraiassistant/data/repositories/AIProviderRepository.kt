@@ -1,5 +1,6 @@
 package com.xraiassistant.data.repositories
 
+import com.xraiassistant.data.models.SamplingLimits
 import com.xraiassistant.data.remote.AIProviderService
 import com.xraiassistant.data.local.SettingsDataStore
 import com.xraiassistant.data.models.AIEffort
@@ -60,8 +61,8 @@ class AIProviderRepository @Inject constructor(
             model = model,
             prompt = prompt,
             systemPrompt = systemPrompt,
-            temperature = temperature,
-            topP = topP,
+            temperature = SamplingLimits.temperature(temperature, model),
+            topP = SamplingLimits.topP(topP, model),
             effort = effort
         )
     }
@@ -95,8 +96,8 @@ class AIProviderRepository @Inject constructor(
             model = model,
             prompt = prompt,
             systemPrompt = systemPrompt,
-            temperature = temperature,
-            topP = topP,
+            temperature = SamplingLimits.temperature(temperature, model),
+            topP = SamplingLimits.topP(topP, model),
             effort = effort,
             images = images
         )
