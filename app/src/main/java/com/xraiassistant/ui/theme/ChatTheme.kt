@@ -14,12 +14,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontFamily
 
 /**
  * Presets for the conversation canvas: its backdrop and how bubbles look.
- * Matches the iOS presets. Presets rather than free-form styling so every
- * option stays readable; dark presets darken only the message area.
+ * Matches the iOS presets. Each has a light and a dark palette and follows the
+ * app appearance (System, Light or Dark) like the rest of the UI. Text pairs
+ * meet WCAG AA (4.5:1); ChatThemeContrastTest checks them.
  */
 enum class ChatTheme(val storageValue: String, val displayName: String) {
     CLEAN("clean", "Clean"),
@@ -27,37 +29,17 @@ enum class ChatTheme(val storageValue: String, val displayName: String) {
     TERMINAL("terminal", "Terminal"),
     MIDNIGHT("midnight", "Midnight");
 
-    val isDark: Boolean get() = this != CLEAN
     val monospaced: Boolean get() = this == TERMINAL
 
-    /** Fixed bubble colours; null keeps the brand colour. */
-    val userBubble: Color? get() = when (this) {
-        NEON_GRID -> Color(0xFFA21CAF)
-        // Bright enough to read as an accent too: buttons share this colour.
-        TERMINAL -> Color(0xFF22C55E)
-        else -> null
-    }
-    val aiBubble: Color? get() = when (this) {
-        NEON_GRID -> Color.Black.copy(alpha = 0.55f)
-        TERMINAL -> Color(0xFF0A140C)
-        MIDNIGHT -> Color(0xFF141A33)
-        CLEAN -> null
-    }
-    val textColor: Color? get() = if (this == TERMINAL) Color(0xFFC8FFD9) else null
-
-    /** A thin outline gives bubbles an edge against busy backdrops. */
-    val bubbleStroke: Color get() = when (this) {
-        CLEAN -> Color(0x2E201E1D)
-        NEON_GRID -> Color(0x7322D3EE)
-        TERMINAL -> Color(0x5939FF88)
-        MIDNIGHT -> Color(0x14FFFFFF)
-    }
-
-    val swatch: List<Color> get() = when (this) {
-        CLEAN -> listOf(Color(0xFFF3F2F2), Color(0xFF2050E0))
-        NEON_GRID -> listOf(Color(0xFF1A0B2E), Color(0xFFA21CAF))
-        TERMINAL -> listOf(Color(0xFF050805), Color(0xFF39FF88))
-        MIDNIGHT -> listOf(Color(0xFF0B1026), Color(0xFF2050E0))
+    fun palette(dark: Boolean): ChatPalette = when (this) {
+        CLEAN -> if (!dark) ChatPalette(0xFF2050E0, 0xFFFFFFFF, 0xFFEAE9E9, 0xFF201E1D, 0x2E201E1D, 0xFFF3F2F2, 0xFFF3F2F2, 0x2E201E1D, 0xFF2050E0)
+                 else ChatPalette(0xFF3F6BF0, 0xFFFFFFFF, 0xFF151821, 0xFFF3F2F2, 0x2EF3F2F2, 0xFF0B0D12, 0xFF0B0D12, 0x1FF3F2F2, 0xFF7B9BFF)
+        NEON_GRID -> if (!dark) ChatPalette(0xFFA21CAF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF201E1D, 0x730891B2, 0xFFFAF0FF, 0xFFF3F2F2, 0x1F0891B2, 0xFFA21CAF)
+                 else ChatPalette(0xFFA21CAF, 0xFFFFFFFF, 0xFF14091F, 0xFFF3F2F2, 0x7322D3EE, 0xFF1A0B2E, 0xFF0B0D12, 0x1A22D3EE, 0xFFE879F9)
+        TERMINAL -> if (!dark) ChatPalette(0xFF166534, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF052E16, 0x6616A34A, 0xFFF2FAF4, 0xFFF2FAF4, 0x0F16A34A, 0xFF166534)
+                 else ChatPalette(0xFF0F3D1A, 0xFF7CFFB0, 0xFF0A140C, 0xFFC8FFD9, 0x5939FF88, 0xFF050805, 0xFF050805, 0x0A39FF88, 0xFF4ADE80)
+        MIDNIGHT -> if (!dark) ChatPalette(0xFF2050E0, 0xFFFFFFFF, 0xFFFFFFFF, 0xFF201E1D, 0x1F1E293B, 0xFFE9EDFB, 0xFFF3F2F2, 0x00000000, 0xFF2050E0)
+                 else ChatPalette(0xFF3F6BF0, 0xFFFFFFFF, 0xFF141A33, 0xFFF3F2F2, 0x14FFFFFF, 0xFF0B1026, 0xFF05070F, 0x00000000, 0xFF7B9BFF)
     }
 
     companion object {
@@ -65,29 +47,50 @@ enum class ChatTheme(val storageValue: String, val displayName: String) {
     }
 }
 
-/** The active chat theme, for bubble outlines deep in the message tree. */
-val LocalChatTheme = staticCompositionLocalOf { ChatTheme.CLEAN }
+/**
+ * One appearance of a chat preset, as 0xAARRGGBB values so contrast can be
+ * tested. [accent] colours links and buttons; it is separate from the sent
+ * bubble because on a dark backdrop no single colour can carry white text
+ * and also stand out as text itself.
+ */
+data class ChatPalette(
+    val userBubble: Long,
+    val userText: Long,
+    val aiBubble: Long,
+    val aiText: Long,
+    val stroke: Long,
+    val backdropTop: Long,
+    val backdropBottom: Long,
+    val pattern: Long,
+    val accent: Long
+)
+
+fun Long.asColor(): Color = Color(this.toInt())
+
+/** The active chat palette, for bubbles deep in the message tree. */
+val LocalChatPalette = staticCompositionLocalOf { ChatTheme.CLEAN.palette(dark = false) }
 
 /**
- * The message area in the chosen chat theme: its backdrop behind [content],
- * a colour scheme whose primary and surfaceVariant are the bubble colours, and
- * a monospaced face for Terminal.
+ * The message area in the chosen chat theme. Light or dark follows the app
+ * (read from the surrounding background), the accent and reply bubble come
+ * from the palette, and Terminal gets a monospaced face.
  */
 @Composable
 fun ChatThemeArea(theme: ChatTheme, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    val base = if (theme.isDark) BrandDarkColorScheme else MaterialTheme.colorScheme
+    val base = MaterialTheme.colorScheme
+    val dark = base.background.luminance() < 0.5f
+    val palette = theme.palette(dark)
     val scheme = base.copy(
-        primary = theme.userBubble ?: base.primary,
-        surfaceVariant = theme.aiBubble ?: base.surfaceVariant,
-        onPrimary = if (theme == ChatTheme.TERMINAL) Color.Black else base.onPrimary,
-        onSurface = theme.textColor ?: base.onSurface,
-        onSurfaceVariant = theme.textColor ?: base.onSurfaceVariant
+        primary = palette.accent.asColor(),
+        onPrimary = if (dark) Color.Black else Color.White,
+        surfaceVariant = palette.aiBubble.asColor(),
+        onSurfaceVariant = palette.aiText.asColor()
     )
     val typography = if (theme.monospaced) MaterialTheme.typography.monospaced() else MaterialTheme.typography
 
     MaterialTheme(colorScheme = scheme, typography = typography) {
-        CompositionLocalProvider(LocalChatTheme provides theme) {
-            Box(modifier = modifier.chatBackdrop(theme, base.background), content = content)
+        CompositionLocalProvider(LocalChatPalette provides palette) {
+            Box(modifier = modifier.chatBackdrop(theme, palette), content = content)
         }
     }
 }
@@ -99,12 +102,14 @@ private fun Typography.monospaced(): Typography = copy(
     labelSmall = labelSmall.copy(fontFamily = FontFamily.Monospace)
 )
 
-private fun Modifier.chatBackdrop(theme: ChatTheme, background: Color): Modifier = when (theme) {
-    ChatTheme.CLEAN -> background(background).then(Modifier.dotGrid(Color(0x2E201E1D), 22f))
-    ChatTheme.NEON_GRID -> background(Brush.verticalGradient(listOf(Color(0xFF1A0B2E), Color(0xFF0B0D12))))
-        .then(Modifier.lineGrid(Color(0x1A22D3EE), 28f))
-    ChatTheme.TERMINAL -> background(Color(0xFF050805)).then(Modifier.scanlines(Color(0x0A39FF88)))
-    ChatTheme.MIDNIGHT -> background(Brush.linearGradient(listOf(Color(0xFF0B1026), Color(0xFF05070F))))
+private fun Modifier.chatBackdrop(theme: ChatTheme, p: ChatPalette): Modifier {
+    val base = background(Brush.verticalGradient(listOf(p.backdropTop.asColor(), p.backdropBottom.asColor())))
+    return when (theme) {
+        ChatTheme.CLEAN -> base.dotGrid(p.pattern.asColor(), 22f)
+        ChatTheme.NEON_GRID -> base.lineGrid(p.pattern.asColor(), 28f)
+        ChatTheme.TERMINAL -> base.scanlines(p.pattern.asColor())
+        ChatTheme.MIDNIGHT -> base
+    }
 }
 
 private fun Modifier.dotGrid(color: Color, spacingDp: Float): Modifier = drawBehind {
