@@ -457,6 +457,28 @@ class ChatViewModel @Inject constructor(
                     restartIfStalled(id, 0)
                     return@launch
                 }
+                // GLM can think for an hour on a huge request without writing a word.
+                // Past the thinking limit, ask once more at low effort; if that also
+                // only thinks, stop and suggest a faster model.
+                val stillThinking = _messages.value.firstOrNull { it.id == reply.placeholderId }?.content.isNullOrBlank()
+                if (stillThinking && thinksBeforeAnswering(model) &&
+                    System.currentTimeMillis() - startedAt > GLM_THINKING_LIMIT_MS
+                ) {
+                    reply.streamJob?.cancel()
+                    if (reply.handedOff) backgroundReplies.cancel(reply.id)
+                    activeReply = null
+                    if (!lowEffortRetryUsed) {
+                        Log.w("ChatViewModel", "$model still thinking; asking again with low effort")
+                        lowEffortRetryUsed = true
+                        effortOverride = AIEffort.LOW
+                        _messages.value = reply.messagesBefore
+                        sendMessage(reply.content, reply.currentCode, reply.threadParentId, isRetry = true)
+                    } else {
+                        lowEffortRetryUsed = false
+                        failReply(reply.placeholderId, STILL_THINKING_MESSAGE)
+                    }
+                    return@launch
+                }
                 // A model that keeps streaming (a reasoning loop, say) is never silent,
                 // so it also gets an overall cap. Not retried: it would likely loop again.
                 if (hasRunTooLong(startedAt, System.currentTimeMillis())) {
@@ -478,6 +500,9 @@ class ChatViewModel @Inject constructor(
     }
 
     fun sendMessage(content: String, currentCode: String = "", threadParentId: String? = null) {
+        // A new message starts with a clean slate for the GLM low-effort retry.
+        lowEffortRetryUsed = false
+        effortOverride = null
         sendMessage(content, currentCode, threadParentId, isRetry = false)
     }
 
@@ -2057,3 +2082,13 @@ fun shouldRetryWithLowEffort(model: String, effort: AIEffort, alreadyRetried: Bo
     val glmEffort = com.xraiassistant.data.models.TogetherReasoning.effort(model, effort) ?: return false
     return glmEffort != "low"
 }
+
+/** How long GLM may think without starting its answer before it is asked again at low effort. */
+const val GLM_THINKING_LIMIT_MS = 240_000L
+
+const val STILL_THINKING_MESSAGE =
+    "Still thinking. This request is large enough that the model was still planning after several minutes, even at low effort. Try GLM-5.3 Flash or Kimi K3, or split the request into smaller steps."
+
+/** Models whose thinking shares the answer budget and has no hard off switch. */
+fun thinksBeforeAnswering(model: String): Boolean =
+    com.xraiassistant.data.models.TogetherReasoning.effort(model, AIEffort.HIGH) != null
