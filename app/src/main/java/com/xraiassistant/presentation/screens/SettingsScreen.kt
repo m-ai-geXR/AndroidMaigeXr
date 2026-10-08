@@ -1,5 +1,7 @@
 package com.xraiassistant.presentation.screens
 
+import androidx.compose.ui.graphics.luminance
+import com.xraiassistant.ui.theme.asColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import com.xraiassistant.domain.local.LocalServerConfig
@@ -1754,8 +1756,10 @@ private fun AppearanceSection() {
                         label = { Text(theme.displayName) },
                         leadingIcon = {
                             Row(modifier = Modifier.clip(RoundedCornerShape(4.dp))) {
-                                theme.swatch.forEach { color ->
-                                    Box(Modifier.size(width = 8.dp, height = 16.dp).background(color))
+                                // Swatch in the current appearance: backdrop, then sent bubble.
+                                val p = theme.palette(dark = MaterialTheme.colorScheme.background.luminance() < 0.5f)
+                                listOf(p.backdropTop, p.userBubble).forEach { color ->
+                                    Box(Modifier.size(width = 8.dp, height = 16.dp).background(color.asColor()))
                                 }
                             }
                         }

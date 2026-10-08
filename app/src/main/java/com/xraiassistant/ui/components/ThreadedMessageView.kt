@@ -1,5 +1,6 @@
 package com.xraiassistant.ui.components
 
+import com.xraiassistant.ui.theme.asColor
 import androidx.compose.foundation.border
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -55,6 +56,7 @@ fun ThreadedMessageView(
     isFavorited: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val palette = com.xraiassistant.ui.theme.LocalChatPalette.current
     val replies = allMessages.getReplies(message.id)
     val hasReplies = replies.isNotEmpty()
 
@@ -102,7 +104,7 @@ fun ThreadedMessageView(
                         )
                         .background(
                             if (message.isUser) {
-                                MaterialTheme.colorScheme.primary
+                                palette.userBubble.asColor()
                             } else {
                                 MaterialTheme.colorScheme.surfaceVariant
                             }
@@ -110,9 +112,8 @@ fun ThreadedMessageView(
                         // Thin outline from the chat style, so bubbles keep an edge on busy backdrops.
                         .border(
                             1.dp,
-                            if (message.isUser && com.xraiassistant.ui.theme.LocalChatTheme.current == com.xraiassistant.ui.theme.ChatTheme.CLEAN)
-                                androidx.compose.ui.graphics.Color.Transparent
-                            else com.xraiassistant.ui.theme.LocalChatTheme.current.bubbleStroke,
+                            if (message.isUser) androidx.compose.ui.graphics.Color.Transparent
+                            else palette.stroke.asColor(),
                             RoundedCornerShape(
                                 topStart = 16.dp,
                                 topEnd = 16.dp,
@@ -143,7 +144,7 @@ fun ThreadedMessageView(
                                 text = if (message.isUser) "You" else (message.model ?: "m{ai}geXR"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (message.isUser) {
-                                    MaterialTheme.colorScheme.onPrimary
+                                    palette.userText.asColor()
                                 } else {
                                     MaterialTheme.colorScheme.primary
                                 },
@@ -317,6 +318,7 @@ fun ThreadReplyView(
     onRunScene: ((code: String, libraryId: String?) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
+    val palette = com.xraiassistant.ui.theme.LocalChatPalette.current
     val extractedCode = remember(message.content) { extractCodeFromMessage(message.content) }
     val hasCode = extractedCode != null && !message.isUser
 
@@ -342,7 +344,7 @@ fun ThreadReplyView(
                     .clip(RoundedCornerShape(14.dp))
                     .background(
                         if (message.isUser) {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            palette.userBubble.asColor()
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                         }
@@ -362,7 +364,7 @@ fun ThreadReplyView(
                     Text(
                         text = message.content,
                         color = if (message.isUser) {
-                            MaterialTheme.colorScheme.onPrimary
+                            palette.userText.asColor()
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
