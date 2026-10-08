@@ -113,7 +113,7 @@ class SettingsDataStore @Inject constructor(
     private fun migrateModelId(oldId: String): String {
         return when (oldId) {
             // DeepSeek R1 migrations
-            "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" -> "deepseek-ai/DeepSeek-R1"
+            "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" -> "zai-org/GLM-5.3-Flash"
 
             // Llama 3.3 70B migrations
             "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" -> "meta-llama/Llama-3.3-70B-Instruct-Turbo"

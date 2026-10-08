@@ -93,17 +93,44 @@ object AIModels {
     )
 
 
-    val DEEPSEEK_R1_70B = AIModel(
-        id = "deepseek-ai/DeepSeek-R1",
-        displayName = "DeepSeek R1",
-        description = "Advanced reasoning & coding",
+    val DEEPSEEK_V4_1_FLASH = AIModel(
+        id = "deepseek-ai/DeepSeek-V4.1-Flash",
+        displayName = "DeepSeek V4.1 Flash",
+        description = "Fast DeepSeek for coding",
         provider = "Together.ai",
         pricing = "Serverless",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 16_000
+    )
+
+    val DEEPSEEK_V4_PRO = AIModel(
+        id = "deepseek-ai/DeepSeek-V4-Pro-0813",
+        displayName = "DeepSeek V4 Pro",
+        description = "DeepSeek flagship - deep reasoning",
+        provider = "Together.ai",
+        pricing = "Serverless",
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 16_000
+    )
+
+    val QWEN_3_8_FLASH = AIModel(
+        id = "Qwen/Qwen3.8-Flash",
+        displayName = "Qwen3.8 Flash",
+        description = "Fast Qwen for quick edits",
+        provider = "Together.ai",
+        pricing = "Serverless",
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 16_000
+    )
+
+    val QWEN_3_7_MAX = AIModel(
+        id = "Qwen/Qwen3.7-Max",
+        displayName = "Qwen3.7 Max",
+        description = "Qwen flagship - strong coding",
+        provider = "Together.ai",
+        pricing = "Serverless",
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 16_000
     )
 
     val LLAMA_3_3_70B = AIModel(
@@ -119,44 +146,6 @@ object AIModels {
         )
     )
 
-    val LLAMA_3_8B_LITE = AIModel(
-        id = "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
-        displayName = "Llama 3 8B Lite",
-        description = "Cost-effective option",
-        provider = "Together.ai",
-        pricing = "$0.10/1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
-
-    val LLAMA_3_1_8B_TURBO = AIModel(
-        id = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-        displayName = "Llama 3.1 8B Turbo",
-        description = "Good balance",
-        provider = "Together.ai",
-        pricing = "$0.18/1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
-
-    val QWEN_2_5_7B_TURBO = AIModel(
-        id = "Qwen/Qwen2.5-7B-Instruct-Turbo",
-        displayName = "Qwen 2.5 7B Turbo",
-        description = "Fast coding specialist",
-        provider = "Together.ai",
-        pricing = "$0.30/1M tokens",
-        capabilities = setOf(
-            AICapability.TEXT_GENERATION,
-            AICapability.CODE_GENERATION,
-            AICapability.STREAMING
-        )
-    )
 
     // ============= OPENAI MODELS =============
 
@@ -475,15 +464,15 @@ object AIModels {
     )
 
     val ALL_MODELS = listOf(
-        // Together.ai models (8 models)
+        // Together.ai serverless models (checked 2026-10-07)
         KIMI_K3,
         GLM_5_3,
         GLM_5_3_FLASH,
-        DEEPSEEK_R1_70B,
+        DEEPSEEK_V4_1_FLASH,
+        DEEPSEEK_V4_PRO,
+        QWEN_3_8_FLASH,
+        QWEN_3_7_MAX,
         LLAMA_3_3_70B,
-        LLAMA_3_8B_LITE,
-        LLAMA_3_1_8B_TURBO,
-        QWEN_2_5_7B_TURBO,
 
         // OpenAI models (5 models)
         GPT_6_ASTRA,
@@ -515,4 +504,28 @@ object AIModels {
     )
     
     val MODELS_BY_PROVIDER = ALL_MODELS.groupBy { it.provider }
+}
+
+/**
+ * Model ids Together no longer serves, mapped to their nearest current model,
+ * so a saved choice keeps working after an update.
+ */
+object ModelMigrations {
+    val retired = mapOf(
+        "deepseek-ai/DeepSeek-R1" to "deepseek-ai/DeepSeek-V4.1-Flash",
+        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" to "zai-org/GLM-5.3-Flash",
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" to "zai-org/GLM-5.3-Flash",
+        "meta-llama/Meta-Llama-3-8B-Instruct-Lite" to "zai-org/GLM-5.3-Flash",
+        "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" to "zai-org/GLM-5.3-Flash",
+        "Qwen/Qwen2.5-7B-Instruct-Turbo" to "Qwen/Qwen3.8-Flash"
+    )
+
+    const val DEFAULT_MODEL = "zai-org/GLM-5.3-Flash"
+
+    /** The model to use for a saved id: itself if still offered, else its replacement or the default. */
+    fun resolve(saved: String): String = when {
+        saved.startsWith("local:") -> saved
+        AIModels.ALL_MODELS.any { it.id == saved } -> saved
+        else -> retired[saved] ?: DEFAULT_MODEL
+    }
 }
