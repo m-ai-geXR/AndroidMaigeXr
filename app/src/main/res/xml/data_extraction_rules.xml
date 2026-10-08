@@ -1,19 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backup and device-transfer rules for Android 12+. Same policy as
+    backup_rules.xml: API keys and unfinished background replies stay on this
+    device; chats, favourites and settings move with the user.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="sharedpref" path="xraiassistant_secure.xml" />
+        <exclude domain="sharedpref" path="background_replies.xml" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="sharedpref" path="xraiassistant_secure.xml" />
+        <exclude domain="sharedpref" path="background_replies.xml" />
     </device-transfer>
-    -->
 </data-extraction-rules>
