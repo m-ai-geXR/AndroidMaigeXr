@@ -302,7 +302,9 @@ class ChatViewModel @Inject constructor(
         val streamJob: kotlinx.coroutines.Job?,
         val restarted: Boolean,
         var handedOff: Boolean = false,
-        var leftApp: Boolean = false
+        var leftApp: Boolean = false,
+        /** Last time any text arrived, for spotting a stream that went quiet. */
+        var lastProgress: Long = System.currentTimeMillis()
     )
 
     private var activeReply: ActiveReply? = null
@@ -402,9 +404,45 @@ class ChatViewModel @Inject constructor(
         backgroundReplies.store.uncollectedOutcomes().forEach { collectBackgroundReply(it.jobId) }
     }
 
+    /** Stops the reply in progress (the Stop button). */
+    fun stopReply() {
+        val reply = activeReply ?: return
+        reply.streamJob?.cancel()
+        if (reply.handedOff) backgroundReplies.cancel(reply.id)
+        activeReply = null
+        // Keep the question; drop the unfinished answer.
+        _messages.value = _messages.value.filterNot { it.id == reply.placeholderId }
+        _isLoading.value = false
+        Log.d("ChatViewModel", "⏹️ Reply stopped by the user")
+    }
+
+    /**
+     * While the app is open, a reply that receives nothing for too long is sent
+     * again once, then reported, so the spinner never runs on and on.
+     */
+    private fun monitorStall(id: String, model: String) {
+        viewModelScope.launch {
+            val limit = if (AIModels.ALL_MODELS.firstOrNull { it.id == model }?.control == com.xraiassistant.data.models.AIModelControl.EFFORT)
+                SILENT_THINKING_TIMEOUT_MS else IN_APP_STALL_TIMEOUT_MS
+            while (true) {
+                kotlinx.coroutines.delay(5_000)
+                val reply = activeReply ?: return@launch
+                if (reply.id != id) return@launch
+                // Away from the app the background job and checkReplyOnReturn take over.
+                if (reply.leftApp || !appInForeground) continue
+                if (System.currentTimeMillis() - reply.lastProgress > limit) {
+                    restartIfStalled(id, 0)
+                    return@launch
+                }
+            }
+        }
+    }
+
     private companion object {
         const val STALL_TIMEOUT_MS = 20_000L
         const val BACKGROUND_TIMEOUT_MS = 180_000L
+        const val IN_APP_STALL_TIMEOUT_MS = 45_000L
+        const val SILENT_THINKING_TIMEOUT_MS = 150_000L
     }
 
     fun sendMessage(content: String, currentCode: String = "", threadParentId: String? = null) {
@@ -492,6 +530,7 @@ class ChatViewModel @Inject constructor(
                         library = library, messagesBefore = messagesBefore,
                         streamJob = coroutineContext[kotlinx.coroutines.Job], restarted = isRetry
                     )
+                    monitorStall(id, _selectedModel.value)
                 }
 
                 aiProviderRepository.generateResponseStream(
@@ -505,14 +544,16 @@ class ChatViewModel @Inject constructor(
                 ).collect { chunk ->
                     // Append chunk to full response
                     fullResponse.append(chunk)
+                    replyId?.let { id -> if (activeReply?.id == id) activeReply?.lastProgress = System.currentTimeMillis() }
 
                     // Update the message in real-time. Copy the placeholder rather
                     // than building a new message so the id stays stable: the chat
                     // list keys rows by id, and a fresh id per chunk would rebuild
                     // the row on every chunk.
                     val updatedMessages = _messages.value.toMutableList()
+                    // Reasoning (<think>) is not shown; "Thinking…" covers it.
                     updatedMessages[messageIndex] = placeholderMessage.copy(
-                        content = fullResponse.toString()
+                        content = com.xraiassistant.domain.text.ReplyText.visible(fullResponse.toString()).text
                     )
                     _messages.value = updatedMessages
                 }
