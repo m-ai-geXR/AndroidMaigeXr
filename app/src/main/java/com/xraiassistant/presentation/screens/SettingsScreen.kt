@@ -94,7 +94,6 @@ fun SettingsScreen(
     var temperature by remember { mutableFloatStateOf(0.7f) }
     var topP by remember { mutableFloatStateOf(0.9f) }
     var systemPrompt by remember { mutableStateOf("") }
-    var useSandpackForR3F by remember { mutableStateOf(true) }
     var ragEnabled by remember { mutableStateOf(true) }
     var showClearAllDialog by remember { mutableStateOf(false) }
     var historyCleared by remember { mutableStateOf(false) }
@@ -119,7 +118,6 @@ fun SettingsScreen(
         temperature = viewModel.temperature
         topP = viewModel.topP
         systemPrompt = viewModel.systemPrompt
-        useSandpackForR3F = true // Default value
 
         println("✅ SettingsScreen: Settings loaded")
         println("   Selected Library: $selectedLibrary")
@@ -269,10 +267,7 @@ fun SettingsScreen(
             )
             
             // Sandbox & Deployment Section
-            SandboxSettingsSection(
-                useSandpackForR3F = useSandpackForR3F,
-                onUseSandpackChange = { useSandpackForR3F = it }
-            )
+            SandboxSettingsSection()
             
             // System Prompt Section
             SystemPromptSection(
@@ -536,7 +531,7 @@ private fun CodeSandboxAPIKeyView(
 ) {
     ProviderAPIKeyView(
         provider = "CodeSandbox",
-        description = "Adds deployment features. React scenes build without it.",
+        description = "React Three Fiber and Reactylon always use CodeSandbox. A key is optional and saves sandboxes to your account.",
         apiKey = apiKey,
         onApiKeyChange = onApiKeyChange,
         isConfigured = apiKey.isNotBlank(),
@@ -1214,116 +1209,22 @@ private fun ParameterSummaryView(
 }
 
 @Composable
-private fun SandboxSettingsSection(
-    useSandpackForR3F: Boolean,
-    onUseSandpackChange: (Boolean) -> Unit
-) {
+private fun SandboxSettingsSection() {
     SettingsSection(
         title = "Sandbox & Deployment",
         icon = Icons.Default.Cloud
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Language,
-                    contentDescription = "React Three Fiber Rendering",
-                    tint = StatusColors.warning,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "React Three Fiber Rendering",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Use CodeSandbox Live",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        if (useSandpackForR3F) {
-                            "Real CodeSandbox projects with sharing & npm packages"
-                        } else {
-                            "Local playground with offline support"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = useSandpackForR3F,
-                    onCheckedChange = onUseSandpackChange,
-                    modifier = if (useSandpackForR3F) Modifier.neonGlow(MaterialTheme.colorScheme.primary, blurRadius = 6.dp) else Modifier,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                )
-            }
-            
-            // Description based on current setting
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    if (useSandpackForR3F) Icons.Default.CloudCircle else Icons.Default.Computer,
-                    contentDescription = if (useSandpackForR3F) "Online" else "Offline",
-                    tint = if (useSandpackForR3F) MaterialTheme.colorScheme.primary else StatusColors.success,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    if (useSandpackForR3F) {
-                        "Online: Real CodeSandbox environment with full npm ecosystem"
-                    } else {
-                        "Offline: Fast local rendering, no network required"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (useSandpackForR3F) MaterialTheme.colorScheme.primary else StatusColors.success
-                )
-            }
-            
-            // Benefits info
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        "Benefits:",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    if (useSandpackForR3F) {
-                        Text("• Instant deployment to CodeSandbox", style = MaterialTheme.typography.bodySmall)
-                        Text("• Social sharing with direct links", style = MaterialTheme.typography.bodySmall)
-                        Text("• Live collaboration and embedding", style = MaterialTheme.typography.bodySmall)
-                    } else {
-                        Text("• Works completely offline", style = MaterialTheme.typography.bodySmall)
-                        Text("• Faster local rendering", style = MaterialTheme.typography.bodySmall)
-                        Text("• No external dependencies", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "React Three Fiber and Reactylon run on CodeSandbox",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "These frameworks need an npm build, so their scenes are always built and shown on codesandbox.io. An internet connection is required. Babylon.js, Three.js, A-Frame and Nova64 run in the app.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
