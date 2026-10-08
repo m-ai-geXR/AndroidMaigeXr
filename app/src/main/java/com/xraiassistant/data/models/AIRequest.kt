@@ -41,7 +41,10 @@ data class TogetherAIResponse(
     @JsonClass(generateAdapter = true)
     data class Delta(
         @Json(name = "role") val role: String? = null,
-        @Json(name = "content") val content: String? = null
+        @Json(name = "content") val content: String? = null,
+        // Reasoning models on Together (GLM, Kimi, DeepSeek) stream their thinking here first.
+        @Json(name = "reasoning") val reasoning: String? = null,
+        @Json(name = "reasoning_content") val reasoningContent: String? = null
     )
 
     @JsonClass(generateAdapter = true)

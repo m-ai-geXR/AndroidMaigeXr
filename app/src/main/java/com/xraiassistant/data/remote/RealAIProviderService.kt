@@ -553,6 +553,7 @@ class RealAIProviderService @Inject constructor(
     private suspend fun parseServerSentEvents(responseBody: ResponseBody): Flow<String> = flow {
         val source = responseBody.source()
         val adapter = moshi.adapter(TogetherAIResponse::class.java)
+        val reasoningWrapper = ReasoningStream()
 
         try {
             while (!source.exhausted()) {
@@ -576,12 +577,10 @@ class RealAIProviderService @Inject constructor(
                         null
                     }
 
-                    val content = chunk?.choices?.firstOrNull()?.delta?.content
-                    if (!content.isNullOrEmpty()) {
-                        emit(content)
-                    }
+                    reasoningWrapper.text(chunk?.choices?.firstOrNull()?.delta)?.let { emit(it) }
                 }
             }
+            reasoningWrapper.finish()?.let { emit(it) }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error reading stream", e)
             throw e
@@ -869,4 +868,31 @@ class RealAIProviderService @Inject constructor(
 
         return fullResponse.toString()
     }
+}
+
+/**
+ * Reasoning models stream their thinking in delta.reasoning with no content for
+ * a long time. It is passed on inside think tags, so the reply counts as alive
+ * and shows Thinking, and ReplyText removes it from the answer.
+ */
+class ReasoningStream {
+    private var inThinking = false
+
+    fun text(delta: TogetherAIResponse.Delta?): String? {
+        if (delta == null) return null
+        val out = StringBuilder()
+        val reasoning = delta.reasoning ?: delta.reasoningContent
+        if (!reasoning.isNullOrEmpty()) {
+            if (!inThinking) { out.append("<think>"); inThinking = true }
+            out.append(reasoning)
+        }
+        val content = delta.content
+        if (!content.isNullOrEmpty()) {
+            if (inThinking) { out.append("</think>"); inThinking = false }
+            out.append(content)
+        }
+        return out.takeIf { it.isNotEmpty() }?.toString()
+    }
+
+    fun finish(): String? = if (inThinking) { inThinking = false; "</think>" } else null
 }

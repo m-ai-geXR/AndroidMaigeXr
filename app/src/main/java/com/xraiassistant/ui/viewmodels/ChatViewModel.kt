@@ -391,7 +391,7 @@ class ChatViewModel @Inject constructor(
             _messages.value = reply.messagesBefore
             if (reply.restarted) {
                 _isLoading.value = false
-                _errorMessage.value = "The reply did not arrive. Check your connection and try again."
+                _errorMessage.value = "The reply did not arrive. Try again, or pick another model in Settings."
                 return@launch
             }
             Log.d("ChatViewModel", "🔁 Reply stalled; sending it again")
@@ -424,6 +424,7 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             val limit = if (AIModels.ALL_MODELS.firstOrNull { it.id == model }?.control == com.xraiassistant.data.models.AIModelControl.EFFORT)
                 SILENT_THINKING_TIMEOUT_MS else IN_APP_STALL_TIMEOUT_MS
+            val startedAt = System.currentTimeMillis()
             while (true) {
                 kotlinx.coroutines.delay(5_000)
                 val reply = activeReply ?: return@launch
@@ -432,6 +433,17 @@ class ChatViewModel @Inject constructor(
                 if (reply.leftApp || !appInForeground) continue
                 if (System.currentTimeMillis() - reply.lastProgress > limit) {
                     restartIfStalled(id, 0)
+                    return@launch
+                }
+                // A model that keeps streaming (a reasoning loop, say) is never silent,
+                // so it also gets an overall cap. Not retried: it would likely loop again.
+                if (hasRunTooLong(startedAt, System.currentTimeMillis())) {
+                    reply.streamJob?.cancel()
+                    if (reply.handedOff) backgroundReplies.cancel(reply.id)
+                    activeReply = null
+                    _messages.value = reply.messagesBefore
+                    _isLoading.value = false
+                    _errorMessage.value = "Reply took too long. The model kept going without finishing, so it was stopped. Try again, or pick a faster model in Settings."
                     return@launch
                 }
             }
@@ -1944,3 +1956,8 @@ fun codeSandboxNoticeFor(libraryId: String): String {
     val name = if (libraryId == "reactylon") "Reactylon" else "React Three Fiber"
     return "$name scenes are built and run on CodeSandbox (codesandbox.io), so they need an internet connection."
 }
+
+/** Longest a single reply attempt may run, even while text keeps arriving. */
+const val MAX_REPLY_DURATION_MS = 600_000L
+
+fun hasRunTooLong(startedAtMs: Long, nowMs: Long): Boolean = nowMs - startedAtMs > MAX_REPLY_DURATION_MS
