@@ -388,6 +388,10 @@ class ChatViewModel @Inject constructor(
     }
 
     /** Sends the request again if reply [id] still has not arrived after [delayMs]. */
+    /** Set for one request after a GLM reply came back with no answer. */
+    private var effortOverride: AIEffort? = null
+    private var lowEffortRetryUsed = false
+
     /**
      * Ends a reply with an error shown in the chat, where the empty reply bubble
      * was. The user's message stays so they can see what failed.
@@ -482,6 +486,9 @@ class ChatViewModel @Inject constructor(
         val messagesBefore = _messages.value
         var replyId: String? = null
         var waitingForBackground = false
+        // A one-off low-effort retry uses its override once.
+        val requestEffort = effortOverride ?: _effort.value
+        effortOverride = null
 
         viewModelScope.launch {
             try {
@@ -554,7 +561,7 @@ class ChatViewModel @Inject constructor(
                         id = id, content = content, currentCode = currentCode, threadParentId = threadParentId,
                         prompt = enhancedPrompt, systemPrompt = enhancedSystemPrompt, model = _selectedModel.value,
                         temperature = _temperature.value.toDouble(), topP = _topP.value.toDouble(),
-                        effort = _effort.value.apiValue, placeholderId = placeholderMessage.id,
+                        effort = requestEffort.apiValue, placeholderId = placeholderMessage.id,
                         library = library, messagesBefore = messagesBefore,
                         streamJob = coroutineContext[kotlinx.coroutines.Job], restarted = isRetry
                     )
@@ -567,7 +574,7 @@ class ChatViewModel @Inject constructor(
                     temperature = _temperature.value.toDouble(),
                     topP = _topP.value.toDouble(),
                     systemPrompt = enhancedSystemPrompt,
-                    effort = _effort.value,
+                    effort = requestEffort,
                     images = imagesToSend
                 ).collect { chunk ->
                     // Append chunk to full response
@@ -599,9 +606,23 @@ class ChatViewModel @Inject constructor(
                 // that spent its whole budget thinking): say so instead of leaving
                 // an empty bubble.
                 if (isEmptyReply(fullResponse.toString())) {
+                    // GLM thinks and answers from one budget, so on a very large
+                    // request it can spend it all thinking: ask once more at low
+                    // effort, which keeps the thinking short.
+                    if (shouldRetryWithLowEffort(_selectedModel.value, requestEffort, lowEffortRetryUsed)) {
+                        Log.w("ChatViewModel", "${_selectedModel.value} used its budget thinking; asking again with low effort")
+                        lowEffortRetryUsed = true
+                        effortOverride = AIEffort.LOW
+                        replyId?.let { id -> if (activeReply?.id == id) activeReply = null }
+                        _messages.value = messagesBefore
+                        sendMessage(content, currentCode, threadParentId, isRetry = true)
+                        return@launch
+                    }
+                    lowEffortRetryUsed = false
                     failReply(placeholderMessage.id, EMPTY_REPLY_MESSAGE)
                     return@launch
                 }
+                lowEffortRetryUsed = false
 
                 // Streaming finished: settle the message so Run Scene can appear.
                 _messages.value = _messages.value.toMutableList().also { settled ->
@@ -2016,7 +2037,7 @@ fun codeSandboxNoticeFor(libraryId: String): String {
 }
 
 /** Longest a single reply attempt may run, even while text keeps arriving. */
-const val MAX_REPLY_DURATION_MS = 600_000L
+const val MAX_REPLY_DURATION_MS = 900_000L
 
 fun hasRunTooLong(startedAtMs: Long, nowMs: Long): Boolean = nowMs - startedAtMs > MAX_REPLY_DURATION_MS
 
@@ -2026,3 +2047,13 @@ const val EMPTY_REPLY_MESSAGE =
 /** True when a finished reply has nothing to show once reasoning is removed. */
 fun isEmptyReply(raw: String): Boolean =
     com.xraiassistant.domain.text.ReplyText.visible(raw).text.isBlank()
+
+/**
+ * Retry an empty reply once at low effort, for models whose thinking shares the
+ * answer budget (GLM), unless it already ran at GLM low effort.
+ */
+fun shouldRetryWithLowEffort(model: String, effort: AIEffort, alreadyRetried: Boolean): Boolean {
+    if (alreadyRetried) return false
+    val glmEffort = com.xraiassistant.data.models.TogetherReasoning.effort(model, effort) ?: return false
+    return glmEffort != "low"
+}
