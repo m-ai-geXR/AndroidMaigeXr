@@ -25,6 +25,16 @@ class EmbeddingRepository @Inject constructor(
     companion object {
         private const val TAG = "EmbeddingRepository"
         private const val EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
+
+        /**
+         * Set once Together refuses the embedding model (400 or 404). Together
+         * currently offers no serverless embedding model, so without this every
+         * chat message waited on a request that could only fail. Reset on the
+         * next launch, so RAG comes back if Together adds the model again.
+         */
+        @Volatile
+        var unavailable = false
+            private set
         private const val EMBEDDING_DIMENSION = 768
         private const val DEFAULT_BATCH_SIZE = 20
         private const val RATE_LIMIT_DELAY_MS = 100L // 0.1 second between batches
@@ -84,6 +94,11 @@ class EmbeddingRepository @Inject constructor(
                         throw e
                     }
                 } else {
+                    // The model is not served: stop asking for this session.
+                    if (e.code() == 400 || e.code() == 404) {
+                        unavailable = true
+                        Log.w(TAG, "Embedding model not served (HTTP ${e.code()}); RAG is off for this session")
+                    }
                     // For non-503 errors, throw immediately without retry
                     throw e
                 }
@@ -114,6 +129,7 @@ class EmbeddingRepository @Inject constructor(
         if (apiKey == DEFAULT_API_KEY || apiKey.isBlank()) {
             throw IllegalStateException("Together.ai API key not configured. RAG features require a Together.ai API key.")
         }
+        if (unavailable) throw IllegalStateException("Embeddings are not available from Together right now")
 
         Log.d(TAG, "🧠 Generating embedding for text (${text.length} chars)...")
 
@@ -158,6 +174,7 @@ class EmbeddingRepository @Inject constructor(
         if (apiKey == DEFAULT_API_KEY || apiKey.isBlank()) {
             throw IllegalStateException("Together.ai API key not configured. RAG features require a Together.ai API key.")
         }
+        if (unavailable) throw IllegalStateException("Embeddings are not available from Together right now")
 
         Log.d(TAG, "🧠 Generating batch embeddings for ${texts.size} texts...")
 

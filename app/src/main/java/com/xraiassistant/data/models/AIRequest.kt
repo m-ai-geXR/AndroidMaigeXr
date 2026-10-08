@@ -20,7 +20,9 @@ data class TogetherAIRequest(
     @Json(name = "temperature") val temperature: Double = 0.7,
     @Json(name = "top_p") val topP: Double = 0.9,
     @Json(name = "stream") val stream: Boolean = true,
-    @Json(name = "max_tokens") val maxTokens: Int? = null
+    @Json(name = "max_tokens") val maxTokens: Int? = null,
+    // Sent only for models that take it (GLM); null is left out of the JSON.
+    @Json(name = "reasoning_effort") val reasoningEffort: String? = null
 )
 
 @JsonClass(generateAdapter = true)

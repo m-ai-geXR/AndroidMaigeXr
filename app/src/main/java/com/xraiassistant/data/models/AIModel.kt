@@ -79,6 +79,7 @@ object AIModels {
         provider = "Together.ai",
         pricing = "$1.40/1M input tokens",
         capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        control = AIModelControl.EFFORT,
         maxOutputTokens = 32_000
     )
 
@@ -89,6 +90,7 @@ object AIModels {
         provider = "Together.ai",
         pricing = "$0.15/1M input tokens",
         capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        control = AIModelControl.EFFORT,
         maxOutputTokens = 32_000
     )
 
