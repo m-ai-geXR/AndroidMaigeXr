@@ -579,7 +579,9 @@ class RealAIProviderService @Inject constructor(
                         null
                     }
 
-                    reasoningWrapper.text(chunk?.choices?.firstOrNull()?.delta)?.let { emit(it) }
+                    // Any event counts as progress, even one with no text, so the
+                    // stall watchdog never mistakes a thinking model for a dead stream.
+                    emit(reasoningWrapper.text(chunk?.choices?.firstOrNull()?.delta) ?: "")
                 }
             }
             reasoningWrapper.finish()?.let { emit(it) }
@@ -883,7 +885,9 @@ class ReasoningStream {
     fun text(delta: TogetherAIResponse.Delta?): String? {
         if (delta == null) return null
         val out = StringBuilder()
-        val reasoning = delta.reasoning ?: delta.reasoningContent
+        // Whichever field carries text: models differ, and an empty or null one
+        // must not hide text in the other.
+        val reasoning = listOf(delta.reasoning, delta.reasoningContent).firstOrNull { !it.isNullOrEmpty() }
         if (!reasoning.isNullOrEmpty()) {
             if (!inThinking) { out.append("<think>"); inThinking = true }
             out.append(reasoning)

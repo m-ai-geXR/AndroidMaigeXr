@@ -37,4 +37,10 @@ class ReasoningStreamTest {
         assertFalse(hasRunTooLong(0, 60_000))
         assertTrue(hasRunTooLong(0, MAX_REPLY_DURATION_MS + 1))
     }
+
+    @Test
+    fun anEmptyReasoningFieldDoesNotHideTheOther() {
+        val stream = ReasoningStream()
+        assertEquals("<think>thinking", stream.text(Delta(reasoning = "", reasoningContent = "thinking")))
+    }
 }
