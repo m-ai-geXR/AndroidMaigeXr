@@ -82,8 +82,9 @@ fun ChatScreen(
     // "Thinking…" only until the first streamed words arrive; after that the
     // growing reply is its own progress indicator.
     val lastMessage = messages.lastOrNull()
+    // A streaming reply shows its own Thinking state inside the bubble.
     val awaitingFirstChunk = isLoading &&
-        !(lastMessage != null && !lastMessage.isUser && lastMessage.content.isNotEmpty())
+        !(lastMessage != null && !lastMessage.isUser && (lastMessage.content.isNotEmpty() || lastMessage.isStreaming))
 
     // Follow the conversation: jump to a newly added message, and keep a streaming
     // reply in view, unless the user has scrolled up to read something.

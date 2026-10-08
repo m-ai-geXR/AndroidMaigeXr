@@ -148,7 +148,7 @@ class RealAIProviderService @Inject constructor(
             temperature = temperature,
             topP = topP,
             stream = true,
-            maxTokens = 8192
+            maxTokens = maxOutputFor(model, 8192) // GLM and Kimi think first; they need their full budget
         )
 
         var lastException: Exception? = null

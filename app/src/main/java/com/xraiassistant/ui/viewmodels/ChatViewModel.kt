@@ -380,6 +380,17 @@ class ChatViewModel @Inject constructor(
     }
 
     /** Sends the request again if reply [id] still has not arrived after [delayMs]. */
+    /**
+     * Ends a reply with an error shown in the chat, where the empty reply bubble
+     * was. The user's message stays so they can see what failed.
+     */
+    private fun failReply(placeholderId: String?, text: String) {
+        _messages.value = _messages.value.filterNot { it.id == placeholderId } +
+            ChatMessage.aiMessage(content = text, model = "Error", libraryId = _currentLibrary.value?.id)
+        _isLoading.value = false
+        _errorMessage.value = text
+    }
+
     private fun restartIfStalled(id: String, delayMs: Long) {
         viewModelScope.launch {
             if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
@@ -388,12 +399,11 @@ class ChatViewModel @Inject constructor(
             reply.streamJob?.cancel()
             if (reply.handedOff) backgroundReplies.cancel(reply.id)
             activeReply = null
-            _messages.value = reply.messagesBefore
             if (reply.restarted) {
-                _isLoading.value = false
-                _errorMessage.value = "The reply did not arrive. Try again, or pick another model in Settings."
+                failReply(reply.placeholderId, "The reply did not arrive. Try again, or pick another model in Settings.")
                 return@launch
             }
+            _messages.value = reply.messagesBefore
             Log.d("ChatViewModel", "🔁 Reply stalled; sending it again")
             sendMessage(reply.content, reply.currentCode, reply.threadParentId, isRetry = true)
         }
@@ -441,9 +451,7 @@ class ChatViewModel @Inject constructor(
                     reply.streamJob?.cancel()
                     if (reply.handedOff) backgroundReplies.cancel(reply.id)
                     activeReply = null
-                    _messages.value = reply.messagesBefore
-                    _isLoading.value = false
-                    _errorMessage.value = "Reply took too long. The model kept going without finishing, so it was stopped. Try again, or pick a faster model in Settings."
+                    failReply(reply.placeholderId, "Reply took too long. The model kept going without finishing, so it was stopped. Try again, or pick a faster model in Settings.")
                     return@launch
                 }
             }
@@ -577,6 +585,14 @@ class ChatViewModel @Inject constructor(
                         if (activeReply?.handedOff == true) backgroundReplies.cancel(id)
                         activeReply = null
                     }
+                }
+
+                // Finished without any answer text (for example a reasoning model
+                // that spent its whole budget thinking): say so instead of leaving
+                // an empty bubble.
+                if (isEmptyReply(fullResponse.toString())) {
+                    failReply(placeholderMessage.id, EMPTY_REPLY_MESSAGE)
+                    return@launch
                 }
 
                 // Streaming finished: settle the message so Run Scene can appear.
@@ -1961,3 +1977,10 @@ fun codeSandboxNoticeFor(libraryId: String): String {
 const val MAX_REPLY_DURATION_MS = 600_000L
 
 fun hasRunTooLong(startedAtMs: Long, nowMs: Long): Boolean = nowMs - startedAtMs > MAX_REPLY_DURATION_MS
+
+const val EMPTY_REPLY_MESSAGE =
+    "No answer. The model finished without writing a reply, often because it spent its whole budget thinking. Try again, or pick another model."
+
+/** True when a finished reply has nothing to show once reasoning is removed. */
+fun isEmptyReply(raw: String): Boolean =
+    com.xraiassistant.domain.text.ReplyText.visible(raw).text.isBlank()
