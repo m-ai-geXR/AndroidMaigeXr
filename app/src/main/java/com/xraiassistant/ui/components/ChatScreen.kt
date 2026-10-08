@@ -126,10 +126,13 @@ fun ChatScreen(
             messages.filter { it.isTopLevel }
         }
 
+        val chatTheme by com.xraiassistant.ui.theme.AppearanceStore.chatTheme.collectAsState()
+        com.xraiassistant.ui.theme.ChatThemeArea(
+            theme = chatTheme,
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) {
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             state = listState,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -174,6 +177,7 @@ fun ChatScreen(
                     LoadingIndicator()
                 }
             }
+        }
         }
 
         // AI Code Ready notice: shows once per new piece of code, then gets out of the way.
