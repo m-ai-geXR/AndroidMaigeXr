@@ -1,12 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 23 even if they have support.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Backup rules for Android 11 and older (Android 12+ uses data_extraction_rules.xml).
+
+    API keys are never backed up. They sit in EncryptedSharedPreferences, whose
+    key lives in this device's Keystore and is not restored, so a restored copy
+    could not be decrypted and would break key loading. The user re-enters keys.
+    Unfinished background replies are short-lived and device-specific.
+    Chats, favourites and settings are backed up.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="sharedpref" path="xraiassistant_secure.xml" />
+    <exclude domain="sharedpref" path="background_replies.xml" />
 </full-backup-content>
