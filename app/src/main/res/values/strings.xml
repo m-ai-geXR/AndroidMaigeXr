@@ -134,4 +134,7 @@
     <string name="parameter_top_p">Top-p (Nucleus Sampling)</string>
     <string name="parameter_description">Current Mode</string>
     <string name="code_injection">Injecting AI Code…</string>
+    <!-- Launcher shortcut: lets device search find the app by "maigexr" -->
+    <string name="shortcut_short_label">maigeXR</string>
+    <string name="shortcut_long_label">maigeXR: new 3D scene</string>
 </resources>
