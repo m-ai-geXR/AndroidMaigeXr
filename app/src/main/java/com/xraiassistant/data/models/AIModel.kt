@@ -61,6 +61,37 @@ enum class AIEffort(val apiValue: String, val displayName: String, val summary: 
  */
 object AIModels {
     // ============= TOGETHER.AI MODELS =============
+    // Latest open models on Together (checked 2026-10-07). 1M-token context.
+    val KIMI_K3 = AIModel(
+        id = "moonshotai/Kimi-K3",
+        displayName = "Kimi K3",
+        description = "Moonshot flagship - strong agentic coding",
+        provider = "Together.ai",
+        pricing = "$3.00/1M input tokens",
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 32_000
+    )
+
+    val GLM_5_3 = AIModel(
+        id = "zai-org/GLM-5.3",
+        displayName = "GLM-5.3",
+        description = "Z.ai flagship - advanced coding and reasoning",
+        provider = "Together.ai",
+        pricing = "$1.40/1M input tokens",
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 32_000
+    )
+
+    val GLM_5_3_FLASH = AIModel(
+        id = "zai-org/GLM-5.3-Flash",
+        displayName = "GLM-5.3 Flash",
+        description = "Fast, low-cost GLM for quick scenes",
+        provider = "Together.ai",
+        pricing = "$0.15/1M input tokens",
+        capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
+        maxOutputTokens = 32_000
+    )
+
 
     val DEEPSEEK_R1_70B = AIModel(
         id = "deepseek-ai/DeepSeek-R1",
@@ -444,7 +475,10 @@ object AIModels {
     )
 
     val ALL_MODELS = listOf(
-        // Together.ai models (5 models)
+        // Together.ai models (8 models)
+        KIMI_K3,
+        GLM_5_3,
+        GLM_5_3_FLASH,
         DEEPSEEK_R1_70B,
         LLAMA_3_3_70B,
         LLAMA_3_8B_LITE,
