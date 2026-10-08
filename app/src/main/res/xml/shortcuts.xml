@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Launcher shortcut labelled "maigeXR". Android's home-screen and app search
+    match shortcuts by label, so typing "maigexr" finds the app even though its
+    name, m{ai}geXR, has braces in it.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="maigexr_open"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_short_label"
+        android:shortcutLongLabel="@string/shortcut_long_label">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="studio.seacloud9.maigexr"
+            android:targetClass="com.xraiassistant.MainActivity" />
+    </shortcut>
+</shortcuts>
