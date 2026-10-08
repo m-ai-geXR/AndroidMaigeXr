@@ -304,14 +304,7 @@ private fun MainBottomNavigation(
             NavigationBarItem(
                 selected = chatSelected,
                 onClick = { onViewChange(AppView.CHAT) },
-                icon = { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null) },
-                label = {
-                    MaigeXRWordmark(
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
-                        muted = !chatSelected
-                    )
-                },
-                modifier = Modifier.semantics { contentDescription = "Chat" },
+                icon = { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "m{ai}geXR chat") },
                 colors = navItemColors()
             )
             NavigationBarItem(
@@ -322,24 +315,21 @@ private fun MainBottomNavigation(
                         // New code waiting in the scene.
                         if (hasGeneratedCode && currentView != AppView.SCENE) Badge()
                     }) {
-                        Icon(Icons.Outlined.PlayCircle, contentDescription = null)
+                        Icon(Icons.Outlined.PlayCircle, contentDescription = "Run scene")
                     }
                 },
-                label = { Text(stringResource(R.string.nav_scene)) },
                 colors = navItemColors()
             )
             NavigationBarItem(
                 selected = currentView == AppView.EXAMPLES,
                 onClick = { onViewChange(AppView.EXAMPLES) },
-                icon = { Icon(Icons.Outlined.AutoStories, contentDescription = null) },
-                label = { Text("Examples") },
+                icon = { Icon(Icons.Outlined.AutoStories, contentDescription = "Examples") },
                 colors = navItemColors()
             )
             NavigationBarItem(
                 selected = false, // Settings opens as a sheet, not a view
                 onClick = onSettingsClick,
-                icon = { Icon(Icons.Outlined.Settings, contentDescription = null) },
-                label = { Text(stringResource(R.string.nav_settings)) },
+                icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
                 colors = navItemColors()
             )
         }

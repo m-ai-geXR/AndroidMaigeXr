@@ -1,5 +1,6 @@
 package com.xraiassistant.ui.components
 
+import androidx.compose.foundation.border
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -105,6 +106,19 @@ fun ThreadedMessageView(
                             } else {
                                 MaterialTheme.colorScheme.surfaceVariant
                             }
+                        )
+                        // Thin outline from the chat style, so bubbles keep an edge on busy backdrops.
+                        .border(
+                            1.dp,
+                            if (message.isUser && com.xraiassistant.ui.theme.LocalChatTheme.current == com.xraiassistant.ui.theme.ChatTheme.CLEAN)
+                                androidx.compose.ui.graphics.Color.Transparent
+                            else com.xraiassistant.ui.theme.LocalChatTheme.current.bubbleStroke,
+                            RoundedCornerShape(
+                                topStart = 16.dp,
+                                topEnd = 16.dp,
+                                bottomStart = if (message.isUser) 16.dp else 4.dp,
+                                bottomEnd = if (message.isUser) 4.dp else 16.dp
+                            )
                         )
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                         .widthIn(max = 600.dp)

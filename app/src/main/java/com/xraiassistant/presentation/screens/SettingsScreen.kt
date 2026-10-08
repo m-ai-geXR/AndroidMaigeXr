@@ -1,5 +1,7 @@
 package com.xraiassistant.presentation.screens
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.horizontalScroll
 import com.xraiassistant.domain.local.LocalServerConfig
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -1734,6 +1736,32 @@ private fun AppearanceSection() {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Chat style", style = MaterialTheme.typography.titleSmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            val chatTheme by AppearanceStore.chatTheme.collectAsState()
+            // Same presets as iOS; each chip shows the preset's colours.
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                com.xraiassistant.ui.theme.ChatTheme.entries.forEach { theme ->
+                    FilterChip(
+                        selected = chatTheme == theme,
+                        onClick = { AppearanceStore.setChatTheme(context, theme) },
+                        label = { Text(theme.displayName) },
+                        leadingIcon = {
+                            Row(modifier = Modifier.clip(RoundedCornerShape(4.dp))) {
+                                theme.swatch.forEach { color ->
+                                    Box(Modifier.size(width = 8.dp, height = 16.dp).background(color))
+                                }
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }

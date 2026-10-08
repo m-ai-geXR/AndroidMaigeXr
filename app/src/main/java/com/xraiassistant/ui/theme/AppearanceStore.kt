@@ -39,9 +39,26 @@ object AppearanceStore {
     private val _mode = MutableStateFlow(ThemeMode.SYSTEM)
     val mode: StateFlow<ThemeMode> = _mode.asStateFlow()
 
+    private const val CHAT_THEME_KEY = "chat_theme"
+
+    /** The conversation canvas preset. */
+    private val _chatTheme = MutableStateFlow(ChatTheme.CLEAN)
+    val chatTheme: StateFlow<ChatTheme> = _chatTheme.asStateFlow()
+
     fun load(context: Context) {
         val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         _mode.value = ThemeMode.from(prefs.getString(KEY, null))
+        _chatTheme.value = ChatTheme.from(prefs.getString(CHAT_THEME_KEY, null))
+    }
+
+    fun setChatTheme(context: Context, theme: ChatTheme) {
+        if (_chatTheme.value == theme) return
+        _chatTheme.value = theme
+        context.applicationContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(CHAT_THEME_KEY, theme.storageValue)
+            .apply()
     }
 
     fun set(context: Context, mode: ThemeMode) {
