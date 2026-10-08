@@ -25,3 +25,21 @@ object SamplingLimits {
 
     fun topP(value: Double, model: String) = value.coerceIn(rangeFor(model).topP)
 }
+
+/**
+ * GLM on Together always thinks before answering and, left to its default, can
+ * think for minutes. It takes reasoning_effort low / medium / high / max. Its
+ * levels run much heavier than Claude or GPT, so the app levels map one step
+ * lighter: the default High becomes GLM medium.
+ */
+object TogetherReasoning {
+    fun effort(model: String, appEffort: AIEffort): String? {
+        if (!model.lowercase().startsWith("zai-org/glm-")) return null
+        return when (appEffort) {
+            AIEffort.LOW, AIEffort.MEDIUM -> "low"
+            AIEffort.HIGH -> "medium"
+            AIEffort.XHIGH -> "high"
+            AIEffort.MAX -> "max"
+        }
+    }
+}

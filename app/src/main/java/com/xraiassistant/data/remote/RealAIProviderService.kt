@@ -85,7 +85,7 @@ class RealAIProviderService @Inject constructor(
 
         when (provider) {
             "Together.ai" -> {
-                streamTogetherAI(apiKey, model, prompt, systemPrompt, temperature, topP, images)
+                streamTogetherAI(apiKey, model, prompt, systemPrompt, temperature, topP, images, effort)
                     .collect { chunk -> emit(chunk) }
             }
             "OpenAI" -> {
@@ -126,7 +126,8 @@ class RealAIProviderService @Inject constructor(
         systemPrompt: String,
         temperature: Double,
         topP: Double,
-        images: List<AIImageContent> = emptyList()
+        images: List<AIImageContent> = emptyList(),
+        effort: AIEffort = AIEffort.HIGH
     ): Flow<String> = flow {
         val messages = buildList<APIChatMessage> {
             if (systemPrompt.isNotEmpty()) {
@@ -148,7 +149,8 @@ class RealAIProviderService @Inject constructor(
             temperature = temperature,
             topP = topP,
             stream = true,
-            maxTokens = maxOutputFor(model, 8192) // GLM and Kimi think first; they need their full budget
+            maxTokens = maxOutputFor(model, 8192), // GLM and Kimi think first; they need their full budget
+            reasoningEffort = TogetherReasoning.effort(model, effort)
         )
 
         var lastException: Exception? = null
