@@ -19,8 +19,22 @@ import javax.inject.Singleton
 class AIProviderRepository @Inject constructor(
     private val aiProviderService: AIProviderService,
     private val settingsDataStore: SettingsDataStore,
-    private val localServerSettings: com.xraiassistant.data.local.LocalServerSettings
+    private val localServerSettings: com.xraiassistant.data.local.LocalServerSettings,
+    private val togetherCatalog: com.xraiassistant.data.local.TogetherModelCatalog
 ) {
+    /** Together models for the user key: curated picks it can use, then its other chat models. */
+    fun togetherModels(): List<com.xraiassistant.data.models.AIModel> =
+        com.xraiassistant.data.local.TogetherModelCatalog.merge(
+            com.xraiassistant.data.models.AIModels.ALL_MODELS.filter { it.provider == PROVIDER_TOGETHER_AI },
+            togetherCatalog.cached
+        )
+
+    /** Fetches the models this Together key can use. Returns true when the list changed. */
+    suspend fun refreshTogetherModels(force: Boolean): Boolean {
+        if (!force && !togetherCatalog.isStale) return false
+        return togetherCatalog.refresh(getAPIKeyForProvider(PROVIDER_TOGETHER_AI))
+    }
+
     
     companion object {
         private const val DEFAULT_API_KEY = "changeMe"
