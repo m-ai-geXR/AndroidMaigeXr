@@ -25,3 +25,16 @@ class LowEffortRetryTest {
         assertTrue(glm.all { it.maxOutputTokens >= 65_536 })
     }
 }
+
+class GlmThinkingLimitTest {
+    @Test
+    fun onlyGlmHasAThinkingLimit() {
+        assertTrue(thinksBeforeAnswering("zai-org/GLM-5.3"))
+        assertFalse(thinksBeforeAnswering("moonshotai/Kimi-K3"))
+    }
+
+    @Test
+    fun theLimitLeavesRoomForARetryInsideTheCap() {
+        assertTrue(GLM_THINKING_LIMIT_MS * 2 < MAX_REPLY_DURATION_MS)
+    }
+}
