@@ -50,7 +50,7 @@ class AIProviderRepository @Inject constructor(
         val provider = getProviderForModel(model)
         val apiKey = getAPIKeyForProvider(provider)
 
-        if (apiKey == DEFAULT_API_KEY) {
+        if (apiKey == DEFAULT_API_KEY && provider != PROVIDER_LOCAL) {
             throw IllegalStateException("API key not configured for $provider")
         }
 

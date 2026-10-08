@@ -59,7 +59,8 @@ class ChatViewModel @Inject constructor(
     private val conversationRepository: ConversationRepository,  // For chat history
     private val codeSandboxService: CodeSandboxService,  // For building React Three Fiber code
     private val ragRepository: RAGRepository,  // For RAG-enhanced responses
-    private val favoriteRepository: FavoriteRepository  // For favorites (code bookmarks)
+    private val favoriteRepository: FavoriteRepository,  // For favorites (code bookmarks)
+    private val backgroundReplies: com.xraiassistant.data.background.BackgroundReplies
 ) : ViewModel() {
 
     // MARK: - UI State
@@ -199,6 +200,13 @@ class ChatViewModel @Inject constructor(
         // 2. Setup default system prompt from library
         // 3. Load saved settings (which may override system prompt)
         setupInitialMessage()
+
+        // Replies finished by a background job: while the chat is open, and any
+        // that arrived after the app was closed.
+        viewModelScope.launch {
+            com.xraiassistant.data.background.BackgroundReplyStore.finished.collect { collectBackgroundReply(it) }
+        }
+        collectOrphanedReplies()
         setupDefaultSystemPrompt()
         loadSettings()
         loadFavoritedMessages()
@@ -263,7 +271,140 @@ class ChatViewModel @Inject constructor(
     /** Called from the UI lifecycle: send any interrupted request once the app is in front. */
     fun onAppForegroundChanged(inForeground: Boolean) {
         appInForeground = inForeground
-        if (inForeground) interruptedRequests.resume()
+        if (inForeground) {
+            interruptedRequests.resume()
+            checkReplyOnReturn()
+        } else {
+            handOffActiveReply()
+        }
+    }
+
+    // MARK: - Replies that survive leaving the app
+
+    /**
+     * The reply in flight. Its id makes sure it is shown exactly once, whether it
+     * arrives by the live stream or from the background job.
+     */
+    private data class ActiveReply(
+        val id: String,
+        val content: String,
+        val currentCode: String,
+        val threadParentId: String?,
+        val prompt: String,
+        val systemPrompt: String,
+        val model: String,
+        val temperature: Double,
+        val topP: Double,
+        val effort: String,
+        val placeholderId: String,
+        val library: Library3D?,
+        val messagesBefore: List<ChatMessage>,
+        val streamJob: kotlinx.coroutines.Job?,
+        val restarted: Boolean,
+        var handedOff: Boolean = false,
+        var leftApp: Boolean = false
+    )
+
+    private var activeReply: ActiveReply? = null
+    private val deliveredByBackground = mutableSetOf<String>()
+
+    /** Leaving the app mid-reply: let a WorkManager job finish it. */
+    private fun handOffActiveReply() {
+        val reply = activeReply ?: return
+        reply.leftApp = true
+        if (reply.handedOff) return
+        backgroundReplies.start(
+            com.xraiassistant.data.background.BackgroundReplyStore.Job(
+                id = reply.id, prompt = reply.prompt, systemPrompt = reply.systemPrompt, model = reply.model,
+                temperature = reply.temperature, topP = reply.topP, effort = reply.effort
+            )
+        )
+        reply.handedOff = true
+        Log.d("ChatViewModel", "📨 Reply handed to a background job")
+    }
+
+    /** A background job finished. Show its reply if the live stream has not. */
+    private fun collectBackgroundReply(jobId: String) {
+        val store = backgroundReplies.store
+        val outcome = store.outcome(jobId) ?: return
+        store.remove(jobId)
+        val reply = activeReply
+        if (reply == null || reply.id != jobId) {
+            // The app was closed when it finished: keep the reply rather than lose it.
+            outcome.text?.let { text ->
+                _messages.value = _messages.value + ChatMessage.aiMessage(
+                    content = text,
+                    model = getModelDisplayName(outcome.model ?: _selectedModel.value),
+                    libraryId = _currentLibrary.value?.id
+                )
+                processAIResponse(text, _currentLibrary.value)
+            }
+            return
+        }
+        val text = outcome.text
+        if (text == null) {
+            Log.w("ChatViewModel", "Background job failed: ${outcome.error}")
+            reply.handedOff = false
+            restartIfStalled(reply.id, 0)
+            return
+        }
+        Log.d("ChatViewModel", "📬 Reply delivered by the background job")
+        deliveredByBackground += reply.id
+        activeReply = null
+        val updated = _messages.value.toMutableList()
+        val index = updated.indexOfFirst { it.id == reply.placeholderId }
+        if (index >= 0) {
+            updated[index] = updated[index].copy(content = text, isStreaming = false)
+        } else {
+            updated += ChatMessage.aiMessage(content = text, model = getModelDisplayName(reply.model), libraryId = reply.library?.id)
+        }
+        _messages.value = updated
+        reply.streamJob?.cancel()
+        processAIResponse(text, reply.library)
+        autoSaveConversation()
+        _errorMessage.value = null
+        _isLoading.value = false
+    }
+
+    /** Back in the app: collect a finished reply, and never let a stalled one spin forever. */
+    private fun checkReplyOnReturn() {
+        val reply = activeReply ?: return
+        if (!reply.leftApp) return
+        if (backgroundReplies.store.outcome(reply.id) != null) {
+            collectBackgroundReply(reply.id)
+            return
+        }
+        restartIfStalled(reply.id, if (reply.handedOff) BACKGROUND_TIMEOUT_MS else STALL_TIMEOUT_MS)
+    }
+
+    /** Sends the request again if reply [id] still has not arrived after [delayMs]. */
+    private fun restartIfStalled(id: String, delayMs: Long) {
+        viewModelScope.launch {
+            if (delayMs > 0) kotlinx.coroutines.delay(delayMs)
+            val reply = activeReply ?: return@launch
+            if (reply.id != id || !appInForeground) return@launch
+            reply.streamJob?.cancel()
+            if (reply.handedOff) backgroundReplies.cancel(reply.id)
+            activeReply = null
+            _messages.value = reply.messagesBefore
+            if (reply.restarted) {
+                _isLoading.value = false
+                _errorMessage.value = "The reply did not arrive. Check your connection and try again."
+                return@launch
+            }
+            Log.d("ChatViewModel", "🔁 Reply stalled; sending it again")
+            sendMessage(reply.content, reply.currentCode, reply.threadParentId, isRetry = true)
+        }
+    }
+
+    /** Replies that finished after the app was closed, shown at the next launch. */
+    private fun collectOrphanedReplies() {
+        backgroundReplies.store.uncollectedOutcomes().forEach { collectBackgroundReply(it.jobId) }
+    }
+
+    private companion object {
+        const val STALL_TIMEOUT_MS = 20_000L
+        const val BACKGROUND_TIMEOUT_MS = 180_000L
     }
 
     fun sendMessage(content: String, currentCode: String = "", threadParentId: String? = null) {
@@ -273,6 +414,8 @@ class ChatViewModel @Inject constructor(
     private fun sendMessage(content: String, currentCode: String, threadParentId: String?, isRetry: Boolean) {
         if (content.isBlank()) return
         val messagesBefore = _messages.value
+        var replyId: String? = null
+        var waitingForBackground = false
 
         viewModelScope.launch {
             try {
@@ -337,6 +480,20 @@ class ChatViewModel @Inject constructor(
                     _systemPrompt.value
                 }
 
+                // Track the reply so leaving the app hands it to a background job.
+                if (imagesToSend.isEmpty()) {
+                    val id = java.util.UUID.randomUUID().toString()
+                    replyId = id
+                    activeReply = ActiveReply(
+                        id = id, content = content, currentCode = currentCode, threadParentId = threadParentId,
+                        prompt = enhancedPrompt, systemPrompt = enhancedSystemPrompt, model = _selectedModel.value,
+                        temperature = _temperature.value.toDouble(), topP = _topP.value.toDouble(),
+                        effort = _effort.value.apiValue, placeholderId = placeholderMessage.id,
+                        library = library, messagesBefore = messagesBefore,
+                        streamJob = coroutineContext[kotlinx.coroutines.Job], restarted = isRetry
+                    )
+                }
+
                 aiProviderRepository.generateResponseStream(
                     prompt = enhancedPrompt,
                     model = _selectedModel.value,
@@ -358,6 +515,15 @@ class ChatViewModel @Inject constructor(
                         content = fullResponse.toString()
                     )
                     _messages.value = updatedMessages
+                }
+
+                // Already shown by the background job: nothing more to do.
+                if (replyId != null && replyId in deliveredByBackground) return@launch
+                replyId?.let { id ->
+                    if (activeReply?.id == id) {
+                        if (activeReply?.handedOff == true) backgroundReplies.cancel(id)
+                        activeReply = null
+                    }
                 }
 
                 // Streaming finished: settle the message so Run Scene can appear.
@@ -390,6 +556,17 @@ class ChatViewModel @Inject constructor(
                 }
 
             } catch (e: Exception) {
+                val id = replyId
+                // Delivered by the background job, or superseded by a restart.
+                if (id != null && (id in deliveredByBackground || activeReply?.id != id)) return@launch
+                if (e is kotlinx.coroutines.CancellationException) return@launch
+                if (id != null && activeReply?.handedOff == true && NetworkInterruption.isInterruption(e)) {
+                    // The live stream dropped; the background job is still finishing it.
+                    Log.w("ChatViewModel", "Stream interrupted; waiting for the background job")
+                    waitingForBackground = true
+                    return@launch
+                }
+                if (id != null) activeReply = null
                 if (!isRetry && e !is kotlinx.coroutines.CancellationException && NetworkInterruption.isInterruption(e)) {
                     // The connection dropped (app backgrounded or device asleep).
                     // Take back the half-made exchange and send it again once the
@@ -422,7 +599,7 @@ class ChatViewModel @Inject constructor(
                 )
                 _messages.value = _messages.value + errorChatMessage
             } finally {
-                _isLoading.value = false
+                if (!waitingForBackground) _isLoading.value = false
             }
         }
     }
