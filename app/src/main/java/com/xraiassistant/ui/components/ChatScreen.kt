@@ -253,42 +253,84 @@ private fun ChatHeader(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 8.dp)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // One bar, like iOS: History and the model and library pickers on the
+            // left, actions on the right. The wordmark sits in the true centre when
+            // there is room (tablets); on a phone it is left out and the library
+            // docs move into the menu so the row fits.
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 4.dp)
             ) {
-            // Top bar, laid out like the iOS chat toolbar: History on the left,
-            // the brand centred, Favorites and more options on the right.
-            Box(modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = onOpenHistory, modifier = Modifier.align(Alignment.CenterStart)) {
-                    Icon(Icons.Default.History, contentDescription = "History")
-                }
-                Row(
-                    modifier = Modifier.align(Alignment.Center),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MaigeXRAvatar(size = 26.dp)
-                    MaigeXRWordmark(style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold))
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                val wide = maxWidth >= 720.dp
+                val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
+                val tint = MaterialTheme.colorScheme.primary
+
+                if (wide) {
+                    Row(
+                        modifier = Modifier.align(Alignment.Center),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        MaigeXRAvatar(size = 24.dp)
+                        MaigeXRWordmark(style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold))
                     }
                 }
-                Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+
+                // On a phone the left group stops short of the two action buttons
+                // (2 x 48dp) and its pills shrink to fit, so nothing can overlap.
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .then(if (wide) Modifier else Modifier.fillMaxWidth().padding(end = 100.dp)),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    IconButton(onClick = onOpenHistory) {
+                        Icon(Icons.Default.History, contentDescription = "History", tint = tint)
+                    }
+                    // Shorter labels on a phone so the row never runs under the actions.
+                    ModelSelector(chatViewModel = chatViewModel, selectedModel = selectedModel,
+                        maxTextWidth = if (wide) 160.dp else 84.dp,
+                        modifier = if (wide) Modifier else Modifier.weight(1f, fill = false))
+                    LibrarySelector(chatViewModel = chatViewModel, currentLibrary = currentLibrary,
+                        maxTextWidth = if (wide) 160.dp else 72.dp,
+                        modifier = if (wide) Modifier else Modifier.weight(1f, fill = false))
+                }
+
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (wide) {
+                        IconButton(onClick = { uriHandler.openUri(library.documentationURL) }) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.MenuBook,
+                                contentDescription = "${library.displayName} documentation",
+                                tint = tint
+                            )
+                        }
+                    }
                     IconButton(onClick = onOpenFavorites) {
-                        Icon(Icons.Default.StarBorder, contentDescription = "Favorites")
+                        Icon(Icons.Default.StarBorder, contentDescription = "Favorites", tint = tint)
                     }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = tint)
                         }
                         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            if (!wide) {
+                                DropdownMenuItem(
+                                    text = { Text("${library.displayName} docs") },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = null) },
+                                    onClick = {
+                                        showMenu = false
+                                        uriHandler.openUri(library.documentationURL)
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text("New conversation") },
                                 leadingIcon = { Icon(Icons.Default.AddComment, contentDescription = null) },
@@ -300,35 +342,6 @@ private fun ChatHeader(
                         }
                     }
                 }
-            }
-
-            // Model and library pills, and the library docs, like the iOS header.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ModelSelector(
-                    chatViewModel = chatViewModel,
-                    selectedModel = selectedModel
-                )
-                LibrarySelector(
-                    chatViewModel = chatViewModel,
-                    currentLibrary = currentLibrary
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
-                IconButton(onClick = { uriHandler.openUri(library.documentationURL) }) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.MenuBook,
-                        contentDescription = "${library.displayName} documentation",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
             }
 
             Hairline()
@@ -544,7 +557,9 @@ private fun ChatInputField(
 @Composable
 private fun ModelSelector(
     chatViewModel: ChatViewModel,
-    selectedModel: String
+    selectedModel: String,
+    maxTextWidth: androidx.compose.ui.unit.Dp = 160.dp,
+    modifier: Modifier = Modifier
 ) {
     var showModal by remember { mutableStateOf(false) }
 
@@ -553,7 +568,9 @@ private fun ModelSelector(
         icon = Icons.Outlined.Memory,
         text = modelName,
         onClick = { showModal = true },
-        contentDescription = "Change model, currently $modelName"
+        contentDescription = "Change model, currently $modelName",
+        maxTextWidth = maxTextWidth,
+        modifier = modifier
     )
 
     // Show modal when button is clicked
@@ -569,7 +586,9 @@ private fun ModelSelector(
 @Composable
 private fun LibrarySelector(
     chatViewModel: ChatViewModel,
-    currentLibrary: Library3D?
+    currentLibrary: Library3D?,
+    maxTextWidth: androidx.compose.ui.unit.Dp = 160.dp,
+    modifier: Modifier = Modifier
 ) {
     var showModal by remember { mutableStateOf(false) }
     val library = currentLibrary ?: chatViewModel.getCurrentLibrary()
@@ -578,7 +597,9 @@ private fun LibrarySelector(
         icon = Icons.Outlined.ViewInAr,
         text = library.displayName,
         onClick = { showModal = true },
-        contentDescription = "Change 3D library, currently ${library.displayName}"
+        contentDescription = "Change 3D library, currently ${library.displayName}",
+        maxTextWidth = maxTextWidth,
+        modifier = modifier
     )
 
     // Show modal when button is clicked
