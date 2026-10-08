@@ -62,7 +62,7 @@ android {
         applicationId = "studio.seacloud9.maigexr"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
+        versionCode = 4
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -189,6 +189,8 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.viewmodel.compose)
+    // Finishes AI replies after the app leaves the foreground
+    implementation(libs.work.runtime.ktx)
 
     // Navigation
     implementation(libs.navigation.compose)
@@ -234,6 +236,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.coroutines.test)
+    // Real org.json for local tests; the Android stub throws.
+    testImplementation("org.json:json:20240303")
 
     androidTestImplementation(libs.junit.ext)
     androidTestImplementation(libs.espresso.core)
