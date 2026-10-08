@@ -140,7 +140,9 @@ fun ThreadedMessageView(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         // Message content with markdown rendering
-                        if (!message.isUser) {
+                        if (!message.isUser && message.isStreaming && message.content.isBlank()) {
+                            ThinkingInBubble()
+                        } else if (!message.isUser) {
                             // AI messages: Render with markdown support
                             MarkdownText(
                                 markdown = message.content,
@@ -335,7 +337,9 @@ fun ThreadReplyView(
                     .widthIn(max = 500.dp)
             ) {
                 // Message content with markdown rendering
-                if (!message.isUser) {
+                if (!message.isUser && message.isStreaming && message.content.isBlank()) {
+                    ThinkingInBubble()
+                } else if (!message.isUser) {
                     MarkdownText(
                         markdown = message.content,
                         modifier = Modifier.fillMaxWidth()
@@ -414,4 +418,18 @@ fun ThreadReplyView(
 private fun formatTime(date: Date): String {
     val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     return formatter.format(date)
+}
+
+/** Waiting for the first words of a reply: shown inside its bubble, not in a separate row. */
+@Composable
+private fun ThinkingInBubble() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = androidx.compose.ui.res.stringResource(com.xraiassistant.R.string.chat_thinking),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
