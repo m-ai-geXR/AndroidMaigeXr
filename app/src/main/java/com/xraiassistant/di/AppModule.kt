@@ -61,9 +61,10 @@ object AppModule {
     fun provideAIProviderRepository(
         aiProviderService: AIProviderService,
         settingsDataStore: SettingsDataStore,
-        localServerSettings: com.xraiassistant.data.local.LocalServerSettings
+        localServerSettings: com.xraiassistant.data.local.LocalServerSettings,
+        togetherCatalog: com.xraiassistant.data.local.TogetherModelCatalog
     ): AIProviderRepository {
-        return AIProviderRepository(aiProviderService, settingsDataStore, localServerSettings)
+        return AIProviderRepository(aiProviderService, settingsDataStore, localServerSettings, togetherCatalog)
     }
 
     // MARK: - Database Providers

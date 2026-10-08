@@ -84,6 +84,11 @@ class ChatViewModel @Inject constructor(
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
 
     // MARK: - AI Configuration
+    private val _togetherModels = MutableStateFlow(aiProviderRepository.togetherModels())
+    /** Together models for the key; updates when the live list is fetched. */
+    val togetherModels: StateFlow<List<AIModel>> = _togetherModels.asStateFlow()
+    private var togetherRefresh: kotlinx.coroutines.Job? = null
+
     private val _selectedModel = MutableStateFlow(com.xraiassistant.data.models.ModelMigrations.DEFAULT_MODEL)
     val selectedModelState: StateFlow<String> = _selectedModel.asStateFlow()
     var selectedModel: String
@@ -194,6 +199,9 @@ class ChatViewModel @Inject constructor(
 
         // Initialize UI state
         _uiState.value = ChatUiState()
+
+        // The models this Together key can use, refreshed once a day.
+        refreshTogetherModels()
 
         // Setup in correct order (matching iOS):
         // 1. Setup initial welcome message
@@ -1428,6 +1436,7 @@ class ChatViewModel @Inject constructor(
      */
     suspend fun setAPIKey(provider: String, key: String) {
         aiProviderRepository.setAPIKey(provider, key.trim())
+        if (provider == "Together.ai") refreshTogetherModels(force = true)
     }
 
     /**
@@ -1605,12 +1614,16 @@ class ChatViewModel @Inject constructor(
     /** Provider name for a model id (as used by isProviderConfigured), or null if unknown. */
     fun getModelProvider(modelId: String): String? =
         AIModels.ALL_MODELS.find { it.id == modelId }?.provider
+            // The key other Together models are grouped apart but use the Together key.
+            ?: _togetherModels.value.find { it.id == modelId }?.let { "Together.ai" }
 
     fun getModelDisplayName(modelId: String): String {
         if (modelId.startsWith(com.xraiassistant.domain.local.LocalServerConfig.MODEL_PREFIX)) {
             return com.xraiassistant.domain.local.LocalServerConfig.serverModelName(modelId)
         }
-        return AIModels.ALL_MODELS.find { it.id == modelId }?.displayName ?: modelId
+        return AIModels.ALL_MODELS.find { it.id == modelId }?.displayName
+            ?: _togetherModels.value.find { it.id == modelId }?.displayName
+            ?: modelId
     }
 
     /** Address and model of the user's own server, edited in Settings. */
@@ -1618,9 +1631,38 @@ class ChatViewModel @Inject constructor(
 
     /** All available models grouped by provider, plus Local once it is set up. */
     val modelsByProvider: Map<String, List<AIModel>>
-        get() = aiProviderRepository.localModel()
-            ?.let { AIModels.MODELS_BY_PROVIDER + (it.provider to listOf(it)) }
-            ?: AIModels.MODELS_BY_PROVIDER
+        get() {
+            // Together comes from the live list for the key (curated picks first,
+            // the key other models in their own group); the rest are built in.
+            val together = togetherModels.value.groupBy { it.provider }
+            val others = AIModels.MODELS_BY_PROVIDER.filterKeys { it != "Together.ai" }
+            val base = together + others
+            return aiProviderRepository.localModel()?.let { base + (it.provider to listOf(it)) } ?: base
+        }
+
+    /**
+     * Fetches the chat models this Together key can use, so the picker only offers
+     * models that will answer. Runs when the key is saved and once a day at launch.
+     */
+    fun refreshTogetherModels(force: Boolean = false) {
+        togetherRefresh?.cancel()
+        togetherRefresh = viewModelScope.launch {
+            // The Settings field saves on every keystroke: wait until typing stops.
+            if (force) kotlinx.coroutines.delay(1_200)
+            if (!aiProviderRepository.refreshTogetherModels(force)) return@launch
+            val models = aiProviderRepository.togetherModels()
+            _togetherModels.value = models
+            // A Together model the key can no longer use: move to one it can.
+            val selected = _selectedModel.value
+            if (selected.contains("/") && models.none { it.id == selected }) {
+                val fallback = models.firstOrNull { it.id == com.xraiassistant.data.models.ModelMigrations.DEFAULT_MODEL } ?: models.firstOrNull()
+                if (fallback != null) {
+                    Log.w("ChatViewModel", "$selected is not available to this key; using ${fallback.id}")
+                    updateSelectedModel(fallback.id)
+                }
+            }
+        }
+    }
     
     /**
      * Get all available models (flat list)
