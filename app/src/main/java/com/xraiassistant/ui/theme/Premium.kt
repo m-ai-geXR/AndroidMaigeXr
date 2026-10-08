@@ -56,7 +56,8 @@ fun PillLabel(
     text: String,
     onClick: () -> Unit,
     contentDescription: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maxTextWidth: androidx.compose.ui.unit.Dp = 160.dp
 ) {
     Row(
         modifier = modifier
@@ -75,7 +76,7 @@ fun PillLabel(
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 160.dp)
+            modifier = Modifier.widthIn(max = maxTextWidth).weight(1f, fill = false)
         )
         Icon(
             Icons.Default.KeyboardArrowDown,

@@ -286,9 +286,15 @@ private fun MainBottomNavigation(
 
         Hairline()
 
+        // Compact: 56dp instead of Material's 80dp, still above the 48dp touch
+        // minimum. The system inset is applied outside so the height is exact.
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.background,
-            tonalElevation = 0.dp
+            tonalElevation = 0.dp,
+            windowInsets = WindowInsets(0, 0, 0, 0),
+            modifier = Modifier
+                .navigationBarsPadding()
+                .height(56.dp)
         ) {
             // Same four tabs as iOS. History and Favorites live in the chat
             // header, so the chat tab stays selected while they are open.
