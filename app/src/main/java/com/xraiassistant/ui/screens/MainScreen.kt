@@ -94,6 +94,20 @@ fun MainScreen(
     LaunchedEffect(isGenerating) { adManager.setGenerationInFlight(isGenerating) }
     LaunchedEffect(errorMessage) { adManager.setErrorVisible(errorMessage != null) }
 
+    val codeSandboxNotice by chatViewModel.codeSandboxNotice.collectAsStateWithLifecycle()
+    codeSandboxNotice?.let { notice ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { chatViewModel.dismissCodeSandboxNotice() },
+            title = { androidx.compose.material3.Text("Runs on CodeSandbox") },
+            text = { androidx.compose.material3.Text(notice) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { chatViewModel.dismissCodeSandboxNotice() }) {
+                    androidx.compose.material3.Text("OK")
+                }
+            }
+        )
+    }
+
     // Interstitials only ever appear on the way out of a scene: the user has
     // already seen the result they asked for. Watching the view state rather
     // than one button catches every route out. The short wait lets the

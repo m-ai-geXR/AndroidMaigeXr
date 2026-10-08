@@ -1233,7 +1233,16 @@ class ChatViewModel @Inject constructor(
      * Select 3D library and update system prompt
      * Matches iOS selectLibrary() behavior
      */
+    // React Three Fiber and Reactylon have no in-app playground; say so when picked.
+    private val _codeSandboxNotice = MutableStateFlow<String?>(null)
+    val codeSandboxNotice: StateFlow<String?> = _codeSandboxNotice.asStateFlow()
+
+    fun dismissCodeSandboxNotice() { _codeSandboxNotice.value = null }
+
     fun selectLibrary(libraryId: String) {
+        if (requiresCodeSandbox(libraryId) && libraryId != currentLibraryId) {
+            _codeSandboxNotice.value = codeSandboxNoticeFor(libraryId)
+        }
         applyLibrary(libraryId, resetSystemPrompt = true)
         persistSettings()
     }
@@ -1925,4 +1934,13 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
+}
+
+/** React Three Fiber and Reactylon need an npm build, so they always run on CodeSandbox. */
+fun requiresCodeSandbox(libraryId: String): Boolean =
+    libraryId == "reactThreeFiber" || libraryId == "reactylon"
+
+fun codeSandboxNoticeFor(libraryId: String): String {
+    val name = if (libraryId == "reactylon") "Reactylon" else "React Three Fiber"
+    return "$name scenes are built and run on CodeSandbox (codesandbox.io), so they need an internet connection."
 }
