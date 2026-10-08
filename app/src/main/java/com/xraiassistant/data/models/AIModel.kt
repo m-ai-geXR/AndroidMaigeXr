@@ -80,7 +80,7 @@ object AIModels {
         pricing = "$1.40/1M input tokens",
         capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
         control = AIModelControl.EFFORT,
-        maxOutputTokens = 32_000
+        maxOutputTokens = 65_536
     )
 
     val GLM_5_3_FLASH = AIModel(
@@ -91,7 +91,7 @@ object AIModels {
         pricing = "$0.15/1M input tokens",
         capabilities = setOf(AICapability.TEXT_GENERATION, AICapability.CODE_GENERATION, AICapability.STREAMING),
         control = AIModelControl.EFFORT,
-        maxOutputTokens = 32_000
+        maxOutputTokens = 65_536
     )
 
 
