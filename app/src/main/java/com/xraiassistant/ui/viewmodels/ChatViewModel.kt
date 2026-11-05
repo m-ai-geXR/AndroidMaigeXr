@@ -652,7 +652,10 @@ class ChatViewModel @Inject constructor(
                 // Streaming finished: settle the message so Run Scene can appear.
                 _messages.value = _messages.value.toMutableList().also { settled ->
                     settled.getOrNull(messageIndex)?.let { streamed ->
-                        settled[messageIndex] = streamed.copy(isStreaming = false)
+                        settled[messageIndex] = streamed.copy(
+                            isStreaming = false,
+                            content = withTemplateNote(streamed.content, content, currentCode, library?.id)
+                        )
                     }
                 }
 
@@ -1725,6 +1728,16 @@ class ChatViewModel @Inject constructor(
     /**
      * Build enhanced prompt with library context
      */
+    /**
+     * Opens a Nova64 template reply with which template the user's words picked
+     * (see Nova64Templates.note). Other replies are unchanged.
+     */
+    private fun withTemplateNote(reply: String, request: String, currentCode: String, libraryId: String?): String {
+        if (libraryId != "nova64" || com.xraiassistant.domain.models.Nova64Templates.templateIdOf(reply) == null) return reply
+        val note = com.xraiassistant.domain.models.Nova64Templates.note(request, currentCode)
+        return if (note.isEmpty()) reply else "$note\n\n$reply"
+    }
+
     private fun buildPrompt(
         userMessage: String,
         currentCode: String,

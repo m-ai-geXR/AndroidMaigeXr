@@ -113,6 +113,9 @@ fun ChatMessageCard(
                             markdown = message.content,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        nova64ChipsFor(message)?.let { active ->
+                            onRunScene?.let { run -> Nova64TemplateChips(activeId = active.ifEmpty { null }, onPreview = run) }
+                        }
                     } else {
                         // User messages: Plain text
                         Text(

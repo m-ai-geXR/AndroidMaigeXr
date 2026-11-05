@@ -16,9 +16,28 @@ class Nova64TemplatesTest {
     @Test
     fun chooseMatchesTheJavaScriptKit() {
         assertTrue(Nova64TemplatesData.testVectors.isNotEmpty())
-        for ((message, current, expected) in Nova64TemplatesData.testVectors) {
-            assertEquals("\"$message\" with current $current", expected, Nova64Templates.choose(message, current))
+        for (v in Nova64TemplatesData.testVectors) {
+            val (id, words) = Nova64Templates.pick(v.message, v.current)
+            assertEquals("\"${v.message}\" with current ${v.current}", v.expected, id)
+            assertEquals("words for \"${v.message}\"", v.words, words)
         }
+    }
+
+    @Test
+    fun noteNamesTheTemplateAndTheWords() {
+        assertEquals(
+            "\uD83C\uDFAE Started from the **Dungeon crawler \u00B7 Torchlit stone** template, because you said *dungeon*, *crawler*. Tap a template below to preview it, or say *from scratch* to write your own.",
+            Nova64Templates.note("Make a dungeon crawler about four monks in a flooded abbey", null)
+        )
+        assertEquals("", Nova64Templates.note("make it faster", "// NOVA64 TEMPLATE: lane-runner-grid\n"))
+    }
+
+    @Test
+    fun chipLabelsUseTheFirstGameAndStyleWords() {
+        assertEquals(
+            listOf("dungeon \u00B7 stone", "dungeon \u00B7 neon", "runner \u00B7 neon", "runner \u00B7 torch", "arena \u00B7 neon", "arena \u00B7 cave"),
+            Nova64Templates.all.map { Nova64Templates.chipLabel(it) }
+        )
     }
 
     @Test
