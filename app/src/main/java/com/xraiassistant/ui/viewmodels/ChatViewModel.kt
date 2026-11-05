@@ -1736,7 +1736,14 @@ class ChatViewModel @Inject constructor(
             "Language: ${it.codeLanguage}\n"
         } ?: ""
 
-        val codeContext = if (currentCode.isNotBlank()) {
+        // Nova64 games customise a tested engine: send only its CONFIG, not the whole cart.
+        val nova64Template = if (library?.id == "nova64") {
+            com.xraiassistant.domain.models.Nova64Templates.promptBlock(userMessage, currentCode)
+        } else null
+
+        val codeContext = if (nova64Template != null) {
+            "$nova64Template\n\n"
+        } else if (currentCode.isNotBlank()) {
             "Current code in editor:\n```\n$currentCode\n```\n\n"
         } else ""
 
