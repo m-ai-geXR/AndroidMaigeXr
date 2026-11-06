@@ -172,6 +172,9 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.security.crypto)
+    // Runs the shared Nova64 cart kit on chat replies (check, then repair)
+    implementation(libs.javascriptengine)
+    implementation(libs.concurrent.futures.ktx)
 
     // Compose
     implementation(platform(libs.compose.bom))
