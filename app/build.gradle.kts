@@ -62,8 +62,8 @@ android {
         applicationId = "studio.seacloud9.maigexr"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.0.0"
+        versionCode = 12
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -172,6 +172,9 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.security.crypto)
+    // Runs the shared Nova64 cart kit on chat replies (check, then repair)
+    implementation(libs.javascriptengine)
+    implementation(libs.concurrent.futures.ktx)
 
     // Compose
     implementation(platform(libs.compose.bom))

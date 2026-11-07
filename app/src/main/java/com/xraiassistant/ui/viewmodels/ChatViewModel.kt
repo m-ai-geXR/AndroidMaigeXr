@@ -60,7 +60,8 @@ class ChatViewModel @Inject constructor(
     private val codeSandboxService: CodeSandboxService,  // For building React Three Fiber code
     private val ragRepository: RAGRepository,  // For RAG-enhanced responses
     private val favoriteRepository: FavoriteRepository,  // For favorites (code bookmarks)
-    private val backgroundReplies: com.xraiassistant.data.background.BackgroundReplies
+    private val backgroundReplies: com.xraiassistant.data.background.BackgroundReplies,
+    private val nova64Kit: com.xraiassistant.domain.models.Nova64KitRunner  // Nova64 check, then repair
 ) : ViewModel() {
 
     // MARK: - UI State
@@ -503,10 +504,52 @@ class ChatViewModel @Inject constructor(
         // A new message starts with a clean slate for the GLM low-effort retry.
         lowEffortRetryUsed = false
         effortOverride = null
+        nova64Repair = null
         sendMessage(content, currentCode, threadParentId, isRetry = false)
     }
 
-    private fun sendMessage(content: String, currentCode: String, threadParentId: String?, isRetry: Boolean) {
+    // MARK: - Nova64 check, then repair
+
+    /** Repair state for the current user message: attempts used and the best cart so far. */
+    private var nova64Repair: Pair<Int, com.xraiassistant.domain.models.Nova64KitRunner.Result>? = null
+
+    /**
+     * Runs a Nova64 cart from a finished reply through the shared kit. Problems it
+     * cannot fix go back to the model as one compact repair message, at most
+     * MAX_REPAIRS times, visibly. A repair with more problems than the best version
+     * so far is dropped and that version re-inserted.
+     */
+    private fun checkNova64Reply(code: String, library: Library3D?) {
+        if (library?.id != "nova64") return
+        viewModelScope.launch {
+            val result = nova64Kit.prepare(code) ?: return@launch
+            val attempt = nova64Repair?.first ?: 0
+            val previous = nova64Repair?.second
+            if (previous != null && result.problems.size > previous.problems.size) {
+                nova64Repair = null
+                _messages.value = _messages.value + ChatMessage.aiMessage(
+                    content = "That repair was worse, so the previous version is kept.",
+                    model = getModelDisplayName(_selectedModel.value), libraryId = "nova64"
+                )
+                injectCode(previous.code, library, checkNova64 = false)
+                return@launch
+            }
+            if (result.problems.isEmpty() || attempt >= nova64Kit.maxRepairs) {
+                nova64Repair = null
+                return@launch
+            }
+            val prompt = nova64Kit.repairPrompt(result.code, result.problems) ?: return@launch
+            nova64Repair = (attempt + 1) to result
+            _messages.value = _messages.value + ChatMessage.aiMessage(
+                content = "🔧 **Fixing (${attempt + 1}/${nova64Kit.maxRepairs}):** ${result.problems.first()}",
+                model = getModelDisplayName(_selectedModel.value), libraryId = "nova64"
+            )
+            Log.d("ChatViewModel", "Nova64 repair ${attempt + 1}/${nova64Kit.maxRepairs}: ${result.problems.joinToString(" | ")}")
+            sendMessage(prompt, "", null, isRetry = false, hideUserMessage = true)
+        }
+    }
+
+    private fun sendMessage(content: String, currentCode: String, threadParentId: String?, isRetry: Boolean, hideUserMessage: Boolean = false) {
         if (content.isBlank()) return
         val messagesBefore = _messages.value
         var replyId: String? = null
@@ -528,7 +571,8 @@ class ChatViewModel @Inject constructor(
                     content = content,
                     threadParentId = parentId
                 )
-                _messages.value = _messages.value + userMessage
+                // A repair request is shown as its "Fixing" note, not as the raw prompt.
+                if (!hideUserMessage) _messages.value = _messages.value + userMessage
 
                 // Clear reply state after sending
                 if (parentId != null) {
@@ -640,7 +684,7 @@ class ChatViewModel @Inject constructor(
                         effortOverride = AIEffort.LOW
                         replyId?.let { id -> if (activeReply?.id == id) activeReply = null }
                         _messages.value = messagesBefore
-                        sendMessage(content, currentCode, threadParentId, isRetry = true)
+                        sendMessage(content, currentCode, threadParentId, isRetry = true, hideUserMessage = hideUserMessage)
                         return@launch
                     }
                     lowEffortRetryUsed = false
@@ -652,7 +696,10 @@ class ChatViewModel @Inject constructor(
                 // Streaming finished: settle the message so Run Scene can appear.
                 _messages.value = _messages.value.toMutableList().also { settled ->
                     settled.getOrNull(messageIndex)?.let { streamed ->
-                        settled[messageIndex] = streamed.copy(isStreaming = false)
+                        settled[messageIndex] = streamed.copy(
+                            isStreaming = false,
+                            content = withTemplateNote(streamed.content, content, currentCode, library?.id)
+                        )
                     }
                 }
 
@@ -665,7 +712,7 @@ class ChatViewModel @Inject constructor(
                 // Index messages for RAG (fire-and-forget, iOS approach)
                 // User message had images if imagesToSend was not empty
                 val hadImages = imagesToSend.isNotEmpty()
-                indexMessageForRAG(userMessage, hadImages)
+                if (!hideUserMessage) indexMessageForRAG(userMessage, hadImages)
                 val finalAiMessage = _messages.value.getOrNull(messageIndex)
                 if (finalAiMessage != null) {
                     // AI message didn't have images (only user messages can have images)
@@ -697,7 +744,7 @@ class ChatViewModel @Inject constructor(
                     Log.w("ChatViewModel", "Request interrupted (${e.message}); will send again")
                     _messages.value = messagesBefore
                     interruptedRequests.hold {
-                        sendMessage(content, currentCode, threadParentId, isRetry = true)
+                        sendMessage(content, currentCode, threadParentId, isRetry = true, hideUserMessage = hideUserMessage)
                     }
                     if (appInForeground) interruptedRequests.resume()
                     return@launch
@@ -1090,7 +1137,8 @@ class ChatViewModel @Inject constructor(
     /**
      * Helper function to inject extracted code
      */
-    private fun injectCode(code: String, library: Library3D?) {
+    private fun injectCode(code: String, library: Library3D?, checkNova64: Boolean = true) {
+        if (checkNova64) checkNova64Reply(code, library)
         _lastGeneratedCode.value = code
         lastCodeLibraryId = library?.id
         _codeReadyNotice.value = true
@@ -1725,6 +1773,16 @@ class ChatViewModel @Inject constructor(
     /**
      * Build enhanced prompt with library context
      */
+    /**
+     * Opens a Nova64 template reply with which template the user's words picked
+     * (see Nova64Templates.note). Other replies are unchanged.
+     */
+    private fun withTemplateNote(reply: String, request: String, currentCode: String, libraryId: String?): String {
+        if (libraryId != "nova64" || com.xraiassistant.domain.models.Nova64Templates.templateIdOf(reply) == null) return reply
+        val note = com.xraiassistant.domain.models.Nova64Templates.note(request, currentCode)
+        return if (note.isEmpty()) reply else "$note\n\n$reply"
+    }
+
     private fun buildPrompt(
         userMessage: String,
         currentCode: String,
@@ -1736,7 +1794,14 @@ class ChatViewModel @Inject constructor(
             "Language: ${it.codeLanguage}\n"
         } ?: ""
 
-        val codeContext = if (currentCode.isNotBlank()) {
+        // Nova64 games customise a tested engine: send only its CONFIG, not the whole cart.
+        val nova64Template = if (library?.id == "nova64") {
+            com.xraiassistant.domain.models.Nova64Templates.promptBlock(userMessage, currentCode)
+        } else null
+
+        val codeContext = if (nova64Template != null) {
+            "$nova64Template\n\n"
+        } else if (currentCode.isNotBlank()) {
             "Current code in editor:\n```\n$currentCode\n```\n\n"
         } else ""
 
